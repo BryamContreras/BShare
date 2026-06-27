@@ -2,19 +2,24 @@
 #ifndef MyAppVersion
 #define MyAppVersion "1.0.0"
 #endif
-#define MyAppPublisher "BShare"
-#define MyAppExeName "bshare.exe"
-#define MyAppSource "..\..\build\windows\x64\runner\Release"
-#define MyOutputDir "..\..\dist\installers\windows"
+#ifndef MyAppBuildNumber
+#define MyAppBuildNumber "1"
+#endif
+#define MyAppPackageVersion MyAppVersion + "-" + MyAppBuildNumber
+#define MyAppPublisher "Bryam Contreras"
+#define MyAppURL "https://github.com/BryamContreras/BShare"
+#define MyAppExeName "BShare.exe"
+#define MyAppSource "..\..\dist\releases\BShare-" + MyAppPackageVersion + "\windows\BShare-windows-x64"
+#define MyOutputDir "..\..\dist\releases\BShare-" + MyAppPackageVersion + "\windows"
 
 [Setup]
 AppId={{B7BB9A02-7C54-4DD3-A239-3FA13514A93F}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-AppPublisherURL=https://github.com/
-AppSupportURL=https://github.com/
-AppUpdatesURL=https://github.com/
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}/issues
+AppUpdatesURL={#MyAppURL}/releases
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes

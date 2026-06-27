@@ -46,16 +46,16 @@ function Copy-ReleaseFile {
 
 $version = Get-PubspecVersion
 $safeVersion = $version.Replace('+', '-')
+$versionParts = $version.Split('+', 2)
+$versionName = $versionParts[0]
+$buildNumber = if ($versionParts.Count -gt 1) { $versionParts[1] } else { '0' }
 $releaseRoot = "dist\releases\BShare-$safeVersion"
 Reset-Directory $releaseRoot
 
 $releasePath = Join-Path $root $releaseRoot
 $androidPath = Join-Path $releasePath 'android'
 $windowsPath = Join-Path $releasePath 'windows'
-$installerPath = Join-Path $releasePath 'installers\windows'
-$linuxPath = Join-Path $releasePath 'linux'
-$macosPath = Join-Path $releasePath 'macos'
-New-Item -ItemType Directory -Path $androidPath, $windowsPath, $installerPath, $linuxPath, $macosPath -Force | Out-Null
+New-Item -ItemType Directory -Path $androidPath, $windowsPath -Force | Out-Null
 
 flutter pub get
 
@@ -96,30 +96,13 @@ if (-not $SkipWindows) {
         throw 'Inno Setup compiler was not found. Install Inno Setup or remove -BuildInstaller.'
     }
     if ($iscc) {
-        & $iscc.Source "/DMyAppVersion=$($version.Split('+')[0])" 'installer\windows\BShare.iss'
-        $setup = Get-ChildItem -Path 'dist\installers\windows' -Filter 'BShare-Setup-*.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        & $iscc.Source "/DMyAppVersion=$versionName" "/DMyAppBuildNumber=$buildNumber" 'installer\windows\BShare.iss'
+        $setup = Get-ChildItem -Path $windowsPath -Filter 'BShare-Setup-*.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         if ($setup) {
-            Copy-Item -LiteralPath $setup.FullName -Destination $installerPath -Force
-            $artifacts.Add("installers/windows/$($setup.Name)")
+            $artifacts.Add("windows/$($setup.Name)")
         }
     }
 }
-
-Set-Content -Path (Join-Path $linuxPath 'BUILD_ON_LINUX.txt') -Value @"
-Linux desktop releases must be built on Linux:
-
-  ./scripts/build_releases.sh --linux-only
-
-The generated bundle will be copied into this release structure by that script.
-"@
-
-Set-Content -Path (Join-Path $macosPath 'BUILD_ON_MACOS.txt') -Value @"
-macOS releases must be built on macOS:
-
-  ./scripts/build_releases.sh --macos-only
-
-The generated .app zip will be copied into this release structure by that script.
-"@
 
 $manifest = [ordered]@{
     app = 'BShare'
@@ -128,7 +111,8 @@ $manifest = [ordered]@{
     host = 'windows'
     artifacts = $artifacts
     notes = @(
-        'Linux and macOS releases require native hosts.',
+        'This Windows script generates Android and Windows release artifacts.',
+        'Linux and macOS releases require their native build scripts on native hosts.',
         'Google Play upload requires android/key.properties with a real upload key.'
     )
 }

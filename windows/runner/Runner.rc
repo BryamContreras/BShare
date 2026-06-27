@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "BShare" "\0"
-            VALUE "FileDescription", "bshare" "\0"
+            VALUE "FileDescription", "BShare" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "bshare" "\0"
+            VALUE "InternalName", "BShare" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 BShare. All rights reserved." "\0"
-            VALUE "OriginalFilename", "bshare.exe" "\0"
-            VALUE "ProductName", "bshare" "\0"
+            VALUE "OriginalFilename", "BShare.exe" "\0"
+            VALUE "ProductName", "BShare" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
