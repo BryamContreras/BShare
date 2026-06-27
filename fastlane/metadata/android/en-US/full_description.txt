@@ -1,0 +1,10 @@
+BShare helps you send files, apps, photos, videos, folders, and screen shares between nearby devices on your local network.
+
+Features:
+- Send files directly over LAN or a temporary BShare Wi-Fi network.
+- Scan a QR code to connect nearby devices.
+- Share your screen in real time.
+- Receive files into a BShare folder on your device.
+- Works across Android, Windows, Linux, and other supported desktop builds.
+
+BShare is designed for local transfer workflows. Files are sent directly between your devices and are not uploaded to a BShare cloud service.

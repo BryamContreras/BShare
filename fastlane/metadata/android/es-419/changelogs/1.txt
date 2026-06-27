@@ -1,0 +1,1 @@
+Primer lanzamiento de BShare con transferencia local de archivos, red directa por QR, galería de medios, envío de apps, pantalla compartida e idioma inglés/español.

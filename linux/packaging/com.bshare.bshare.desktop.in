@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=BShare
+Comment=Share files directly on your local network
+Exec=@BINARY_NAME@
+Icon=@APPLICATION_ID@
+Terminal=false
+Categories=Network;FileTransfer;
+StartupWMClass=@APPLICATION_ID@

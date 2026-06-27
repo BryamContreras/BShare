@@ -1,0 +1,1 @@
+Initial BShare release with local file transfer, QR direct network setup, media picker, app sharing, screen sharing, and English/Spanish language support.
