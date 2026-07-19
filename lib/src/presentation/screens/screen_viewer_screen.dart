@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/device_info.dart';
+import 'package:bshare/src/infrastructure/services/android_screen_awake_service.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
 import 'package:bshare/src/presentation/widgets/orientation_aware_video_view.dart';
@@ -18,19 +21,35 @@ class ScreenViewerScreen extends ConsumerStatefulWidget {
 }
 
 class _ScreenViewerScreenState extends ConsumerState<ScreenViewerScreen> {
+  final _screenAwake = AndroidScreenAwakeService();
+
   String _status = 'Opening viewer...';
 
   @override
   void initState() {
     super.initState();
-    _enterFullscreen();
+    unawaited(_enterViewerMode());
     Future.microtask(_connectIfNeeded);
   }
 
   @override
   void dispose() {
-    _restoreSystemUi();
+    unawaited(_exitViewerMode());
     super.dispose();
+  }
+
+  Future<void> _enterViewerMode() async {
+    await Future.wait<void>([
+      _enterFullscreen(),
+      _screenAwake.setViewerActive(true),
+    ]);
+  }
+
+  Future<void> _exitViewerMode() async {
+    await Future.wait<void>([
+      _restoreSystemUi(),
+      _screenAwake.setViewerActive(false),
+    ]);
   }
 
   Future<void> _enterFullscreen() {
@@ -88,6 +107,51 @@ class _ScreenViewerScreenState extends ConsumerState<ScreenViewerScreen> {
                 },
               ),
             ),
+            ValueListenableBuilder<ScreenShareState>(
+              valueListenable: service.state,
+              builder: (context, state, _) {
+                final senderDisconnected =
+                    state.mode == ScreenShareMode.idle &&
+                    state.status == 'Screen share ended';
+                if (!senderDisconnected) return const SizedBox.shrink();
+
+                return Center(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 20,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.portable_wifi_off_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            l10n.t('senderDisconnected'),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
             Positioned(
               left: 12,
               right: 12,
@@ -114,7 +178,7 @@ class _ScreenViewerScreenState extends ConsumerState<ScreenViewerScreen> {
                   IconButton.filledTonal(
                     tooltip: context.l10n.t('closeViewer'),
                     onPressed: () async {
-                      await _restoreSystemUi();
+                      await _exitViewerMode();
                       if (!context.mounted) return;
                       if (Navigator.of(context).canPop()) {
                         context.pop();

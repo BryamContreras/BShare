@@ -6,6 +6,7 @@ import 'package:bshare/src/domain/entities/incoming_transfer.dart';
 import 'package:bshare/src/domain/entities/transfer_control.dart';
 import 'package:bshare/src/domain/entities/transfer_progress_status.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
+import 'package:bshare/src/infrastructure/services/transfer_speed_meter.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
@@ -355,7 +356,7 @@ class FileServer {
     String? targetPath;
     IOSink? sink;
     var received = 0;
-    final started = DateTime.now();
+    final speedMeter = TransferSpeedMeter()..record(0);
 
     Future<void> cleanupPartialFile() async {
       try {
@@ -392,13 +393,11 @@ class FileServer {
         await control.waitIfPaused();
         received += chunk.length;
         sink!.add(chunk);
-        final elapsed =
-            DateTime.now().difference(started).inMilliseconds / 1000;
         onProgress(
           transfer: transfer,
           receivedBytes: received,
           totalBytes: transfer.size,
-          bytesPerSecond: elapsed <= 0 ? 0 : received / elapsed,
+          bytesPerSecond: speedMeter.record(received),
           status: TransferProgressStatus.receiving,
         );
       }
@@ -425,12 +424,11 @@ class FileServer {
       }
 
       await onSaved(transfer: transfer, savedPath: targetPath);
-      final elapsed = DateTime.now().difference(started).inMilliseconds / 1000;
       onProgress(
         transfer: transfer,
         receivedBytes: received,
         totalBytes: transfer.size,
-        bytesPerSecond: elapsed <= 0 ? 0 : received / elapsed,
+        bytesPerSecond: speedMeter.record(received),
         status: TransferProgressStatus.completed,
         savedPath: targetPath,
       );

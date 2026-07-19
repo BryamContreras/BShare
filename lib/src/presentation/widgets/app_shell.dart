@@ -28,9 +28,22 @@ class AppShell extends StatelessWidget {
       _Destination(l10n.t('home'), Icons.home_rounded, '/'),
       _Destination(l10n.t('send'), Icons.send_rounded, '/send'),
       _Destination(l10n.t('receive'), Icons.download_rounded, '/receive'),
+      _Destination(l10n.t('transfers'), Icons.swap_horiz_rounded, '/transfers'),
       if (!Platform.isAndroid)
         _Destination(l10n.t('screen'), Icons.screen_share_rounded, '/screen'),
-      _Destination(l10n.t('settings'), Icons.settings_rounded, '/settings'),
+      if (!Platform.isAndroid)
+        _Destination(l10n.t('settings'), Icons.settings_rounded, '/settings'),
+    ];
+    final appActions = [
+      ...?actions,
+      if (Platform.isAndroid) ...[
+        IconButton.filledTonal(
+          tooltip: l10n.t('settings'),
+          onPressed: () => context.go('/settings'),
+          icon: const Icon(Icons.settings_rounded),
+        ),
+        const SizedBox(width: 8),
+      ],
     ];
     final current = GoRouterState.of(context).uri.path;
     final canGoBack = ModalRoute.of(context)?.canPop == true || current != '/';
@@ -53,7 +66,7 @@ class AppShell extends StatelessWidget {
               )
             : null,
         titleSpacing: width >= 900 ? 0 : null,
-        actions: width >= 900 ? null : actions,
+        actions: width >= 900 ? null : appActions,
         title: width >= 900
             ? Center(
                 child: ConstrainedBox(
@@ -66,7 +79,7 @@ class AppShell extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(child: _AppTitle(title: title)),
-                        ...?actions,
+                        ...appActions,
                       ],
                     ),
                   ),
@@ -107,18 +120,11 @@ class AppShell extends StatelessWidget {
       child: Scaffold(
         body: Row(
           children: [
-            NavigationRail(
+            _DesktopNavigation(
+              destinations: destinations,
               selectedIndex: selected,
               onDestinationSelected: (index) =>
                   context.go(destinations[index].path),
-              labelType: NavigationRailLabelType.all,
-              destinations: [
-                for (final item in destinations)
-                  NavigationRailDestination(
-                    icon: Icon(item.icon),
-                    label: Text(item.label),
-                  ),
-              ],
             ),
             const VerticalDivider(width: 1),
             Expanded(child: content),
@@ -286,4 +292,107 @@ class _Destination {
   final String label;
   final IconData icon;
   final String path;
+}
+
+class _DesktopNavigation extends StatelessWidget {
+  const _DesktopNavigation({
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  final List<_Destination> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final background =
+        theme.navigationRailTheme.backgroundColor ?? scheme.surfaceContainerLow;
+
+    return Material(
+      color: background,
+      child: SizedBox(
+        width: 280,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            child: Column(
+              children: [
+                for (var index = 0; index < destinations.length; index++) ...[
+                  _DesktopNavigationItem(
+                    destination: destinations[index],
+                    selected: index == selectedIndex,
+                    onTap: () => onDestinationSelected(index),
+                  ),
+                  if (index != destinations.length - 1)
+                    const SizedBox(height: 6),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopNavigationItem extends StatelessWidget {
+  const _DesktopNavigationItem({
+    required this.destination,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _Destination destination;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final foreground = selected
+        ? scheme.onPrimaryContainer
+        : scheme.onSurfaceVariant;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: destination.label,
+      child: Material(
+        color: selected ? scheme.primaryContainer : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: SizedBox(
+            height: 54,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Icon(destination.icon, size: 26, color: foreground),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      destination.label,
+                      style: TextStyle(
+                        color: foreground,
+                        fontSize: 16,
+                        fontWeight: selected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

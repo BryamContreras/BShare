@@ -16,6 +16,8 @@ import 'package:bshare/src/infrastructure/repositories/history_repository.dart';
 import 'package:bshare/src/infrastructure/repositories/settings_repository.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/android_apps_service.dart';
+import 'package:bshare/src/infrastructure/services/android_background_execution_service.dart';
+import 'package:bshare/src/infrastructure/services/android_screen_share_execution_service.dart';
 import 'package:bshare/src/infrastructure/services/android_share_service.dart';
 import 'package:bshare/src/infrastructure/services/direct_network_service.dart';
 import 'package:bshare/src/infrastructure/services/file_server.dart';
@@ -34,9 +36,21 @@ final loggerProvider = Provider((ref) => const AppLogger());
 
 final androidAppsServiceProvider = Provider((ref) => AndroidAppsService());
 
+final androidBackgroundExecutionProvider = Provider((ref) {
+  final service = AndroidBackgroundExecutionService(ref.watch(loggerProvider));
+  ref.onDispose(service.dispose);
+  return service;
+});
+
 final androidShareServiceProvider = Provider((ref) {
   final service = AndroidShareService();
   ref.onDispose(service.dispose);
+  return service;
+});
+
+final androidScreenShareExecutionProvider = Provider((ref) {
+  final service = AndroidScreenShareExecutionService();
+  ref.onDispose(() => unawaited(service.stop()));
   return service;
 });
 
@@ -223,6 +237,8 @@ class ReceiveProgressController extends Notifier<List<ReceiveProgress>> {
     state = state.where((item) => !item.status.isTerminal).toList();
   }
 
+  void clear() => state = const [];
+
   void updateStatus(
     String id,
     TransferProgressStatus status, {
@@ -257,7 +273,10 @@ final fileTransferClientProvider = Provider((ref) {
 final openPathServiceProvider = Provider((ref) => OpenPathService());
 
 final screenShareServiceProvider = Provider((ref) {
-  final service = ScreenShareService(ref.watch(loggerProvider));
+  final service = ScreenShareService(
+    ref.watch(loggerProvider),
+    ref.watch(androidScreenShareExecutionProvider),
+  );
   ref.onDispose(service.dispose);
   return service;
 });
@@ -391,17 +410,23 @@ class RuntimeCleanup {
   Future<void> cleanupNetworking({bool cancelTransfers = true}) async {
     if (cancelTransfers) {
       await _ref.read(sendControllerProvider).dispose();
-      _ref.read(receiveTransferControlProvider.notifier).clear();
       _ref.read(transferControlProvider.notifier).clear();
       _ref.read(incomingTransfersProvider.notifier).rejectAll();
     }
     await _ref
         .read(screenShareServiceProvider)
         .stop(_ref.read(fileServerProvider));
-    await _ref.read(receiveControllerProvider.notifier).stop();
+    await _ref
+        .read(receiveControllerProvider.notifier)
+        .stop(force: cancelTransfers);
     await _ref.read(discoveryProvider.notifier).stop();
     await _ref.read(directNetworkServiceProvider).stopLocalOnlyHotspot();
     await _ref.read(directNetworkServiceProvider).disconnectWifi();
+    if (cancelTransfers) {
+      _ref.read(sendProgressProvider.notifier).clear();
+      _ref.read(receiveProgressProvider.notifier).clear();
+      _ref.read(receiveTransferControlProvider.notifier).clear();
+    }
   }
 }
 

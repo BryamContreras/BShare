@@ -21,6 +21,13 @@ class MediaPickerScreen extends ConsumerStatefulWidget {
 class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
   static const _pageSize = 160;
 
+  // Android's MediaStore can return images and videos in separate blocks when
+  // no order is requested. Sorting in the query keeps both types interleaved
+  // by date while preserving correct pagination.
+  final _mediaFilter = FilterOptionGroup(
+    orders: const [OrderOption(type: OrderOptionType.createDate)],
+  );
+
   final _scrollController = ScrollController();
   final _selected = <String, AssetEntity>{};
 
@@ -72,6 +79,7 @@ class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
       final albums = await PhotoManager.getAssetPathList(
         type: RequestType.common,
         hasAll: true,
+        filterOption: _mediaFilter,
       );
       if (!mounted) return;
       setState(() {
