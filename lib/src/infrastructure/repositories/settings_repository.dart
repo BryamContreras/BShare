@@ -21,6 +21,7 @@ class SettingsRepository {
   static const _preferredPort = 'preferredPort';
   static const _themeMode = 'themeMode';
   static const _languageCode = 'languageCode';
+  static const _androidDownloadDirectory = '/storage/emulated/0/Download';
 
   Future<AppSettings> load() async {
     var id = _prefs.getString(_deviceId);
@@ -32,7 +33,9 @@ class SettingsRepository {
     var downloadDirectory = _prefs.getString(_downloadDirectory);
     if (downloadDirectory == null ||
         downloadDirectory.isEmpty ||
-        (Platform.isAndroid && downloadDirectory.contains('/Android/data/'))) {
+        (Platform.isAndroid &&
+            (downloadDirectory.contains('/Android/data/') ||
+                _isLegacyAndroidDownloadDirectory(downloadDirectory)))) {
       downloadDirectory = await defaultDownloadDirectory();
       await _prefs.setString(_downloadDirectory, downloadDirectory);
     }
@@ -94,7 +97,7 @@ class SettingsRepository {
   Future<String> defaultDownloadDirectory() async {
     if (Platform.isAndroid || Platform.isIOS) {
       if (Platform.isAndroid) {
-        return Directory('/storage/emulated/0/BShare').path;
+        return Directory(_androidDownloadDirectory).path;
       }
       final dir = await getApplicationDocumentsDirectory();
       return Directory('${dir.path}${Platform.pathSeparator}BShare').path;
@@ -102,5 +105,15 @@ class SettingsRepository {
     final downloads = await getDownloadsDirectory();
     final base = downloads ?? await getApplicationDocumentsDirectory();
     return Directory('${base.path}${Platform.pathSeparator}BShare').path;
+  }
+
+  bool _isLegacyAndroidDownloadDirectory(String path) {
+    final normalized = path
+        .replaceAll('\\', '/')
+        .replaceAll(RegExp(r'/+$'), '');
+    return normalized == '/storage/emulated/0/BShare' ||
+        normalized == '/sdcard/BShare' ||
+        normalized == '/storage/emulated/0/Download/BShare' ||
+        normalized == '/sdcard/Download/BShare';
   }
 }

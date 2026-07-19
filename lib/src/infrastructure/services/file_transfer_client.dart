@@ -7,12 +7,15 @@ import 'package:bshare/src/domain/entities/selected_transfer_file.dart';
 import 'package:bshare/src/domain/entities/transfer_control.dart';
 import 'package:bshare/src/domain/entities/transfer_progress_status.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
+import 'package:bshare/src/infrastructure/services/transfer_speed_meter.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:path/path.dart' as p;
 
 class FileTransferClient {
   FileTransferClient(this._logger);
+
+  static const _maximumConcurrentTransfers = 3;
 
   final AppLogger _logger;
 
@@ -112,7 +115,7 @@ class FileTransferClient {
     final done = Completer<void>();
 
     void pump() {
-      while (active < 3 && nextIndex < files.length) {
+      while (active < _maximumConcurrentTransfers && nextIndex < files.length) {
         final index = nextIndex++;
         final file = files[index];
         active++;
@@ -158,7 +161,7 @@ class FileTransferClient {
     final path = selected.path;
     final file = File(path);
     final total = await file.length();
-    final started = DateTime.now();
+    final speedMeter = TransferSpeedMeter()..record(0);
     var lastSent = 0;
     final cancelToken = CancelToken();
     if (control.isCancelled) {
@@ -215,15 +218,13 @@ class FileTransferClient {
         cancelToken: cancelToken,
         onSendProgress: (sent, _) {
           lastSent = sent;
-          final elapsed =
-              DateTime.now().difference(started).inMilliseconds / 1000;
           controller.add(
             SendProgress(
               id: path,
               fileName: selected.name,
               sentBytes: sent,
               totalBytes: total,
-              bytesPerSecond: elapsed <= 0 ? 0 : sent / elapsed,
+              bytesPerSecond: speedMeter.record(sent),
               status: control.isPaused
                   ? TransferProgressStatus.paused
                   : TransferProgressStatus.sending,
@@ -232,7 +233,6 @@ class FileTransferClient {
         },
       );
 
-      final elapsed = DateTime.now().difference(started).inMilliseconds / 1000;
       if (response.statusCode == 200 || response.statusCode == 201) {
         controller.add(
           SendProgress(
@@ -240,7 +240,7 @@ class FileTransferClient {
             fileName: selected.name,
             sentBytes: total,
             totalBytes: total,
-            bytesPerSecond: elapsed == 0 ? 0 : total / elapsed,
+            bytesPerSecond: speedMeter.record(total),
             status: TransferProgressStatus.completed,
           ),
         );
@@ -252,7 +252,7 @@ class FileTransferClient {
             fileName: selected.name,
             sentBytes: lastSent,
             totalBytes: total,
-            bytesPerSecond: elapsed == 0 ? 0 : lastSent / elapsed,
+            bytesPerSecond: speedMeter.record(lastSent),
             status: control.isCancelled
                 ? TransferProgressStatus.cancelled
                 : TransferProgressStatus.failed,
@@ -265,7 +265,6 @@ class FileTransferClient {
         cancelToken.cancel();
       }
       _logger.error('Send failed', error);
-      final elapsed = DateTime.now().difference(started).inMilliseconds / 1000;
       final receiverCancelled = _isReceiverCancelled(error);
       controller.add(
         SendProgress(
@@ -273,7 +272,7 @@ class FileTransferClient {
           fileName: selected.name,
           sentBytes: lastSent,
           totalBytes: total,
-          bytesPerSecond: elapsed == 0 ? 0 : lastSent / elapsed,
+          bytesPerSecond: speedMeter.record(lastSent),
           status:
               control.isCancelled ||
                   error is TransferCancelledException ||

@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/device_info.dart';
+import 'package:bshare/src/domain/entities/receive_progress.dart';
 import 'package:bshare/src/domain/entities/selected_transfer_file.dart';
+import 'package:bshare/src/domain/entities/transfer_progress_status.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
 import 'package:bshare/src/presentation/screens/android_app_picker_screen.dart';
 import 'package:bshare/src/presentation/screens/android_storage_picker_screen.dart';
@@ -16,6 +18,7 @@ import 'package:bshare/src/presentation/screens/screen_share_screen.dart';
 import 'package:bshare/src/presentation/screens/screen_viewer_screen.dart';
 import 'package:bshare/src/presentation/screens/send_files_screen.dart';
 import 'package:bshare/src/presentation/screens/settings_screen.dart';
+import 'package:bshare/src/presentation/screens/transfers_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,6 +66,10 @@ GoRouter _createRouter(DeviceInfo? initialViewerDevice) => GoRouter(
       builder: (context, state) => const ReceiveScreen(),
     ),
     GoRoute(
+      path: '/transfers',
+      builder: (context, state) => const TransfersScreen(),
+    ),
+    GoRoute(
       path: '/screen',
       builder: (context, state) => const ScreenShareScreen(),
     ),
@@ -103,6 +110,10 @@ class _BShareAppState extends ConsumerState<BShareApp> {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _listenForSharedFiles(),
     );
+    ref.listenManual(incomingTransfersProvider, (_, incoming) {
+      if (incoming.isNotEmpty) _openTransfersForIncomingFile();
+    });
+    ref.listenManual(receiveProgressProvider, _handleReceiveProgress);
   }
 
   @override
@@ -126,6 +137,22 @@ class _BShareAppState extends ConsumerState<BShareApp> {
     if (!mounted || files.isEmpty) return;
     ref.read(pickedFilesProvider.notifier).set(files);
     _router.go('/send');
+  }
+
+  void _handleReceiveProgress(
+    List<ReceiveProgress>? previous,
+    List<ReceiveProgress> current,
+  ) {
+    final knownIds = previous?.map((item) => item.id).toSet() ?? const {};
+    final hasNewIncomingTransfer = current.any(
+      (item) => !item.status.isTerminal && !knownIds.contains(item.id),
+    );
+    if (hasNewIncomingTransfer) _openTransfersForIncomingFile();
+  }
+
+  void _openTransfersForIncomingFile() {
+    if (!mounted) return;
+    _router.go('/transfers');
   }
 
   @override

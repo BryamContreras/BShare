@@ -8,6 +8,7 @@ import 'package:bshare/src/domain/entities/receive_progress.dart';
 import 'package:bshare/src/domain/entities/transfer_control.dart';
 import 'package:bshare/src/domain/entities/transfer_progress_status.dart';
 import 'package:bshare/src/domain/entities/transfer_record.dart';
+import 'package:bshare/src/infrastructure/services/android_background_execution_service.dart';
 import 'package:bshare/src/infrastructure/services/network_service.dart';
 import 'package:bshare/src/infrastructure/services/platform_service.dart';
 import 'package:dio/dio.dart';
@@ -154,6 +155,9 @@ class ReceiveController extends AsyncNotifier<ReceiveState> {
           return control;
         },
       );
+      await ref
+          .read(androidBackgroundExecutionProvider)
+          .acquire(BackgroundExecutionOwner.fileReceiving);
       if (directCredentials == null) {
         await ref
             .read(discoveryProvider.notifier)
@@ -181,13 +185,18 @@ class ReceiveController extends AsyncNotifier<ReceiveState> {
       if (directCredentials != null) {
         await ref.read(directNetworkServiceProvider).stopLocalOnlyHotspot();
       }
+      await ref
+          .read(androidBackgroundExecutionProvider)
+          .release(BackgroundExecutionOwner.fileReceiving);
       state = AsyncData(
         ReceiveState(visible: false, error: 'Could not start receiver: $error'),
       );
     }
   }
 
-  Future<void> stop() async {
+  Future<bool> stop({bool force = false}) async {
+    if (!force && _hasPendingOrActiveTransfers()) return false;
+
     for (final control in ref.read(receiveTransferControlProvider).values) {
       control.cancel();
     }
@@ -195,8 +204,19 @@ class ReceiveController extends AsyncNotifier<ReceiveState> {
     await ref.read(fileServerProvider).stop();
     await ref.read(discoveryProvider.notifier).stop();
     await ref.read(directNetworkServiceProvider).stopLocalOnlyHotspot();
+    await ref
+        .read(androidBackgroundExecutionProvider)
+        .release(BackgroundExecutionOwner.fileReceiving);
     ref.read(receiveTransferControlProvider.notifier).clear();
     state = const AsyncData(ReceiveState(visible: false));
+    return true;
+  }
+
+  bool _hasPendingOrActiveTransfers() {
+    return ref.read(incomingTransfersProvider).isNotEmpty ||
+        ref
+            .read(receiveProgressProvider)
+            .any((item) => !item.status.isTerminal);
   }
 
   Future<String?> _waitForLocalIp() async {

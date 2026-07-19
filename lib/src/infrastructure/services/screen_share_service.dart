@@ -3,13 +3,12 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:bshare/src/domain/entities/device_info.dart';
+import 'package:bshare/src/infrastructure/services/android_screen_share_execution_service.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/file_server.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_background/flutter_background.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 enum ScreenShareMode { idle, sharing, watching }
 
@@ -26,7 +25,7 @@ class ScreenShareState {
 }
 
 class ScreenShareService {
-  ScreenShareService(this._logger);
+  ScreenShareService(this._logger, this._screenShareExecution);
 
   static const int _androidMaxBitrate = 3500000;
   static const int _desktopMaxBitrate = 8000000;
@@ -44,6 +43,7 @@ class ScreenShareService {
   );
 
   final AppLogger _logger;
+  final AndroidScreenShareExecutionService _screenShareExecution;
   final Dio _dio = Dio(
     BaseOptions(
       connectTimeout: const Duration(seconds: 15),
@@ -136,7 +136,7 @@ class ScreenShareService {
       _logger.warn(
         'Screen capture needs mediaProjection foreground service; retrying',
       );
-      await _restartAndroidBackgroundExecution();
+      await _restartAndroidScreenShareExecution();
       return navigator.mediaDevices.getDisplayMedia(constraints);
     }
   }
@@ -648,7 +648,7 @@ class ScreenShareService {
       if (!granted) {
         throw StateError('Screen capture permission was denied');
       }
-      await _enableAndroidBackgroundExecution();
+      await _enableAndroidScreenShareExecution();
     } else if (WebRTC.platformIsMacOS) {
       final granted = await Helper.requestCapturePermission();
       if (!granted) {
@@ -657,32 +657,11 @@ class ScreenShareService {
     }
   }
 
-  Future<void> _enableAndroidBackgroundExecution() async {
-    await Permission.notification.request();
-
-    const androidConfig = FlutterBackgroundAndroidConfig(
-      notificationTitle: 'BShare screen sharing',
-      notificationText: 'BShare is sharing your screen on the local network.',
-      notificationImportance: AndroidNotificationImportance.normal,
-      notificationIcon: AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
-      shouldRequestBatteryOptimizationsOff: false,
-    );
-
+  Future<void> _enableAndroidScreenShareExecution() async {
     Object? lastError;
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
-        final initialized = await FlutterBackground.initialize(
-          androidConfig: androidConfig,
-        );
-        if (!initialized) {
-          throw StateError('Android background service permission was denied');
-        }
-        if (!FlutterBackground.isBackgroundExecutionEnabled) {
-          final enabled = await FlutterBackground.enableBackgroundExecution();
-          if (!enabled) {
-            throw StateError('Android background service could not start');
-          }
-        }
+        await _screenShareExecution.start();
         await Future<void>.delayed(_androidForegroundServiceSettleDelay);
         return;
       } catch (error) {
@@ -695,16 +674,14 @@ class ScreenShareService {
     throw StateError('Android background service could not start: $lastError');
   }
 
-  Future<void> _restartAndroidBackgroundExecution() async {
+  Future<void> _restartAndroidScreenShareExecution() async {
     try {
-      if (FlutterBackground.isBackgroundExecutionEnabled) {
-        await FlutterBackground.disableBackgroundExecution();
-        await Future<void>.delayed(const Duration(milliseconds: 350));
-      }
+      await _screenShareExecution.stop();
+      await Future<void>.delayed(const Duration(milliseconds: 350));
     } catch (error) {
       _logger.warn('Android background service restart cleanup failed: $error');
     }
-    await _enableAndroidBackgroundExecution();
+    await _enableAndroidScreenShareExecution();
   }
 
   Future<dynamic> _videoConstraints() async {
@@ -777,7 +754,7 @@ class ScreenShareService {
       }
       await _stopLocalStream();
       _lastRemoteTrackId = null;
-      await _disableAndroidBackgroundExecution();
+      await _disableAndroidScreenShareExecution();
       if (updateState) {
         _setState(ScreenShareMode.idle, status);
       }
@@ -797,7 +774,7 @@ class ScreenShareService {
     remoteAspectRatio.dispose();
     state.dispose();
     _dio.close(force: true);
-    await _disableAndroidBackgroundExecution();
+    await _disableAndroidScreenShareExecution();
   }
 
   Future<void> _stopSharingPeers() async {
@@ -857,12 +834,10 @@ class ScreenShareService {
     }
   }
 
-  Future<void> _disableAndroidBackgroundExecution() async {
+  Future<void> _disableAndroidScreenShareExecution() async {
     if (!WebRTC.platformIsAndroid) return;
     try {
-      if (FlutterBackground.isBackgroundExecutionEnabled) {
-        await FlutterBackground.disableBackgroundExecution();
-      }
+      await _screenShareExecution.stop();
     } catch (error) {
       _logger.warn('Android screen-share background stop failed: $error');
     }

@@ -23,6 +23,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.content.pm.PackageManager
 import android.util.Base64
+import android.view.WindowManager
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
@@ -74,6 +75,32 @@ class MainActivity : FlutterActivity() {
                             result.error("apps_unavailable", error.message, null)
                         }
                     }
+                }
+                else -> result.notImplemented()
+            }
+        }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bshare/screen").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "setKeepScreenOn" -> {
+                    if (call.argument<Boolean>("enabled") == true) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bshare/screen_share").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startForegroundService" -> {
+                    ScreenShareForegroundService.start(this)
+                    result.success(null)
+                }
+                "stopForegroundService" -> {
+                    ScreenShareForegroundService.stop(this)
+                    result.success(null)
                 }
                 else -> result.notImplemented()
             }

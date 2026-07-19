@@ -11,6 +11,7 @@ import 'package:bshare/src/domain/entities/selected_transfer_file.dart';
 import 'package:bshare/src/domain/entities/transfer_control.dart';
 import 'package:bshare/src/domain/entities/transfer_progress_status.dart';
 import 'package:bshare/src/domain/entities/transfer_record.dart';
+import 'package:bshare/src/infrastructure/services/android_background_execution_service.dart';
 import 'package:bshare/src/infrastructure/services/network_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +20,8 @@ import 'package:path/path.dart' as p;
 class SendController {
   SendController(this._ref);
 
+  static const _maximumConcurrentTransfers = 3;
+
   final Ref _ref;
   final List<_QueuedSend> _queue = [];
   final Map<String, _QueuedSend> _remoteControls = {};
@@ -26,6 +29,7 @@ class SendController {
   var _active = 0;
   var _pumping = false;
   var _sequence = 0;
+  var _backgroundExecutionClaimed = false;
 
   Future<void> pickFiles({
     FileType type = FileType.any,
@@ -141,6 +145,7 @@ class SendController {
     _queue.clear();
     _remoteControls.clear();
     _cleanupTemporaryFiles(queuedFiles);
+    await _releaseBackgroundExecution();
     if (updateState) {
       _ref.read(transferControlProvider.notifier).clear();
     }
@@ -152,6 +157,7 @@ class SendController {
     final files = _ref.read(pickedFilesProvider);
     if (target == null || files.isEmpty) return;
     if (!await _prepareTargetRoute(target, files)) return;
+    await _acquireBackgroundExecution();
     final settings = await _ref.read(settingsProvider.future);
     final client = _ref.read(fileTransferClientProvider);
     final controlPort = await _ensureControlServer();
@@ -267,7 +273,7 @@ class SendController {
     if (_pumping) return;
     _pumping = true;
     try {
-      while (_active < 3 && _queue.isNotEmpty) {
+      while (_active < _maximumConcurrentTransfers && _queue.isNotEmpty) {
         final item = _queue.removeAt(0);
         _active++;
         unawaited(_sendQueued(item));
@@ -466,7 +472,23 @@ class SendController {
   void _maybeCloseControlServer() {
     if (_active == 0 && _queue.isEmpty && _remoteControls.isEmpty) {
       unawaited(_closeControlServer());
+      unawaited(_releaseBackgroundExecution());
     }
+  }
+
+  Future<void> _acquireBackgroundExecution() async {
+    if (_backgroundExecutionClaimed) return;
+    _backgroundExecutionClaimed = await _ref
+        .read(androidBackgroundExecutionProvider)
+        .acquire(BackgroundExecutionOwner.fileSending);
+  }
+
+  Future<void> _releaseBackgroundExecution() async {
+    if (!_backgroundExecutionClaimed) return;
+    _backgroundExecutionClaimed = false;
+    await _ref
+        .read(androidBackgroundExecutionProvider)
+        .release(BackgroundExecutionOwner.fileSending);
   }
 
   Future<void> _closeControlServer() async {
