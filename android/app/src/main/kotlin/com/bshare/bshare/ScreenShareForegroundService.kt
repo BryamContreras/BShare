@@ -92,11 +92,15 @@ class ScreenShareForegroundService : Service() {
         }
     }
 
+    @Suppress("DEPRECATION")
     @SuppressLint("WakelockTimeout")
     private fun acquireLocks() {
         if (wakeLock == null) {
             wakeLock = getSystemService(PowerManager::class.java).newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK,
+                // MediaProjection ends when Android locks the display. This
+                // service must keep it on even while the user shares another
+                // app and BShare's Activity is in the background.
+                PowerManager.SCREEN_DIM_WAKE_LOCK,
                 "$packageName:ScreenShare",
             ).apply {
                 setReferenceCounted(false)

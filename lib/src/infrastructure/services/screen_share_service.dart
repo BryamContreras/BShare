@@ -32,12 +32,8 @@ class ScreenShareService {
   static const int _desktopMinBitrate = 1800000;
   static const int _androidMaxFramerate = 24;
   static const int _desktopMaxFramerate = 30;
-  static const double _remoteAspectChangeThreshold = 0.16;
+  static const String _screenCodec = 'H264';
   static const Duration _metadataPollInterval = Duration(milliseconds: 180);
-  static const Duration _remoteRotationRecoveryDelay = Duration(
-    milliseconds: 1500,
-  );
-  static const Duration _remoteRotationRecoveryMinGap = Duration(seconds: 3);
   static const Duration _androidForegroundServiceSettleDelay = Duration(
     milliseconds: 650,
   );
@@ -56,35 +52,54 @@ class ScreenShareService {
     const ScreenShareState(mode: ScreenShareMode.idle),
   );
   final ValueNotifier<double?> remoteAspectRatio = ValueNotifier(null);
+  final ValueNotifier<bool> focusedViewerActive = ValueNotifier(false);
   final List<RTCPeerConnection> _peers = [];
+  final Map<RTCPeerConnection, Timer> _sharingPeerDisconnectTimers = {};
 
   MediaStream? _localStream;
   RTCPeerConnection? _viewerPeer;
   Timer? _metadataPollTimer;
   Timer? _androidMetricsPollTimer;
-  Timer? _remoteRotationRecoveryTimer;
   int? _lastRemoteGeneration;
   String? _localTrackId;
-  String? _lastRemoteTrackId;
   double? _localAspectRatio;
   int? _localScreenWidth;
   int? _localScreenHeight;
   ui.Size? _lastAndroidViewSize;
   int _screenGeneration = 0;
-  int _remoteAspectChangeSerial = 0;
   bool _initialized = false;
   bool _reconnectingViewer = false;
   bool _stopping = false;
-  DateTime? _lastRemoteRotationRecoveryAt;
 
   void _setState(ScreenShareMode mode, String status, [String? error]) {
     state.value = ScreenShareState(mode: mode, status: status, error: error);
+  }
+
+  /// Indicates that the compact preview has been replaced by the focused view.
+  /// Both views reuse [remoteRenderer], but only one of them is mounted.
+  void setFocusedViewerActive(bool active) {
+    if (focusedViewerActive.value == active) return;
+    focusedViewerActive.value = active;
   }
 
   Future<void> initialize() async {
     if (_initialized) return;
     await localRenderer.initialize();
     await remoteRenderer.initialize();
+    remoteRenderer.onFirstFrameRendered = () {
+      final value = remoteRenderer.value;
+      _logger.info(
+        'Remote screen renderer received its first frame '
+        '(${value.width.toInt()}x${value.height.toInt()})',
+      );
+    };
+    remoteRenderer.onResize = () {
+      final value = remoteRenderer.value;
+      _logger.info(
+        'Remote screen renderer size: '
+        '${value.width.toInt()}x${value.height.toInt()}',
+      );
+    };
     _initialized = true;
   }
 
@@ -158,33 +173,85 @@ class ScreenShareService {
     peer.onIceConnectionState = (state) {
       _logger.info('Screen share sender ICE state: $state');
     };
-    for (final track in stream.getTracks()) {
-      final sender = await peer.addTrack(track, stream);
-      if (track.kind == 'video') {
-        await _configureLowLatencyVideoSender(sender);
+    peer.onConnectionState = (connectionState) {
+      _logger.info('Screen share sender peer state: $connectionState');
+      _handleSharingPeerConnectionState(peer, connectionState);
+    };
+    try {
+      for (final track in stream.getTracks()) {
+        final sender = await peer.addTrack(track, stream);
+        if (track.kind == 'video') {
+          await _configureLowLatencyVideoSender(sender);
+        }
       }
+
+      await peer.setRemoteDescription(
+        RTCSessionDescription(offer['sdp'] as String, offer['type'] as String),
+      );
+      final answer = await peer.createAnswer();
+      await peer.setLocalDescription(answer);
+      await _waitForIceGatheringComplete(peer);
+      final local = await peer.getLocalDescription();
+      return {
+        'type': local?.type ?? answer.type,
+        'sdp': local?.sdp ?? answer.sdp ?? '',
+      };
+    } catch (_) {
+      await _releaseSharingPeer(peer);
+      rethrow;
+    }
+  }
+
+  void _handleSharingPeerConnectionState(
+    RTCPeerConnection peer,
+    RTCPeerConnectionState connectionState,
+  ) {
+    if (connectionState ==
+        RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+      _sharingPeerDisconnectTimers.remove(peer)?.cancel();
+      return;
     }
 
-    await peer.setRemoteDescription(
-      RTCSessionDescription(
-        _preferCodecForLocalSender(offer['sdp'] as String),
-        offer['type'] as String,
-      ),
+    if (connectionState ==
+            RTCPeerConnectionState.RTCPeerConnectionStateClosed ||
+        connectionState ==
+            RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
+      unawaited(_releaseSharingPeer(peer));
+      return;
+    }
+
+    if (connectionState !=
+        RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
+      return;
+    }
+
+    _sharingPeerDisconnectTimers.remove(peer)?.cancel();
+    _sharingPeerDisconnectTimers[peer] = Timer(
+      const Duration(seconds: 4),
+      () async {
+        final currentState = await peer.getConnectionState();
+        if (currentState ==
+                RTCPeerConnectionState.RTCPeerConnectionStateDisconnected ||
+            currentState ==
+                RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
+            currentState ==
+                RTCPeerConnectionState.RTCPeerConnectionStateClosed) {
+          await _releaseSharingPeer(peer);
+        }
+      },
     );
-    final answer = await peer.createAnswer();
-    final preferredAnswer = RTCSessionDescription(
-      _preferCodecForLocalSender(answer.sdp ?? ''),
-      answer.type,
-    );
-    await peer.setLocalDescription(preferredAnswer);
-    await _waitForIceGatheringComplete(peer);
-    final local = await peer.getLocalDescription();
-    return {
-      'type': local?.type ?? preferredAnswer.type,
-      'sdp': _preferCodecForLocalSender(
-        local?.sdp ?? preferredAnswer.sdp ?? '',
-      ),
-    };
+  }
+
+  Future<void> _releaseSharingPeer(RTCPeerConnection peer) async {
+    _sharingPeerDisconnectTimers.remove(peer)?.cancel();
+    if (!_peers.remove(peer)) return;
+    peer.onConnectionState = null;
+    peer.onIceConnectionState = null;
+    try {
+      await peer.close();
+    } catch (error) {
+      _logger.warn('Screen share sender peer cleanup failed: $error');
+    }
   }
 
   Future<void> watch(DeviceInfo device) async {
@@ -192,18 +259,27 @@ class ScreenShareService {
     _setState(ScreenShareMode.watching, 'Connecting to screen share...');
     await _stopViewer();
     _lastRemoteGeneration = null;
-    _lastRemoteTrackId = null;
-    _lastRemoteRotationRecoveryAt = null;
     remoteAspectRatio.value = null;
     try {
       _startMetadataPolling(device);
       _viewerPeer = await _connectViewerPeer(device);
+      unawaited(_monitorViewerDecode(_viewerPeer!));
       _setState(ScreenShareMode.watching, 'Watching remote screen');
     } catch (error) {
       await _stopViewer();
       _setState(ScreenShareMode.idle, 'Could not connect', error.toString());
       rethrow;
     }
+  }
+
+  /// Stops only the remote viewer peer. It intentionally leaves the local
+  /// receiver/server alone because closing a viewer must not stop file sharing.
+  Future<void> stopWatching({String status = 'Idle'}) async {
+    if (_viewerPeer == null && state.value.mode != ScreenShareMode.watching) {
+      return;
+    }
+    await _stopViewer();
+    _setState(ScreenShareMode.idle, status);
   }
 
   Future<RTCPeerConnection> _connectViewerPeer(DeviceInfo device) async {
@@ -220,12 +296,23 @@ class ScreenShareService {
       }
     };
     peer.onTrack = (event) {
-      _logger.info('Screen share viewer received track: ${event.track.kind}');
+      _logger.info(
+        'Screen share viewer received track: ${event.track.kind} '
+        '(streams: ${event.streams.length})',
+      );
       event.track.onEnded = () {
         unawaited(_handleRemoteEnded('Screen share ended'));
       };
       if (event.streams.isNotEmpty) {
-        remoteRenderer.srcObject = event.streams.first;
+        try {
+          event.track.enabled = true;
+        } catch (_) {}
+        final stream = event.streams.first;
+        remoteRenderer.srcObject = stream;
+        _logger.info(
+          'Remote screen stream tracks: '
+          '${stream.getVideoTracks().map((track) => track.id).join(', ')}',
+        );
       }
     };
 
@@ -234,7 +321,7 @@ class ScreenShareService {
       'offerToReceiveAudio': 0,
     });
     final preferredOffer = RTCSessionDescription(
-      _preferCodecForRemoteSender(offer.sdp ?? '', device),
+      _preferVideoCodec(offer.sdp ?? '', _screenCodec),
       offer.type,
     );
     await peer.setLocalDescription(preferredOffer);
@@ -245,9 +332,9 @@ class ScreenShareService {
       device.baseUri.replace(path: '/api/screen/offer'),
       data: {
         'type': local?.type ?? preferredOffer.type,
-        'sdp': _preferCodecForRemoteSender(
+        'sdp': _preferVideoCodec(
           local?.sdp ?? preferredOffer.sdp ?? '',
-          device,
+          _screenCodec,
         ),
       },
     );
@@ -258,13 +345,62 @@ class ScreenShareService {
         payload?['error']?.toString() ?? 'No screen-share answer',
       );
     }
+    final answerSdp = answer['sdp'] as String;
+    _logger.info(
+      'Screen share negotiated codec: '
+      '${_firstVideoCodec(answerSdp) ?? 'automatic'}',
+    );
     await peer.setRemoteDescription(
-      RTCSessionDescription(
-        _preferCodecForRemoteSender(answer['sdp'] as String, device),
-        answer['type'] as String,
-      ),
+      RTCSessionDescription(answerSdp, answer['type'] as String),
     );
     return peer;
+  }
+
+  Future<void> _monitorViewerDecode(RTCPeerConnection peer) async {
+    for (var attempt = 1; attempt <= 5; attempt++) {
+      await Future<void>.delayed(
+        attempt == 1 ? const Duration(seconds: 4) : const Duration(seconds: 2),
+      );
+      if (_viewerPeer != peer || state.value.mode != ScreenShareMode.watching) {
+        return;
+      }
+
+      try {
+        final reports = await peer.getStats();
+        var foundInboundVideo = false;
+        for (final report in reports) {
+          if (report.type != 'inbound-rtp') continue;
+          final values = report.values;
+          final kind = values['kind'] ?? values['mediaType'];
+          if (kind == 'audio') continue;
+          foundInboundVideo = true;
+          _logger.info(
+            'Remote screen inbound video: '
+            'bytes=${values['bytesReceived'] ?? '-'}, '
+            'packets=${values['packetsReceived'] ?? '-'}, '
+            'frames=${values['framesReceived'] ?? '-'}, '
+            'decoded=${values['framesDecoded'] ?? '-'}, '
+            'dropped=${values['framesDropped'] ?? '-'}, '
+            'codec=${values['codecId'] ?? '-'}',
+          );
+        }
+        if (foundInboundVideo) return;
+      } catch (error) {
+        _logger.warn('Could not read screen viewer stats: $error');
+        return;
+      }
+
+      if (attempt < 5) {
+        _logger.info(
+          'Remote screen RTP statistics are not available yet '
+          '(attempt $attempt/5)',
+        );
+      }
+    }
+
+    _logger.warn(
+      'Remote screen RTP statistics stayed unavailable; keeping H.264 active',
+    );
   }
 
   void updateLocalScreenMetrics(double width, double height) {
@@ -344,11 +480,7 @@ class ScreenShareService {
       final metadata = response.data?['metadata'] as Map<String, dynamic>?;
       final aspectRatio = (metadata?['aspectRatio'] as num?)?.toDouble();
       if (_isHealthyAspectRatio(aspectRatio)) {
-        final previousAspectRatio = remoteAspectRatio.value;
         remoteAspectRatio.value = aspectRatio;
-        if (_isMeaningfulAspectChange(previousAspectRatio, aspectRatio!)) {
-          _scheduleRemoteRotationRecovery(device, aspectRatio);
-        }
       }
       final generation = (metadata?['generation'] as num?)?.toInt();
       if (generation != null) {
@@ -357,11 +489,6 @@ class ScreenShareService {
         if (previous != null && generation != previous) {
           unawaited(_handleGenerationChange(device));
         }
-      }
-      final trackId = metadata?['trackId'] as String?;
-      if (trackId != null && trackId != _lastRemoteTrackId) {
-        _lastRemoteTrackId = trackId;
-        unawaited(_syncRemoteRendererTrack());
       }
     } catch (error) {
       if (_isScreenShareNotActiveError(error)) {
@@ -393,6 +520,7 @@ class ScreenShareService {
       await _stopViewer(keepMetadataPolling: true);
       final peer = await _connectViewerPeer(device);
       _viewerPeer = peer;
+      unawaited(_monitorViewerDecode(peer));
     } catch (error) {
       _logger.warn('Screen viewer reconnect failed: $error');
     } finally {
@@ -408,146 +536,8 @@ class ScreenShareService {
         aspectRatio <= 2.45;
   }
 
-  bool _isMeaningfulAspectChange(double? previous, double next) {
-    if (!_isHealthyAspectRatio(previous) || !_isHealthyAspectRatio(next)) {
-      return false;
-    }
-    if ((previous! < 1 && next > 1) || (previous > 1 && next < 1)) {
-      return true;
-    }
-    return (previous - next).abs() >= _remoteAspectChangeThreshold;
-  }
-
-  void _scheduleRemoteRotationRecovery(
-    DeviceInfo device,
-    double expectedAspectRatio,
-  ) {
-    final serial = ++_remoteAspectChangeSerial;
-    _remoteRotationRecoveryTimer?.cancel();
-    _remoteRotationRecoveryTimer = Timer(_remoteRotationRecoveryDelay, () {
-      unawaited(
-        _recoverViewerAfterRotation(device, expectedAspectRatio, serial),
-      );
-    });
-  }
-
-  Future<void> _recoverViewerAfterRotation(
-    DeviceInfo device,
-    double expectedAspectRatio,
-    int serial,
-  ) async {
-    if (serial != _remoteAspectChangeSerial ||
-        state.value.mode != ScreenShareMode.watching ||
-        _stopping ||
-        _reconnectingViewer) {
-      return;
-    }
-
-    final latestAspectRatio = remoteAspectRatio.value;
-    if (!_isHealthyAspectRatio(latestAspectRatio) ||
-        _isMeaningfulAspectChange(latestAspectRatio, expectedAspectRatio)) {
-      return;
-    }
-
-    final now = DateTime.now();
-    final lastRecovery = _lastRemoteRotationRecoveryAt;
-    if (lastRecovery != null) {
-      final elapsed = now.difference(lastRecovery);
-      if (elapsed < _remoteRotationRecoveryMinGap) {
-        final remainingMillis =
-            _remoteRotationRecoveryMinGap.inMilliseconds -
-            elapsed.inMilliseconds;
-        _remoteRotationRecoveryTimer?.cancel();
-        _remoteRotationRecoveryTimer = Timer(
-          Duration(milliseconds: remainingMillis < 0 ? 0 : remainingMillis),
-          () {
-            unawaited(
-              _recoverViewerAfterRotation(device, expectedAspectRatio, serial),
-            );
-          },
-        );
-        return;
-      }
-    }
-
-    _lastRemoteRotationRecoveryAt = now;
-    final rendererAspectRatio = _remoteRendererAspectRatio();
-    if (!_isHealthyAspectRatio(rendererAspectRatio) ||
-        _isMeaningfulAspectChange(rendererAspectRatio, expectedAspectRatio)) {
-      _logger.info(
-        'Remote screen rotation did not settle; reconnecting viewer '
-        '(renderer: ${rendererAspectRatio?.toStringAsFixed(3) ?? '-'}, '
-        'expected: ${expectedAspectRatio.toStringAsFixed(3)})',
-      );
-      await _reconnectViewer(device);
-      return;
-    }
-
-    await _refreshRemoteRendererTexture();
-  }
-
-  double? _remoteRendererAspectRatio() {
-    final value = remoteRenderer.value;
-    if (value.width <= 0 || value.height <= 0) return null;
-    return value.aspectRatio;
-  }
-
-  Future<void> _refreshRemoteRendererTexture() async {
-    if (!_initialized ||
-        state.value.mode != ScreenShareMode.watching ||
-        _reconnectingViewer) {
-      return;
-    }
-    final stream = remoteRenderer.srcObject;
-    if (stream == null) return;
-    _logger.info('Refreshing remote screen renderer after rotation settle');
-    remoteRenderer.srcObject = null;
-    await Future<void>.delayed(const Duration(milliseconds: 40));
-    if (state.value.mode == ScreenShareMode.watching &&
-        !_stopping &&
-        !_reconnectingViewer) {
-      remoteRenderer.srcObject = stream;
-    }
-  }
-
   Future<void> _handleGenerationChange(DeviceInfo device) async {
     await _reconnectViewer(device);
-  }
-
-  Future<bool> _syncRemoteRendererTrack() async {
-    final peer = _viewerPeer;
-    if (peer == null) return false;
-    try {
-      final stream = remoteRenderer.srcObject;
-      if (stream == null) return false;
-      final receivers = await peer.getReceivers();
-      for (final receiver in receivers) {
-        final currentTrack = receiver.track;
-        if (currentTrack == null || currentTrack.kind != 'video') continue;
-        final streamTracks = stream.getVideoTracks();
-        if (streamTracks.any((t) => t.id == currentTrack.id)) {
-          return true;
-        }
-        _logger.info(
-          'Rebinding remote renderer to refreshed track ${currentTrack.id}',
-        );
-        for (final oldTrack in List<MediaStreamTrack>.from(streamTracks)) {
-          try {
-            stream.removeTrack(oldTrack);
-          } catch (_) {}
-        }
-        try {
-          stream.addTrack(currentTrack);
-        } catch (_) {}
-        remoteRenderer.srcObject = null;
-        await Future<void>.delayed(const Duration(milliseconds: 40));
-        remoteRenderer.srcObject = stream;
-        return true;
-      }
-    } catch (error) {
-      _logger.warn('Remote renderer track sync failed: $error');
-    }
-    return false;
   }
 
   Future<RTCPeerConnection> _createPeer() {
@@ -603,16 +593,6 @@ class ScreenShareService {
     }
   }
 
-  String _preferCodecForLocalSender(String sdp) {
-    if (!WebRTC.platformIsAndroid) return sdp;
-    return _preferVideoCodec(sdp, 'H264');
-  }
-
-  String _preferCodecForRemoteSender(String sdp, DeviceInfo sender) {
-    if (sender.platform.toLowerCase() != 'android') return sdp;
-    return _preferVideoCodec(sdp, 'H264');
-  }
-
   String _preferVideoCodec(String sdp, String codec) {
     if (sdp.isEmpty) return sdp;
     final lines = sdp.split(RegExp(r'\r?\n'));
@@ -640,6 +620,27 @@ class ScreenShareService {
     ];
     lines[videoIndex] = [...header, ...orderedPayloads].join(' ');
     return lines.join('\r\n');
+  }
+
+  String? _firstVideoCodec(String sdp) {
+    if (sdp.isEmpty) return null;
+    final lines = sdp.split(RegExp(r'\r?\n'));
+    final videoLine = lines
+        .where((line) => line.startsWith('m=video '))
+        .firstOrNull;
+    if (videoLine == null) return null;
+    final parts = videoLine.split(' ');
+    if (parts.length <= 3) return null;
+    final firstPayload = parts[3];
+    final codecPattern = RegExp(
+      '^a=rtpmap:${RegExp.escape(firstPayload)}\\s+([^/]+)/',
+      caseSensitive: false,
+    );
+    for (final line in lines) {
+      final match = codecPattern.firstMatch(line);
+      if (match != null) return match.group(1)?.toUpperCase();
+    }
+    return null;
   }
 
   Future<void> _prepareCapture() async {
@@ -753,7 +754,6 @@ class ScreenShareService {
         localRenderer.srcObject = null;
       }
       await _stopLocalStream();
-      _lastRemoteTrackId = null;
       await _disableAndroidScreenShareExecution();
       if (updateState) {
         _setState(ScreenShareMode.idle, status);
@@ -772,15 +772,22 @@ class ScreenShareService {
     await localRenderer.dispose();
     await remoteRenderer.dispose();
     remoteAspectRatio.dispose();
+    focusedViewerActive.dispose();
     state.dispose();
     _dio.close(force: true);
     await _disableAndroidScreenShareExecution();
   }
 
   Future<void> _stopSharingPeers() async {
+    for (final timer in _sharingPeerDisconnectTimers.values) {
+      timer.cancel();
+    }
+    _sharingPeerDisconnectTimers.clear();
     final peers = List<RTCPeerConnection>.from(_peers);
     _peers.clear();
     for (final peer in peers) {
+      peer.onConnectionState = null;
+      peer.onIceConnectionState = null;
       try {
         await peer.close();
       } catch (error) {
@@ -793,9 +800,6 @@ class ScreenShareService {
     if (!keepMetadataPolling) {
       _metadataPollTimer?.cancel();
       _metadataPollTimer = null;
-      _remoteRotationRecoveryTimer?.cancel();
-      _remoteRotationRecoveryTimer = null;
-      _remoteAspectChangeSerial++;
       _lastRemoteGeneration = null;
       remoteAspectRatio.value = null;
     }

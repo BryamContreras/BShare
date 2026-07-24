@@ -6,11 +6,13 @@ cd "$ROOT"
 
 LINUX_ONLY=0
 MACOS_ONLY=0
+DEB_ONLY=0
 
 for arg in "$@"; do
   case "$arg" in
     --linux-only) LINUX_ONLY=1 ;;
     --macos-only) MACOS_ONLY=1 ;;
+    --deb-only) LINUX_ONLY=1; DEB_ONLY=1 ;;
     *) echo "Unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -27,11 +29,14 @@ OS="$(uname -s)"
 if [[ "$OS" == "Linux" && "$MACOS_ONLY" != "1" ]]; then
   flutter build linux --release
   LINUX_BUNDLE="$ROOT/build/linux/x64/release/bundle"
-  LINUX_TARGET="$RELEASE_ROOT/linux/BShare-linux-x64"
-  rm -rf "$LINUX_TARGET"
-  mkdir -p "$LINUX_TARGET"
-  cp -a "$LINUX_BUNDLE/." "$LINUX_TARGET/"
-  tar -C "$RELEASE_ROOT/linux" -czf "$RELEASE_ROOT/linux/BShare-$SAFE_VERSION-linux-x64.tar.gz" "BShare-linux-x64"
+  if [[ "$DEB_ONLY" != "1" ]]; then
+    LINUX_TARGET="$RELEASE_ROOT/linux/BShare-linux-x64"
+    rm -rf "$LINUX_TARGET"
+    mkdir -p "$LINUX_TARGET"
+    cp -a "$LINUX_BUNDLE/." "$LINUX_TARGET/"
+    tar -C "$RELEASE_ROOT/linux" -czf "$RELEASE_ROOT/linux/BShare-$SAFE_VERSION-linux-x64.tar.gz" "BShare-linux-x64"
+  fi
+  "$ROOT/scripts/build_deb.sh" --skip-build
   echo "Linux release ready: $RELEASE_ROOT/linux"
 fi
 

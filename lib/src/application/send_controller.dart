@@ -25,9 +25,11 @@ class SendController {
   final Ref _ref;
   final List<_QueuedSend> _queue = [];
   final Map<String, _QueuedSend> _remoteControls = {};
+  final Map<String, SelectedTransferFile> _pendingTemporaryCleanup = {};
   HttpServer? _controlServer;
   var _active = 0;
   var _pumping = false;
+  var _starting = false;
   var _sequence = 0;
   var _backgroundExecutionClaimed = false;
 
@@ -125,7 +127,7 @@ class SendController {
   void clearFiles() {
     final files = _ref.read(pickedFilesProvider);
     _ref.read(pickedFilesProvider.notifier).clear();
-    _cleanupTemporaryFiles(files);
+    unawaited(_cleanupTemporaryFiles(files));
   }
 
   void removeFile(String path) {
@@ -134,17 +136,32 @@ class SendController {
         .where((file) => file.path == path)
         .toList();
     _ref.read(pickedFilesProvider.notifier).remove(path);
-    _cleanupTemporaryFiles(files);
+    unawaited(_cleanupTemporaryFiles(files));
   }
 
-  Future<void> dispose({bool updateState = true}) async {
-    final queuedFiles = _queue.map((item) => item.file).toList();
+  Future<void> dispose({
+    bool updateState = true,
+    bool cleanupSelectedFiles = false,
+    List<SelectedTransferFile> selectedFiles = const [],
+  }) async {
+    final selectedPaths = selectedFiles.map((file) => file.path).toSet();
+    final transferFiles = _remoteControls.values
+        .map((item) => item.file)
+        .toList();
+    final pendingFiles = _pendingTemporaryCleanup.values.toList();
     for (final item in _remoteControls.values) {
       item.control.cancel();
     }
     _queue.clear();
     _remoteControls.clear();
-    _cleanupTemporaryFiles(queuedFiles);
+    _pendingTemporaryCleanup.clear();
+    await _cleanupTemporaryFiles([
+      ...pendingFiles,
+      ...transferFiles.where(
+        (file) => cleanupSelectedFiles || !selectedPaths.contains(file.path),
+      ),
+      if (cleanupSelectedFiles) ...selectedFiles,
+    ]);
     await _releaseBackgroundExecution();
     if (updateState) {
       _ref.read(transferControlProvider.notifier).clear();
@@ -155,67 +172,72 @@ class SendController {
   Future<void> send() async {
     final target = _ref.read(selectedDeviceProvider);
     final files = _ref.read(pickedFilesProvider);
-    if (target == null || files.isEmpty) return;
-    if (!await _prepareTargetRoute(target, files)) return;
-    await _acquireBackgroundExecution();
-    final settings = await _ref.read(settingsProvider.future);
-    final client = _ref.read(fileTransferClientProvider);
-    final controlPort = await _ensureControlServer();
-    final network = await NetworkService().snapshot(
-      includeLocalInterfaces: true,
-    );
-    final controls = {for (final file in files) file.path: TransferControl()};
+    if (target == null || files.isEmpty || _starting) return;
+    if (files.any((file) => _hasTransferForPath(file.path))) return;
+    _starting = true;
+    try {
+      if (!await _prepareTargetRoute(target, files)) return;
+      await _acquireBackgroundExecution();
+      final settings = await _ref.read(settingsProvider.future);
+      final client = _ref.read(fileTransferClientProvider);
+      final controlPort = await _ensureControlServer();
+      final network = await NetworkService().snapshot(
+        includeLocalInterfaces: true,
+      );
+      final controls = {for (final file in files) file.path: TransferControl()};
 
-    if (_active == 0 && _queue.isEmpty) {
-      _ref.read(sendProgressProvider.notifier).clear();
-    }
-    _ref.read(transferControlProvider.notifier).set({
-      ..._ref.read(transferControlProvider),
-      ...controls,
-    });
-    _ref.read(pickedFilesProvider.notifier).clear();
+      if (_active == 0 && _queue.isEmpty) {
+        _ref.read(sendProgressProvider.notifier).clear();
+      }
+      _ref.read(transferControlProvider.notifier).set({
+        ..._ref.read(transferControlProvider),
+        ...controls,
+      });
 
-    final transferIds = {
-      for (final file in files) file.path: _nextTransferId(settings, file),
-    };
-    await client.announceQueue(
-      target: target,
-      files: files,
-      transferIds: transferIds,
-      senderId: settings.deviceId,
-      senderName: settings.deviceName,
-      controlHost: network.ip,
-      controlPort: controlPort,
-    );
-
-    for (final file in files) {
-      final item = _QueuedSend(
+      final transferIds = {
+        for (final file in files) file.path: _nextTransferId(settings, file),
+      };
+      await client.announceQueue(
         target: target,
-        file: file,
-        transferId: transferIds[file.path]!,
+        files: files,
+        transferIds: transferIds,
         senderId: settings.deviceId,
         senderName: settings.deviceName,
-        control: controls[file.path]!,
         controlHost: network.ip,
         controlPort: controlPort,
       );
-      _queue.add(item);
-      _remoteControls[item.transferId] = item;
-      _ref
-          .read(sendProgressProvider.notifier)
-          .upsert(
-            SendProgress(
-              id: file.path,
-              fileName: file.name,
-              sentBytes: 0,
-              totalBytes: file.size,
-              bytesPerSecond: 0,
-              status: TransferProgressStatus.queued,
-            ),
-          );
-    }
 
-    _pump();
+      for (final file in files) {
+        final item = _QueuedSend(
+          target: target,
+          file: file,
+          transferId: transferIds[file.path]!,
+          senderId: settings.deviceId,
+          senderName: settings.deviceName,
+          control: controls[file.path]!,
+          controlHost: network.ip,
+          controlPort: controlPort,
+        );
+        _queue.add(item);
+        _remoteControls[item.transferId] = item;
+        _ref
+            .read(sendProgressProvider.notifier)
+            .upsert(
+              SendProgress(
+                id: file.path,
+                fileName: file.name,
+                sentBytes: 0,
+                totalBytes: file.size,
+                bytesPerSecond: 0,
+                status: TransferProgressStatus.queued,
+              ),
+            );
+      }
+
+      _pump();
+    } finally {
+      _starting = false;
+    }
   }
 
   Future<bool> _prepareTargetRoute(
@@ -302,12 +324,12 @@ class SendController {
         }
       }
     } finally {
-      unawaited(_cleanupTemporaryFile(item.file));
       _remoteControls.remove(item.transferId);
       _active--;
       final controls = {..._ref.read(transferControlProvider)}
         ..remove(item.file.path);
       _ref.read(transferControlProvider.notifier).set(controls);
+      _flushPendingTemporaryCleanup(item.file.path);
       _pump();
       _maybeCloseControlServer();
     }
@@ -366,14 +388,13 @@ class SendController {
     _queue.removeWhere((queued) => queued.file.path == id);
     for (final item in queued) {
       _remoteControls.remove(item.transferId);
-      unawaited(_cleanupTemporaryFile(item.file));
+      _flushPendingTemporaryCleanup(item.file.path);
     }
     _ref
         .read(sendProgressProvider.notifier)
         .updateStatus(id, TransferProgressStatus.cancelled);
     _ref.read(transferControlProvider.notifier).remove(id);
     if (item != null) {
-      _remoteControls.remove(item.transferId);
       unawaited(_sendRemoteCommand(item.target, item.transferId, 'cancel'));
     }
     _maybeCloseControlServer();
@@ -455,15 +476,17 @@ class SendController {
             .where((queued) => queued.transferId == transferId)
             .toList();
         _queue.removeWhere((queued) => queued.transferId == transferId);
-        for (final item in queued) {
-          unawaited(_cleanupTemporaryFile(item.file));
-        }
         _ref.read(transferControlProvider.notifier).cancel(item.file.path);
         _ref
             .read(sendProgressProvider.notifier)
             .updateStatus(item.file.path, TransferProgressStatus.cancelled);
         _ref.read(transferControlProvider.notifier).remove(item.file.path);
-        _remoteControls.remove(transferId);
+        if (queued.isNotEmpty) {
+          _remoteControls.remove(transferId);
+          for (final queuedItem in queued) {
+            _flushPendingTemporaryCleanup(queuedItem.file.path);
+          }
+        }
         _maybeCloseControlServer();
         break;
     }
@@ -497,14 +520,35 @@ class SendController {
     await server?.close(force: true);
   }
 
-  void _cleanupTemporaryFiles(List<SelectedTransferFile> files) {
-    for (final file in files) {
-      unawaited(_cleanupTemporaryFile(file));
-    }
+  Future<void> _cleanupTemporaryFiles(List<SelectedTransferFile> files) async {
+    final uniqueFiles = <String, SelectedTransferFile>{
+      for (final file in files) file.path: file,
+    };
+    await Future.wait(uniqueFiles.values.map(_cleanupTemporaryFile));
   }
 
   Future<void> _cleanupTemporaryFile(SelectedTransferFile file) async {
     if (!file.deleteAfterSend) return;
+    if (_hasTransferForPath(file.path)) {
+      _pendingTemporaryCleanup[file.path] = file;
+      return;
+    }
+    _pendingTemporaryCleanup.remove(file.path);
+    await _deleteTemporaryFile(file);
+  }
+
+  void _flushPendingTemporaryCleanup(String path) {
+    if (_hasTransferForPath(path)) return;
+    final file = _pendingTemporaryCleanup.remove(path);
+    if (file != null) unawaited(_deleteTemporaryFile(file));
+  }
+
+  bool _hasTransferForPath(String path) {
+    return _queue.any((item) => item.file.path == path) ||
+        _remoteControls.values.any((item) => item.file.path == path);
+  }
+
+  Future<void> _deleteTemporaryFile(SelectedTransferFile file) async {
     try {
       final temporary = File(file.path);
       if (await temporary.exists()) {

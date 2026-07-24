@@ -53,7 +53,9 @@ Run on Linux:
 ./scripts/build_releases.sh --linux-only
 ```
 
-This creates a Linux x64 bundle and `.tar.gz` under `dist/releases/BShare-<version>/linux`.
+This creates a Linux x64 bundle, `.tar.gz`, and distributable `.deb` under
+`dist/releases/BShare-<version>/linux`. The `.deb` targets Debian 13, Ubuntu
+24.04 or newer, and their amd64-based derivatives.
 
 ## macOS Release
 

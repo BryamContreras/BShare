@@ -3,16 +3,16 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 
 /// Prevents Android from dimming or locking the active activity while a
-/// full-screen remote screen is being viewed.
+/// screen is being shared or viewed.
 class AndroidScreenAwakeService {
   static const _channel = MethodChannel('bshare/screen');
 
-  Future<void> setViewerActive(bool active) async {
+  Future<void> setKeepScreenOn(bool enabled) async {
     if (!Platform.isAndroid) return;
 
     try {
       await _channel.invokeMethod<void>('setKeepScreenOn', <String, bool>{
-        'enabled': active,
+        'enabled': enabled,
       });
     } on PlatformException {
       // The viewer remains usable if this optional Android behavior fails.
@@ -20,4 +20,6 @@ class AndroidScreenAwakeService {
       // Allows older Android builds to keep using the viewer normally.
     }
   }
+
+  Future<void> setViewerActive(bool active) => setKeepScreenOn(active);
 }
