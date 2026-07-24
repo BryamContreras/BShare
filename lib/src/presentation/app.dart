@@ -356,7 +356,7 @@ class _RuntimeCleanupObserverState
     unawaited(
       ref
           .read(runtimeCleanupProvider)
-          .cleanupNetworking()
+          .cleanupNetworking(cleanupSelectedFiles: true)
           .whenComplete(() => _cleaning = false),
     );
   }

@@ -16,7 +16,7 @@ sudo apt update
 sudo apt install -y \
   git curl unzip xz-utils zip \
   clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev \
-  network-manager wpasupplicant dnsmasq-base policykit-1 iw
+  network-manager wpasupplicant dnsmasq-base polkitd iw
 ```
 
 Then enable desktop support:
@@ -108,11 +108,43 @@ This requires:
 
 `nmcli` is not bundled with BShare. On Debian, Ubuntu, and desktop derivatives
 it normally comes from the distro package manager through `network-manager`.
-If you later package BShare as a `.deb`, declare these as system dependencies
-instead of shipping private copies:
+The distributable `.deb` declares these as system dependencies instead of
+shipping private copies:
 
 ```text
-network-manager, wpasupplicant, dnsmasq-base, policykit-1
+network-manager, wpasupplicant, dnsmasq-base, polkitd
+```
+
+## Debian / Ubuntu package
+
+The release package targets 64-bit PCs (`amd64`) running Debian 13, Ubuntu
+24.04 or newer, and derivatives based on those versions. Its runtime
+dependencies cover GTK 3, Flutter/WebRTC graphics support, NetworkManager,
+Wi-Fi management, DHCP support, and polkit. It accepts both the current `t64`
+GTK/GLib package names used by Ubuntu and the non-`t64` names used by Debian.
+
+Build a distributable package with:
+
+```bash
+bash scripts/build_deb.sh
+```
+
+The generated file is:
+
+```text
+dist/releases/BShare-<version>/linux/bshare_<version>_amd64.deb
+```
+
+Install it with APT so it resolves dependencies automatically:
+
+```bash
+sudo apt install ./bshare_<version>_amd64.deb
+```
+
+For the complete Linux release (bundle, `.tar.gz`, and `.deb`), run:
+
+```bash
+bash scripts/build_releases.sh --linux-only
 ```
 
 WSL2 is not enough for hotspot testing because it usually exposes only a

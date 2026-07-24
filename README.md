@@ -47,6 +47,15 @@ flutter build windows
 flutter build linux
 ```
 
+To generate the distributable Debian/Ubuntu package for 64-bit PCs:
+
+```bash
+bash scripts/build_deb.sh
+```
+
+It targets Debian 13, Ubuntu 24.04 or newer, and their compatible derivatives.
+Install the generated package with `sudo apt install ./bshare_<version>_amd64.deb`.
+
 For Linux desktop setup, hotspot requirements, and the environment checker,
 see [docs/LINUX.md](docs/LINUX.md).
 

@@ -2,14 +2,10 @@ import 'dart:io';
 
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/selected_transfer_file.dart';
-import 'package:bshare/src/domain/entities/send_progress.dart';
-import 'package:bshare/src/domain/entities/transfer_progress_status.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
 import 'package:bshare/src/presentation/widgets/app_shell.dart';
-import 'package:bshare/src/presentation/widgets/compact_transfer_buttons.dart';
 import 'package:bshare/src/presentation/widgets/formatters.dart';
 import 'package:bshare/src/presentation/widgets/gradient_action_button.dart';
-import 'package:bshare/src/presentation/widgets/gradient_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,7 +20,6 @@ class SendFilesScreen extends ConsumerStatefulWidget {
 class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
   final _scrollController = ScrollController();
   final _removingFiles = <String>{};
-  final _removingProgress = <String>{};
 
   @override
   void initState() {
@@ -38,20 +33,9 @@ class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
     super.dispose();
   }
 
-  Future<void> _sendAndScroll() async {
+  Future<void> _sendAndOpenTransfers() async {
     await ref.read(sendControllerProvider).send();
-    if (!_scrollController.hasClients) return;
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-    if (!_scrollController.hasClients) return;
-    final target = (_scrollController.offset + 360).clamp(
-      0.0,
-      _scrollController.position.maxScrollExtent,
-    );
-    await _scrollController.animateTo(
-      target,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-    );
+    if (mounted) context.go('/transfers');
   }
 
   Future<void> _clearSelectedFiles(List<SelectedTransferFile> files) async {
@@ -63,24 +47,14 @@ class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
     setState(() => _removingFiles.clear());
   }
 
-  Future<void> _clearCompletedTransfers(
-    List<SendProgress> progressItems,
-  ) async {
-    final ids = progressItems
-        .where((item) => item.status.isTerminal)
-        .map((item) => item.id)
-        .toList();
-    if (ids.isEmpty || _removingProgress.isNotEmpty) return;
-    setState(() => _removingProgress.addAll(ids));
-    await Future<void>.delayed(const Duration(milliseconds: 190));
-    if (!mounted) return;
-    ref.read(sendProgressProvider.notifier).clearCompleted();
-    setState(() => _removingProgress.clear());
-  }
-
   @override
   Widget build(BuildContext context) {
     final files = ref.watch(pickedFilesProvider);
+    final outgoing = ref.watch(sendProgressProvider);
+    final selectedPaths = files.map((file) => file.path).toSet();
+    final isSelectedFileTransferring = outgoing.any(
+      (progress) => !progress.isDone && selectedPaths.contains(progress.id),
+    );
     final discoveredDevices = ref.watch(discoveryProvider);
     final selected = ref.watch(selectedDeviceProvider);
     final devices = [...discoveredDevices];
@@ -88,8 +62,6 @@ class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
         !devices.any((device) => device.id == selected.id)) {
       devices.insert(0, selected);
     }
-    final progressItems = ref.watch(sendProgressProvider);
-    final controls = ref.watch(transferControlProvider);
     final isMobile = Platform.isAndroid || Platform.isIOS;
     final l10n = context.l10n;
 
@@ -167,9 +139,12 @@ class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
                 children: [
                   Expanded(
                     child: GradientActionButton(
-                      onPressed: selected == null || files.isEmpty
+                      onPressed:
+                          selected == null ||
+                              files.isEmpty ||
+                              isSelectedFileTransferring
                           ? null
-                          : _sendAndScroll,
+                          : _sendAndOpenTransfers,
                       icon: Icons.send_rounded,
                       label: l10n.t('send'),
                       expand: true,
@@ -235,105 +210,6 @@ class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
                       ),
                     ),
                   ),
-              if (progressItems.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l10n.t('sending'),
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    GradientIconButton(
-                      tooltip: l10n.t('clearCompletedTransfers'),
-                      onPressed:
-                          progressItems.any((item) => item.status.isTerminal)
-                          ? () => _clearCompletedTransfers(progressItems)
-                          : null,
-                      icon: Icons.cleaning_services_rounded,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                for (final progress in progressItems)
-                  _SlideAway(
-                    active: _removingProgress.contains(progress.id),
-                    child: Card(
-                      margin: EdgeInsets.symmetric(vertical: compact ? 3 : 4),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: compact ? 10 : 12,
-                          vertical: compact ? 8 : 12,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              progress.fileName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            SizedBox(height: compact ? 7 : 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GradientProgressBar(
-                                    value: progress.fraction,
-                                  ),
-                                ),
-                                if (!progress.isDone &&
-                                    controls[progress.id] != null) ...[
-                                  SizedBox(width: compact ? 5 : 6),
-                                  Builder(
-                                    builder: (context) {
-                                      final locallyPaused =
-                                          controls[progress.id]!.isPaused;
-                                      return CompactTransferButton(
-                                        size: compact ? 30 : 34,
-                                        tooltip: locallyPaused
-                                            ? l10n.t('resume')
-                                            : l10n.t('pause'),
-                                        onPressed: () {
-                                          final sender = ref.read(
-                                            sendControllerProvider,
-                                          );
-                                          locallyPaused
-                                              ? sender.resume(progress.id)
-                                              : sender.pause(progress.id);
-                                        },
-                                        icon: locallyPaused
-                                            ? Icons.play_arrow_rounded
-                                            : Icons.pause_rounded,
-                                      );
-                                    },
-                                  ),
-                                  SizedBox(width: compact ? 2 : 4),
-                                  CompactTransferButton(
-                                    size: compact ? 30 : 34,
-                                    tooltip: l10n.t('cancel'),
-                                    onPressed: () => ref
-                                        .read(sendControllerProvider)
-                                        .cancel(progress.id),
-                                    icon: Icons.close_rounded,
-                                  ),
-                                ],
-                              ],
-                            ),
-                            SizedBox(height: compact ? 6 : 8),
-                            Text(
-                              '${(progress.fraction * 100).toStringAsFixed(0)}% - ${formatBytes(progress.sentBytes)} / ${formatBytes(progress.totalBytes)} - ${formatBytes(progress.bytesPerSecond)}/s - ${l10n.transferStatus(progress.status, message: progress.message)}',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
             ],
           );
         },

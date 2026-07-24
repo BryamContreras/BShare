@@ -407,9 +407,21 @@ class RuntimeCleanup {
 
   final Ref _ref;
 
-  Future<void> cleanupNetworking({bool cancelTransfers = true}) async {
+  Future<void> cleanupNetworking({
+    bool cancelTransfers = true,
+    bool cleanupSelectedFiles = false,
+  }) async {
     if (cancelTransfers) {
-      await _ref.read(sendControllerProvider).dispose();
+      final selectedFiles = _ref.read(pickedFilesProvider);
+      await _ref
+          .read(sendControllerProvider)
+          .dispose(
+            cleanupSelectedFiles: cleanupSelectedFiles,
+            selectedFiles: selectedFiles,
+          );
+      if (cleanupSelectedFiles) {
+        _ref.read(pickedFilesProvider.notifier).clear();
+      }
       _ref.read(transferControlProvider.notifier).clear();
       _ref.read(incomingTransfersProvider.notifier).rejectAll();
     }
