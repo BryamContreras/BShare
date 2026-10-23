@@ -180,7 +180,7 @@
         "gdkBackend": "wayland"
       },
       "build": {
-        "pid": 96888,
+        "pid": null,
         "command": [
           "flutter",
           "--suppress-analytics",
@@ -191,7 +191,7 @@
         ],
         "startedAtUtc": "2026-10-23T20:20:08.142297+00:00",
         "ninjaJobs": 2,
-        "ninjaWrapper": "/tmp/bshare-settings-sidebar-v2-ninja-zgn0_2ot",
+        "ninjaWrapper": "local-test-artifact-not-included",
         "homeUnchanged": true,
         "exitCode": 0,
         "completedAtUtc": "2026-10-23T20:23:00.321505+00:00",
@@ -481,5 +481,9 @@
     "Native desktop execution was tested on KDE Wayland only; Windows/macOS and Android/iOS presentation are covered by widget platform tests.",
     "S22 unavailable over ADB; updated APK was built and statically inspected but not installed.",
     "No camera/audio/USB transport or throughput benchmark repeated for these presentation changes; prior measurements apply to their retained artifacts."
+  ],
+  "localEnvironmentIdentifiersRedacted": [
+    "absolute host paths",
+    "transient process IDs"
   ]
 }

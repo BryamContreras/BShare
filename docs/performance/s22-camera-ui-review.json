@@ -149,11 +149,11 @@
       },
       "camera-ui-final-pc": {
         "exitCode": 0,
-        "pid": 301575
+        "pid": null
       }
     },
     "qrReleaseDex": {
-      "apk": "/home/bryamelias/DEV/Dart/BShare/build/app/outputs/flutter-apk/bshare-optimized-release.apk",
+      "apk": "local-test-artifact-not-included",
       "dexFiles": [
         "classes.dex"
       ],
@@ -474,7 +474,7 @@
         "sha256": "b0f66bd564ffd08b09154376239ec63fe55db514ac95691ae5f290c55c7eb40c",
         "bytes": 30,
         "data": {
-          "pid": 271514,
+          "pid": null,
           "exitCode": 0
         }
       },
@@ -1027,5 +1027,9 @@
       "sha256": "5ed4e3bed165b0b5aacc7735af03076323ce3877055aac1bcbb6b4c57783c673"
     }
   ],
-  "historicalEvidenceNote": "This report describes the earlier camera UI revision. Its retained APK is linked here; the shared delivery path is reused by later builds."
+  "historicalEvidenceNote": "This report describes the earlier camera UI revision. Its retained APK is linked here; the shared delivery path is reused by later builds.",
+  "localEnvironmentIdentifiersRedacted": [
+    "absolute host paths",
+    "transient process IDs"
+  ]
 }

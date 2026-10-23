@@ -1,10 +1,6 @@
 #include "my_application.h"
 
 #include <flutter_linux/flutter_linux.h>
-#ifdef GDK_WINDOWING_X11
-#include <gdk/gdkx.h>
-#endif
-
 #include "flutter/generated_plugin_registrant.h"
 
 struct _MyApplication {
@@ -108,164 +104,6 @@ static void set_app_window_icon(GtkWindow* window) {
   }
 }
 
-enum WindowControl {
-  kMinimizeWindow,
-  kMaximizeWindow,
-  kCloseWindow,
-};
-
-static gboolean draw_window_control(GtkWidget* drawing_area, cairo_t* cr,
-                                    gpointer data) {
-  GtkWidget* button = GTK_WIDGET(data);
-  const WindowControl control = static_cast<WindowControl>(GPOINTER_TO_INT(
-      g_object_get_data(G_OBJECT(button), "bshare-window-control")));
-  GtkStyleContext* context = gtk_widget_get_style_context(button);
-  GdkRGBA color;
-  gtk_style_context_get_color(context, gtk_style_context_get_state(context),
-                              &color);
-  cairo_save(cr);
-  gdk_cairo_set_source_rgba(cr, &color);
-  cairo_set_line_width(cr, 1.5);
-  cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
-  cairo_translate(cr, (gtk_widget_get_allocated_width(drawing_area) - 14) / 2.0,
-                  (gtk_widget_get_allocated_height(drawing_area) - 14) / 2.0);
-  cairo_new_path(cr);
-  switch (control) {
-    case kMinimizeWindow:
-      cairo_move_to(cr, 3, 10);
-      cairo_line_to(cr, 11, 10);
-      break;
-    case kMaximizeWindow: {
-      if (GPOINTER_TO_INT(g_object_get_data(G_OBJECT(button),
-                                           "bshare-window-maximized"))) {
-        cairo_move_to(cr, 5, 4);
-        cairo_line_to(cr, 5, 2);
-        cairo_line_to(cr, 12, 2);
-        cairo_line_to(cr, 12, 9);
-        cairo_line_to(cr, 10, 9);
-        cairo_rectangle(cr, 2, 5, 7, 7);
-      } else {
-        cairo_rectangle(cr, 3, 3, 8, 8);
-      }
-      break;
-    }
-    case kCloseWindow:
-      cairo_move_to(cr, 3, 3);
-      cairo_line_to(cr, 11, 11);
-      cairo_move_to(cr, 11, 3);
-      cairo_line_to(cr, 3, 11);
-      break;
-  }
-  cairo_stroke(cr);
-  cairo_restore(cr);
-  return FALSE;
-}
-
-static void window_control_clicked_cb(GtkButton* button, GtkWindow* window) {
-  const WindowControl control = static_cast<WindowControl>(GPOINTER_TO_INT(
-      g_object_get_data(G_OBJECT(button), "bshare-window-control")));
-  switch (control) {
-    case kMinimizeWindow:
-      gtk_window_iconify(window);
-      break;
-    case kMaximizeWindow:
-      if (gtk_window_is_maximized(window)) {
-        gtk_window_unmaximize(window);
-      } else {
-        gtk_window_maximize(window);
-      }
-      break;
-    case kCloseWindow:
-      // Follow GTK's delete-event path, including Flutter's awaited app exit.
-      gtk_window_close(window);
-      break;
-  }
-}
-
-static void set_maximize_button_state(GtkWidget* button, gboolean maximized) {
-  const gchar* label = g_dgettext("gtk30", maximized ? "Restore" : "Maximize");
-  g_object_set_data(G_OBJECT(button), "bshare-window-maximized",
-                    GINT_TO_POINTER(maximized));
-  gtk_widget_set_tooltip_text(button, label);
-  atk_object_set_name(gtk_widget_get_accessible(button), label);
-  gtk_widget_queue_draw(button);
-}
-
-static gboolean window_state_event_cb(GtkWindow*, GdkEventWindowState* event,
-                                      gpointer data) {
-  if ((event->changed_mask & GDK_WINDOW_STATE_MAXIMIZED) != 0) {
-    set_maximize_button_state(GTK_WIDGET(data),
-        (event->new_window_state & GDK_WINDOW_STATE_MAXIMIZED) != 0);
-  }
-  return FALSE;
-}
-
-static GtkWidget* create_window_control_button(GtkWindow* window,
-                                               WindowControl control) {
-  GtkWidget* button = gtk_button_new();
-  gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
-  gtk_widget_set_size_request(button, 36, 32);
-  gtk_widget_set_can_focus(button, TRUE);
-  gtk_style_context_add_class(gtk_widget_get_style_context(button),
-                              "bshare-window-control");
-  g_object_set_data(G_OBJECT(button), "bshare-window-control",
-                    GINT_TO_POINTER(control));
-
-  const gchar* label = "";
-  switch (control) {
-    case kMinimizeWindow:
-      gtk_widget_set_name(button, "bshare-window-minimize");
-      label = g_dgettext("gtk30", "Minimize");
-      break;
-    case kMaximizeWindow:
-      gtk_widget_set_name(button, "bshare-window-maximize");
-      label = g_dgettext("gtk30", "Maximize");
-      break;
-    case kCloseWindow:
-      gtk_widget_set_name(button, "bshare-window-close");
-      label = g_dgettext("gtk30", "Close");
-      break;
-  }
-  gtk_widget_set_tooltip_text(button, label);
-  atk_object_set_name(gtk_widget_get_accessible(button), label);
-
-  GtkWidget* icon = gtk_drawing_area_new();
-  gtk_widget_set_size_request(icon, 14, 14);
-  gtk_widget_set_halign(icon, GTK_ALIGN_CENTER);
-  gtk_widget_set_valign(icon, GTK_ALIGN_CENTER);
-  gtk_container_add(GTK_CONTAINER(button), icon);
-  g_signal_connect_object(icon, "draw", G_CALLBACK(draw_window_control),
-                           button, static_cast<GConnectFlags>(0));
-  g_signal_connect_object(button, "clicked",
-                           G_CALLBACK(window_control_clicked_cb), window,
-                           static_cast<GConnectFlags>(0));
-  if (control == kMaximizeWindow) {
-    set_maximize_button_state(button, gtk_window_is_maximized(window));
-    g_signal_connect_object(window, "window-state-event",
-                             G_CALLBACK(window_state_event_cb), button,
-                             static_cast<GConnectFlags>(0));
-  }
-  return button;
-}
-
-static void set_window_controls(GtkHeaderBar* header_bar, GtkWindow* window) {
-  // Some desktop themes replace automatic titlebutton icons with empty assets.
-  // Keep real GTK buttons and draw their glyphs independently of those assets.
-  gtk_header_bar_set_show_close_button(header_bar, FALSE);
-  gtk_header_bar_set_decoration_layout(header_bar, ":");
-  GtkWidget* controls = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
-  gtk_widget_set_valign(controls, GTK_ALIGN_CENTER);
-  const WindowControl actions[] =
-      {kMinimizeWindow, kMaximizeWindow, kCloseWindow};
-  for (WindowControl control : actions) {
-    gtk_box_pack_start(GTK_BOX(controls),
-                        create_window_control_button(window, control),
-                        FALSE, FALSE, 0);
-  }
-  gtk_header_bar_pack_end(header_bar, controls);
-  gtk_widget_show_all(controls);
-}
-
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
@@ -282,26 +120,8 @@ static void my_application_activate(GApplication* application) {
   gtk_window_set_deletable(window, TRUE);
   gtk_window_set_resizable(window, TRUE);
 
-  // Supply client-side controls on Wayland and GNOME. Other X11 window managers
-  // retain their own title bar so there is only one set of window controls.
-  gboolean use_header_bar = TRUE;
-#ifdef GDK_WINDOWING_X11
-  GdkScreen* screen = gtk_window_get_screen(window);
-  if (GDK_IS_X11_SCREEN(screen)) {
-    const gchar* wm_name = gdk_x11_screen_get_window_manager_name(screen);
-    if (g_strcmp0(wm_name, "GNOME Shell") != 0) {
-      use_header_bar = FALSE;
-    }
-  }
-#endif
-  if (use_header_bar) {
-    GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
-    gtk_header_bar_set_title(header_bar, "BShare");
-    gtk_header_bar_set_has_subtitle(header_bar, FALSE);
-    set_window_controls(header_bar, window);
-    gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
-    gtk_widget_show(GTK_WIDGET(header_bar));
-  }
+  // Let GTK and the active window manager provide the native title bar and
+  // its minimize, maximize and close controls. Leave a custom titlebar unset.
 
   gtk_window_set_default_size(window, 1280, 720);
 

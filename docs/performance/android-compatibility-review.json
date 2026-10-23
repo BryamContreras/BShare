@@ -253,7 +253,7 @@
               "forceStopUsed": false,
               "afterRevocation2s": {
                 "elapsedSecondsFromOrigin": 2.0,
-                "pid": "",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -265,7 +265,7 @@
               },
               "afterRevocation15s": {
                 "elapsedSecondsFromOrigin": 15.0,
-                "pid": "",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -287,7 +287,7 @@
               "forceStopUsed": false,
               "reopenHome": {
                 "elapsedSecondsFromOrigin": null,
-                "pid": "3520",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -317,7 +317,7 @@
               },
               "uiStop": {
                 "elapsedSecondsFromOrigin": null,
-                "pid": "3520",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -383,7 +383,7 @@
               "forceStopUsed": false,
               "afterRevocation2s": {
                 "elapsedSecondsFromOrigin": 2.0,
-                "pid": "",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -395,7 +395,7 @@
               },
               "afterRevocation15s": {
                 "elapsedSecondsFromOrigin": 15.0,
-                "pid": "",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -417,7 +417,7 @@
               "forceStopUsed": false,
               "reopenHome": {
                 "elapsedSecondsFromOrigin": null,
-                "pid": "2206",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -447,7 +447,7 @@
               },
               "uiStop": {
                 "elapsedSecondsFromOrigin": null,
-                "pid": "2206",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -513,7 +513,7 @@
               "forceStopUsed": false,
               "afterRevocation2s": {
                 "elapsedSecondsFromOrigin": 2.0,
-                "pid": "",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -525,7 +525,7 @@
               },
               "afterRevocation15s": {
                 "elapsedSecondsFromOrigin": 15.0,
-                "pid": "",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -547,7 +547,7 @@
               "forceStopUsed": false,
               "reopenHome": {
                 "elapsedSecondsFromOrigin": null,
-                "pid": "2384",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -577,7 +577,7 @@
               },
               "uiStop": {
                 "elapsedSecondsFromOrigin": null,
-                "pid": "2384",
+                "pid": null,
                 "serviceRecordCount": 0,
                 "foregroundServiceCount": 0,
                 "ownNotificationId1Lines": [],
@@ -917,5 +917,9 @@
     "Raw device dumps remain in ignored local evidence; this report retains summaries and receipt hashes instead of user device data."
   ],
   "updatedAtUtc": "2026-10-22T23:50:34.586349+00:00",
-  "artifactPathNotice": "Historical revision: original build/delivery paths are mutable. Use the retained APK path for this report and its recorded hash; the current delivery APK belongs to settings-sidebar-review.json."
+  "artifactPathNotice": "Historical revision: original build/delivery paths are mutable. Use the retained APK path for this report and its recorded hash; the current delivery APK belongs to settings-sidebar-review.json.",
+  "localEnvironmentIdentifiersRedacted": [
+    "absolute host paths",
+    "transient process IDs"
+  ]
 }

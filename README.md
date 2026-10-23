@@ -2,7 +2,7 @@
 
 BShare is a Flutter/Dart LAN file sharing app inspired by LocalSend. It discovers nearby devices on the same WiFi/LAN and transfers files directly over local HTTP streams.
 
-Current version: **1.0.2**
+Current version: **1.0.3**
 
 ## Features
 
@@ -40,7 +40,9 @@ flutter run
 The **Build installers** workflow generates a Windows EXE, Linux DEB/RPM and a
 signed universal Android APK on pushes to `main` or a manual run. Its shared
 quality gate finishes before the three platform builds start. Download installers
-from the completed run's **Artifacts** section.
+from the completed run's **Artifacts** section. This repository is open source
+under the MIT License; dependency licenses remain in their respective third-party
+directories.
 
 Product and installer metadata use **BShare**. Android uses a permanent signing
 key stored in GitHub Secrets, with private backup kept outside the repository.
@@ -151,10 +153,9 @@ Open the generated iOS project in Xcode to configure signing before installing o
 - The protocol is documented in [PROTOCOL.md](PROTOCOL.md).
 - Reproducible benchmarks and lifecycle validation are documented in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
-## 1.0.2
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
-- Separate Transfers from the Receive screen and automatically open it for incoming files.
-- Keep Android transfers running in the background and prevent the receiver from being stopped while transfers are active.
-- Save Android downloads directly in `Download`.
-- Order the Android media picker chronologically across photos and videos.
-- Improve screen sharing, full-screen viewing, and the desktop navigation layout.
+## License
+
+BShare application code is available under the [MIT License](LICENSE). Third-party
+components retain the licenses and notices in their own directories.

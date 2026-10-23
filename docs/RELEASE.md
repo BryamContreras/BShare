@@ -3,12 +3,12 @@
 ## Automated builds
 
 The **Build installers** workflow runs on pushes to `main`, version tags such as
-`v1.0.2`, and **Actions → Build installers → Run workflow**. Pull requests run the
+`v1.0.3`, and **Actions → Build installers → Run workflow**. Pull requests run the
 same quality gate without accessing Android signing secrets or creating installers.
 A newer run for the same branch cancels the previous run.
 
 The quality job runs analysis, the Flutter regression suite, verification-tool
-unit tests, and native Linux window/control tests. Only after it passes do the
+unit tests, and native Linux window-decoration tests. Only after it passes do the
 three reusable platform workflows build in parallel. Linux compiles once and
 packages the same bundle into both formats.
 
@@ -27,6 +27,12 @@ Open a completed run and download these artifacts:
 
 Artifacts remain attached to the Actions run. This workflow does not publish a
 GitHub Release or upload to an app store.
+
+## License
+
+The BShare application is distributed under the MIT License in the repository
+root. Components under `third_party/` retain their upstream licenses and notices;
+those files are included with the installers.
 
 ## Product identity
 

@@ -58,7 +58,7 @@
     },
     "builds": {
       "debug": {
-        "pid": 205466,
+        "pid": null,
         "command": [
           "flutter",
           "--suppress-analytics",
@@ -69,7 +69,7 @@
         ],
         "startedAtUtc": "2026-10-23T20:46:51.692074+00:00",
         "ninjaJobs": 2,
-        "ninjaWrapper": "/tmp/bshare-linux-controls-ninja-3is4cjff",
+        "ninjaWrapper": "local-test-artifact-not-included",
         "homeUnchanged": true,
         "exitCode": 0,
         "completedAtUtc": "2026-10-23T20:47:58.329438+00:00",
@@ -88,7 +88,7 @@
         }
       },
       "release": {
-        "pid": 211757,
+        "pid": null,
         "command": [
           "flutter",
           "--suppress-analytics",
@@ -99,7 +99,7 @@
         ],
         "startedAtUtc": "2026-10-23T20:48:24.448052+00:00",
         "ninjaJobs": 2,
-        "ninjaWrapper": "/tmp/bshare-linux-controls-ninja-d2cdid9m",
+        "ninjaWrapper": "local-test-artifact-not-included",
         "homeUnchanged": true,
         "exitCode": 0,
         "completedAtUtc": "2026-10-23T20:49:09.574301+00:00",
@@ -152,13 +152,13 @@
   },
   "userApplication": {
     "normalCloseOfOldNativeWindow": {
-      "oldPid": 178736,
+      "oldPid": null,
       "processExitedAfterNormalWindowClose": true,
       "forceStopOrSignalsUsed": false
     },
     "reopened": {
-      "pid": 230527,
-      "executable": "/home/bryamelias/DEV/Dart/BShare/build/linux/x64/release/bundle/bshare",
+      "pid": null,
+      "executable": "local-test-artifact-not-included",
       "executableSha256": "2b19977506d46caa63af90b5a43e7f537747d7b76e778b7a25dd6c762f26cf2c",
       "aotSha256": "13eddea468b4b3df774cf80305d31c3546a4277b8a78fb7d4c7e4f3b49cd8f75",
       "startedAtUtc": "2026-10-23T20:52:59.897271+00:00",
@@ -185,7 +185,7 @@
     "qaAppsAndHelpers": "Both temporary debug/release applications exited0 and their buses/launchers/scripts/sandboxes were removed; runtime report contains separate receipts.",
     "remainingOwnedReviewHelperProcesses": [],
     "deploymentAuditBusExit": {
-      "pid": 227970,
+      "pid": null,
       "stopReason": "dbus-stop",
       "exitCode": 0,
       "completedAtUtc": "2026-10-23T20:53:38.023793+00:00"
@@ -206,5 +206,9 @@
   "limitations": [
     "Native GUI behavior tested on current KDE Wayland session; header selection on other Linux window managers is unchanged.",
     "The normal user application was reopened after the temporary QA runs. No camera, media, file transfer or Android benchmark was repeated for this native Linux-only change."
+  ],
+  "localEnvironmentIdentifiersRedacted": [
+    "absolute host paths",
+    "transient process IDs"
   ]
 }

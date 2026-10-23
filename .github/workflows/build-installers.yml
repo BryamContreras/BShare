@@ -57,8 +57,8 @@ jobs:
         run: python3 -m unittest discover -s tool -p 'test_*.py'
       - name: Native Linux shutdown ownership
         run: python3 test/native/test_linux_window_shutdown.py
-      - name: Native Linux controls with broken decoration icons
-        run: xvfb-run -a python3 test/native/test_linux_window_controls.py
+      - name: Native Linux window decorations
+        run: xvfb-run -a python3 test/native/test_linux_native_decorations.py
       - name: Windows messenger shutdown ownership
         run: python3 third_party/flutter_webrtc/test/native/test_windows_messenger_lifecycle.py
 

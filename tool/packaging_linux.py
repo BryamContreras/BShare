@@ -196,7 +196,7 @@ def make_rpm(stage: Path, work: Path, output: Path,
         f"%global __requires_exclude ^({private_names}).*$\n"
         f"Name: bshare\nVersion: {app_version}\nRelease: {build}\n"
         "Summary: Share files, screens and device cameras on your local network\n"
-        "License: Apache-2.0\nBuildArch: x86_64\n"
+        "License: MIT\nBuildArch: x86_64\n"
         f"Requires: {', '.join(RPM_DYNAMIC_DEPENDENCIES)}\n\n"
         "%description\nBShare connects nearby devices directly over your local network.\n\n"
         "%prep\n%build\n%install\n"

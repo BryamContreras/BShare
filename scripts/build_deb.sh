@@ -34,7 +34,7 @@ if [[ -z "$VERSION" ]]; then
 fi
 
 # Flutter uses + for its build number; in a Debian version it is the package
-# revision separator, so 1.0.2+3 becomes 1.0.2-3.
+# revision separator, so 1.0.3+3 becomes 1.0.3-3.
 DEB_VERSION="${VERSION/+/-}"
 RELEASE_ROOT="$project_root/dist/releases/BShare-$DEB_VERSION/linux"
 

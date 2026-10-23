@@ -17,7 +17,7 @@
     },
     "desktopNavigation": {
       "screenLabelEs": "Compartir pantalla",
-      "cameraLabelEs": "C\u00e1mara del dispositivo",
+      "cameraLabelEs": "Cámara del dispositivo",
       "sidebarWidthDp": 280,
       "layout": "The outer row stretches vertically; the sidebar fills available window height and starts navigation at the top. Its content scrolls when window height or text scale needs more space.",
       "mobile": "Screen and camera remain Home actions rather than extra mobile bottom-navigation destinations."
@@ -162,7 +162,7 @@
           "--release",
           "--no-pub"
         ],
-        "pid": 913223,
+        "pid": null,
         "startedAtUtc": "2026-10-22T23:13:54.039081+00:00",
         "completedAtUtc": "2026-10-22T23:17:00.086089+00:00",
         "durationSeconds": 186.04707413399956,
@@ -489,5 +489,9 @@
     "Previous compatibility APK runtime results are historical evidence and do not substitute for final APK installation and verification."
   ],
   "updatedAtUtc": "2026-10-22T23:50:34.586349+00:00",
-  "artifactPathNotice": "Historical revision: original build/delivery paths are mutable. Use the retained APK path for this report and its recorded hash; the current delivery APK belongs to settings-sidebar-review.json. Linux bundle paths also describe that historical validation time; the current bundle is recorded in settings-sidebar-review.json."
+  "artifactPathNotice": "Historical revision: original build/delivery paths are mutable. Use the retained APK path for this report and its recorded hash; the current delivery APK belongs to settings-sidebar-review.json. Linux bundle paths also describe that historical validation time; the current bundle is recorded in settings-sidebar-review.json.",
+  "localEnvironmentIdentifiersRedacted": [
+    "absolute host paths",
+    "transient process IDs"
+  ]
 }

@@ -728,7 +728,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/00-r0-phone.png": "55b6699e56bd7b64cd8f3e99ae624ecd661b9b821da2e7af38d1d68536db7af1"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/00-r0-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -824,7 +824,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/00-r0-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             1080,
             2316
@@ -985,7 +985,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/01-r1-phone.png": "ff7a5fbfb9e6487b4783509af4086d678249fa32cba96b156622d8e9d6cd60ec"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/01-r1-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -1081,7 +1081,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/01-r1-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             2316,
             1080
@@ -1242,7 +1242,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/02-r0-phone.png": "934ec6a9454aedab404889a605a7abb78f57d74ae729fba6519b4349f7bf1e9f"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/02-r0-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -1338,7 +1338,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/02-r0-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             1080,
             2316
@@ -1499,7 +1499,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/03-r3-phone.png": "dab4bc845373886d8084ebf8a82eb89436e102b73ca0caaa808d7b5c46228203"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/03-r3-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -1595,7 +1595,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/03-r3-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             2316,
             1080
@@ -1756,7 +1756,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/04-r0-phone.png": "7db53c612ad7fe65ab65825f646d9838332576beb0fc4cefa5302d9b3c809a54"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/04-r0-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -1852,7 +1852,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/04-r0-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             1080,
             2316
@@ -2013,7 +2013,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/05-r1-phone.png": "7aeeeb3c318cb0d06849c022a8da3a17083eda0d1876c2bd34d2c5f09fc47db8"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/05-r1-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -2109,7 +2109,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/05-r1-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             2316,
             1080
@@ -2270,7 +2270,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/06-r3-phone.png": "50091e3774d2027538519cccab2b0957541607bfac19504212ae5de4ac407289"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/06-r3-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -2366,7 +2366,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/06-r3-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             2316,
             1080
@@ -2527,7 +2527,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/07-r0-phone.png": "65282db405bd90bc815a2868b44598d36a6bc04eb8a630538da0cd68009f11c9"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/07-r0-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -2623,7 +2623,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/07-r0-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             1080,
             2316
@@ -2784,7 +2784,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/08-r1-phone.png": "141e54115d76315d6d6a46363f9a6c42ecd8a49c2685a3086eb5de4039a8bba6"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/08-r1-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -2880,7 +2880,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/08-r1-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             2316,
             1080
@@ -3041,7 +3041,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/09-r0-phone.png": "131a0d783176e5a711e26437783cf6d2d91fb856b9464039433018d58071d0d3"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/09-r0-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -3137,7 +3137,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/09-r0-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             1080,
             2316
@@ -3298,7 +3298,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/10-r3-phone.png": "873cb2f6ececdab95b726c2b39b7ed8b738f44cf1792000446d5129a93a51584"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/10-r3-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -3394,7 +3394,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/10-r3-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             2316,
             1080
@@ -3555,7 +3555,7 @@
         ".dart_tool/phone_rotation/final-v2-probe/11-r0-phone.png": "3f3c99c43b07c143956dc0c8e7022561a387effaf922f1ceb78447e5923918d6"
       },
       "result": {
-        "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/11-r0-pc.png",
+        "image": "local-test-artifact-not-included",
         "originalSize": [
           1280,
           768
@@ -3651,7 +3651,7 @@
           }
         },
         "reference": {
-          "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-v2-probe/11-r0-phone.png",
+          "image": "local-test-artifact-not-included",
           "originalSize": [
             1080,
             2316
@@ -4003,7 +4003,7 @@
     "afterCaptureStartsAndStops": 2,
     "source": ".dart_tool/phone_rotation/phone-threads-after-two-stops.txt",
     "sourceSha256": "be7ca87f1324d8352482637621b584cf962ed59569ead90ca59211c674934172",
-    "processId": 8920,
+    "processId": null,
     "survivingCaptureHelperThreads": [
       {
         "threadId": 10914,
@@ -4020,7 +4020,7 @@
     },
     "observation": "Two screen texture-helper threads remain after complete capture stop; a stopped foreground service and MediaProjection alone do not establish helper cleanup.",
     "correctedHelperThreadCheck": {
-      "processId": 8669,
+      "processId": null,
       "beforeSource": ".dart_tool/phone_rotation/new-helper-threads-before.txt",
       "beforeSha256": "cce47119df21748b0ea619a75a3521292bb356cf01325af451d9128fb70a5ff9",
       "afterStopSource": ".dart_tool/phone_rotation/new-helper-threads-after-stop.txt",
@@ -4076,7 +4076,7 @@
             ".dart_tool/phone_rotation/detach-probe/00-r0-phone.png": "5e51d1e6ba23f27d5adbe8409c50f0aa67243fc3eb08cf13fc070181ab46df53"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/00-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -4172,7 +4172,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/00-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -4334,7 +4334,7 @@
             ".dart_tool/phone_rotation/detach-probe/01-r1-phone.png": "554415c84233a9f35e48323976e060c525199cd5ad88acbc493eaffef07e49ca"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/01-r1-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -4390,7 +4390,7 @@
               "orange": null
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/01-r1-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -4519,7 +4519,7 @@
             ".dart_tool/phone_rotation/detach-probe/02-r0-phone.png": "b252667297b8625077bc3121bd3935f4a0393b7d784d36505797d6c1c38c540d"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/02-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -4615,7 +4615,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/02-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -4777,7 +4777,7 @@
             ".dart_tool/phone_rotation/detach-probe/03-r3-phone.png": "82b1caf065b683a554e69f81d6b71343cc260f0797a316716f5cdfeaa46b40e8"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/03-r3-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -4833,7 +4833,7 @@
               "orange": null
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/03-r3-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -4962,7 +4962,7 @@
             ".dart_tool/phone_rotation/detach-probe/04-r0-phone.png": "3836af21604d124cddaa4d447e188d70b2ab083c8fb72fee7ad31187c1907dc1"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/04-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -5058,7 +5058,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/04-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -5220,7 +5220,7 @@
             ".dart_tool/phone_rotation/detach-probe/05-r1-phone.png": "904b6e59fa36e896f711b359796512649f66b7fec44b5cebab118f045132d322"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/05-r1-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -5276,7 +5276,7 @@
               "orange": null
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/detach-probe/05-r1-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -5491,7 +5491,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/00-r0-phone.png": "ebe7a27254206a18351fd4fb2f01855e1ad992ad82a2b7c535457ab04e0ea298"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/00-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -5587,7 +5587,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/00-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -5748,7 +5748,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/01-r1-phone.png": "2bb5b0862f8d1f31f2e5c0c077b6021ca25d93bac2927891a400c91fd10251f2"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/01-r1-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -5844,7 +5844,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/01-r1-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -6005,7 +6005,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/02-r0-phone.png": "12a584e9a6fe0767695c2d2b1cd89516f871a94e1eeabad5aeeb22877e2e03cb"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/02-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -6101,7 +6101,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/02-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -6262,7 +6262,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/03-r3-phone.png": "0b8ed28c8eebe4cd5087193ebeca9ce06cb9fda93cd47f9b822ac96b8fbde54d"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/03-r3-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -6358,7 +6358,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/03-r3-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -6519,7 +6519,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/04-r0-phone.png": "7b86216134dc8ba716b9315a3809341b66483c3e852f02fbba667592742c92ac"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/04-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -6615,7 +6615,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/04-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -6776,7 +6776,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/05-r1-phone.png": "1b678c2ab6d06b9c6097c347aba75d36e12fd41fb2c4068718a84a789c2f8e80"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/05-r1-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -6872,7 +6872,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/05-r1-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -7033,7 +7033,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/06-r3-phone.png": "6f214034476e285abaf0e9e69a57630915e26505fe96c34f85c610b82acf8823"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/06-r3-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -7129,7 +7129,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/06-r3-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -7290,7 +7290,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/07-r0-phone.png": "97dd21c7c3b4a83384631d40e6b61539ca412428a89d88bde7011ce73fa8e690"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/07-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -7386,7 +7386,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/07-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -7547,7 +7547,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/08-r1-phone.png": "01969b1e7b153e2d05855ad693f195bd303ab26e6af96f973eb60f76562e7e50"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/08-r1-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -7643,7 +7643,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/08-r1-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -7804,7 +7804,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/09-r0-phone.png": "b09b72686f5ec1139b5111337c4f06e30000c22960d52a73b0dd6c6fbd251045"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/09-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -7900,7 +7900,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/09-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -8061,7 +8061,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/10-r3-phone.png": "7a139cc09a503030455b3ae3855862301aa5ea1a90168a25f5bd0f3f68f3b4d3"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/10-r3-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -8157,7 +8157,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/10-r3-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -8318,7 +8318,7 @@
             ".dart_tool/phone_rotation/new-helper-probe/11-r0-phone.png": "ea5a97de49d25ca6ced290ad6683d3ff63f4a52f924f2545dbc8052be90c08f6"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/11-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -8414,7 +8414,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/new-helper-probe/11-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -8614,7 +8614,7 @@
             ".dart_tool/phone_rotation/final-low-probe/00-r0-phone.png": "71bb899b03bf73fda6da14c07b204bf4662730f6a5834836b8d53f4e822ca20e"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/00-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -8710,7 +8710,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/00-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -8871,7 +8871,7 @@
             ".dart_tool/phone_rotation/final-low-probe/01-r1-phone.png": "35612187a4765ed682a0950dd4f099f4a9136517c842bfff1796fff8f2c9ad99"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/01-r1-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -8967,7 +8967,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/01-r1-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -9128,7 +9128,7 @@
             ".dart_tool/phone_rotation/final-low-probe/02-r0-phone.png": "569379039baac9c09d28d3ce02d8f9a9e3afd83ffa46fcdfb87e5690de92619a"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/02-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -9224,7 +9224,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/02-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -9385,7 +9385,7 @@
             ".dart_tool/phone_rotation/final-low-probe/03-r3-phone.png": "f4a30d293633c3848c192e444bcad9fac0f2a1f1a75b514d74adbfd8ed9a4510"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/03-r3-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -9481,7 +9481,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/03-r3-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -9642,7 +9642,7 @@
             ".dart_tool/phone_rotation/final-low-probe/04-r0-phone.png": "164095af7c9a8dcad4ee5d81725756838b10dc0820fdd7f00216623967cf462d"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/04-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -9738,7 +9738,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/04-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -9899,7 +9899,7 @@
             ".dart_tool/phone_rotation/final-low-probe/05-r1-phone.png": "e4e427555c5deb7a317ed8a1eee87c87bd9e18e0eba05cf446cd9918cd07f21c"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/05-r1-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -9995,7 +9995,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/05-r1-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -10156,7 +10156,7 @@
             ".dart_tool/phone_rotation/final-low-probe/06-r3-phone.png": "a085ef629e011ff41021f1fa7b3fd2e60b95a90dabc3cea3a5a05b3af00d1d3c"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/06-r3-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -10252,7 +10252,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/06-r3-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -10413,7 +10413,7 @@
             ".dart_tool/phone_rotation/final-low-probe/07-r0-phone.png": "872dd347c3a16ed8bfb903d1f4988771dd040862a70cfdf25d6de3ac44e3e42c"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/07-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -10509,7 +10509,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/07-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -10670,7 +10670,7 @@
             ".dart_tool/phone_rotation/final-low-probe/08-r1-phone.png": "f4275b5426db8c5132e7d7572f9a6c063ec795c4a94cc5d69521a7c744089338"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/08-r1-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -10766,7 +10766,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/08-r1-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -10927,7 +10927,7 @@
             ".dart_tool/phone_rotation/final-low-probe/09-r0-phone.png": "b01bed710bd2716d0fdab05e03427853ab79c42942c6afd6919543ff111266a9"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/09-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -11023,7 +11023,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/09-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -11184,7 +11184,7 @@
             ".dart_tool/phone_rotation/final-low-probe/10-r3-phone.png": "c27ee071f901f7b6d7a29b54c7aa314721fb06f57e8d83e24bc03ca51469a0ec"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/10-r3-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -11280,7 +11280,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/10-r3-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 2316,
                 1080
@@ -11441,7 +11441,7 @@
             ".dart_tool/phone_rotation/final-low-probe/11-r0-phone.png": "56b5306333e3d49265c90cfee3b723e02bd0f00543c79bdabb6ae99d32721295"
           },
           "result": {
-            "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/11-r0-pc.png",
+            "image": "local-test-artifact-not-included",
             "originalSize": [
               1280,
               768
@@ -11537,7 +11537,7 @@
               }
             },
             "reference": {
-              "image": "/home/bryamelias/DEV/Dart/BShare/.dart_tool/phone_rotation/final-low-probe/11-r0-phone.png",
+              "image": "local-test-artifact-not-included",
               "originalSize": [
                 1080,
                 2316
@@ -11721,7 +11721,7 @@
     "activeHelperSnapshot": {
       "source": ".dart_tool/phone_rotation/final-v2-active-threads.txt",
       "sha256": "17147d0ebcbce9664c12b3045ea9846e934bc78feb270232339a955bd3a7a991",
-      "processId": 25208,
+      "processId": null,
       "captureHelperThreads": 1
     }
   },
@@ -11783,7 +11783,7 @@
     "logSha256": "237e5e6564c0def7056086b57c078e5c037e5e143cb04a723c863e85a438aba8",
     "completed": true,
     "completedCaptureStartStopCycles": 20,
-    "stableProcessId": 25208,
+    "stableProcessId": null,
     "activeCaptureHelpersPerCycle": 1,
     "stoppedCaptureHelpersPerCycle": 0,
     "allStoppedMediaProjectionsNull": true,
@@ -12294,7 +12294,7 @@
     "lib/src/presentation/widgets/orientation_aware_video_view.dart": "872e740f4032800ca7067c604aa986adea2e52300f927632413acdc46e73fe2b"
   },
   "finalRotationCleanup": {
-    "processId": 25208,
+    "processId": null,
     "captureHelperThreadsAfterStop": 0,
     "mediaProjectionNull": true,
     "foregroundServiceAbsent": true,
@@ -12361,5 +12361,9 @@
     "finalS22GeometrySamplesPassed": 12,
     "finalS22CaptureCyclesPassed": 20,
     "physicalOsRevocationTestExecuted": false
-  }
+  },
+  "localEnvironmentIdentifiersRedacted": [
+    "absolute host paths",
+    "transient process IDs"
+  ]
 }

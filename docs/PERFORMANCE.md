@@ -1,38 +1,21 @@
 # Performance and lifecycle checks
 
-## Visible Linux window controls with KDE decoration assets (latest revision)
+## Linux window decorations (1.0.3)
 
-The active KDE GTK decoration module replaced the standard title-button icons
-with generated SVG assets containing no geometry. Breeze also made the fallback
-`GtkImage` icons transparent. The layout and running native binary were correct;
-the earlier UI sandbox had hidden the problem by replacing `XDG_CONFIG_HOME`.
+The Linux runner no longer installs a custom GTK header bar or draws its own
+minimize, maximize, restore and close buttons. It leaves `GtkWindow`'s title bar
+unset and requests normal window decorations. GTK and the active compositor or
+window manager now provide the title bar, controls, placement and theme, as they do
+for other desktop applications. This avoids differences between manually drawn
+controls and each desktop environment's style.
 
-BShare's GTK header now contains three explicit buttons whose minimize, maximize,
-restore and close glyphs are drawn with Cairo. They retain GTK keyboard focus,
-accessible names, tooltips and theme foreground colors. They avoid the theme's
-automatic `titlebutton` image rules. The existing header selection and window
-dragging behavior remain in place. Close uses `gtk_window_close`, preserving
-Flutter's awaited exit and engine disposal. Maximize state updates through the
-window-state signal; no polling or periodic sources are added.
-
-The native regression fixture renders each glyph under empty-SVG/transparent-image
-CSS, checks accessibility and maximized state, and confirms Close respects a
-rejected `delete-event`. It also checks that Cairo drawing preserves its context
-state. The existing 500-window/engine shutdown fixture passes normally and with
-Clang AddressSanitizer/UndefinedBehaviorSanitizer. No GTK theme files are changed.
-
-Both debug and release builds pass 13 runtime checks with the real user
-`XDG_CONFIG_HOME` and no `GTK_THEME` override. Real mouse clicks minimize, maximize,
-restore and close the windows, including normal, maximized and compact layouts.
-All 29 checked GTK/KDE configuration files keep their original hashes. The two
-temporary applications close with exit code 0 and their helpers are removed.
-
-The old user window was then closed normally after confirming no application
-transfer listener was active. The updated release was reopened with the real user
-preferences and left visible, with all three controls confirmed in its title bar.
-The existing 403-test Flutter result belongs to the preceding revision; Dart
-production sources are unchanged by this native-only fix. Results and cleanup are
-recorded in [linux-window-controls-review.json](performance/linux-window-controls-review.json).
+The automated Linux fixture checks that BShare requests standard decorations and
+has no custom title-bar widget. GTK renders its standard themed titlebar or
+negotiates decorations with the compositor, depending on the desktop. The
+headless CI fixture does not render that title bar, so its exact appearance still
+depends on the user's active desktop theme. Earlier Cairo-control checks and
+screenshots below refer to 1.0.2. Linux window shutdown and Windows messenger
+shutdown checks remain separate.
 
 ## Uniform settings and desktop branding (previous revision)
 
@@ -101,18 +84,16 @@ per-row slide or delayed deletion; application enumeration no longer waits for
 an artificial 120 ms delay. Video rotation stabilization remains independent of
 navigation animation.
 
-The Linux runner explicitly enables decorations, resizing and closing. Wayland
-uses a compact GTK header bar with minimize, maximize and close controls, while
-other X11 window managers keep their native title bar. The previous awaited
-engine/window cleanup remains in place. Runtime observations and the final
-artifacts are recorded in
+In the 1.0.2 implementation, Wayland used a compact custom GTK header bar while
+some X11 window managers drew their own title bars. Version 1.0.3 removes that
+split and uses the default GTK/window-manager decorations. The previous awaited
+engine/window cleanup remains in place. Earlier observations are recorded in
 [desktop-polish-review.json](performance/desktop-polish-review.json).
 
-The final Linux bundle was exercised on KDE/Wayland with the Breeze GTK theme.
-All three title-bar controls were visible; real clicks maximized, restored,
-minimized and closed the window. Closing returned exit code 0. The sidebar filled
-the available height at normal, maximized and resized window sizes. Temporary
-window-control helpers, scripts and isolated application settings were removed.
+The archived Linux bundle from 1.0.2 was exercised on KDE/Wayland with the
+Breeze GTK theme. The custom controls in that build were visible and worked under
+the recorded test conditions. Version 1.0.3 delegates window controls to GTK and
+the active desktop environment. The sidebar behavior is unchanged.
 
 ## Android compatibility and permission lifecycle (previous revision)
 
