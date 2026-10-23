@@ -1,6 +1,6 @@
-import 'dart:io';
-
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
+import 'package:bshare/src/presentation/localization/camera_localizations.dart';
+import 'package:bshare/src/presentation/navigation/app_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -24,19 +24,37 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final l10n = context.l10n;
+    final platform = Theme.of(context).platform;
+    final mobile =
+        platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+    final showSideNavigation = !mobile || width >= 900;
+    final compactSideNavigation = !mobile && width < 900;
+    final appTitle = !mobile && (title == null || title == 'BShare')
+        ? l10n.t('home')
+        : title;
     final destinations = [
       _Destination(l10n.t('home'), Icons.home_rounded, '/'),
       _Destination(l10n.t('send'), Icons.send_rounded, '/send'),
       _Destination(l10n.t('receive'), Icons.download_rounded, '/receive'),
       _Destination(l10n.t('transfers'), Icons.swap_horiz_rounded, '/transfers'),
-      if (!Platform.isAndroid)
-        _Destination(l10n.t('screen'), Icons.screen_share_rounded, '/screen'),
-      if (!Platform.isAndroid)
+      if (!mobile)
+        _Destination(
+          l10n.t('shareScreen'),
+          Icons.screen_share_rounded,
+          '/screen',
+        ),
+      if (!mobile)
+        _Destination(
+          l10n.cameraText('deviceCamera'),
+          Icons.videocam_rounded,
+          '/camera',
+        ),
+      if (!mobile)
         _Destination(l10n.t('settings'), Icons.settings_rounded, '/settings'),
     ];
     final appActions = [
       ...?actions,
-      if (Platform.isAndroid) ...[
+      if (mobile) ...[
         IconButton.filledTonal(
           tooltip: l10n.t('settings'),
           onPressed: () => context.go('/settings'),
@@ -46,7 +64,11 @@ class AppShell extends StatelessWidget {
       ],
     ];
     final current = GoRouterState.of(context).uri.path;
-    final canGoBack = ModalRoute.of(context)?.canPop == true || current != '/';
+    final navigation = AppNavigationScope.maybeOf(context);
+    final canGoBack =
+        navigation?.canGoBack == true ||
+        GoRouter.of(context).canPop() ||
+        current != '/';
     final selected = destinations
         .indexWhere(
           (item) =>
@@ -57,7 +79,7 @@ class AppShell extends StatelessWidget {
 
     final content = Scaffold(
       appBar: AppBar(
-        toolbarHeight: width >= 900 && !Platform.isAndroid ? 68 : null,
+        toolbarHeight: width >= 900 && !mobile ? 68 : null,
         leading: canGoBack
             ? IconButton(
                 tooltip: l10n.t('back'),
@@ -78,36 +100,49 @@ class AppShell extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Expanded(child: _AppTitle(title: title)),
+                        Expanded(
+                          child: _AppTitle(
+                            key: const ValueKey('app-bar-title'),
+                            title: appTitle,
+                          ),
+                        ),
                         ...appActions,
                       ],
                     ),
                   ),
                 ),
               )
-            : _AppTitle(title: title),
+            : _AppTitle(key: const ValueKey('app-bar-title'), title: appTitle),
       ),
       body: SafeArea(child: _ResponsiveContent(child: child)),
       floatingActionButton: scrollController == null
           ? null
           : _ScrollTopButton(controller: scrollController!),
-      bottomNavigationBar: width < 900
-          ? NavigationBar(
-              selectedIndex: selected,
-              onDestinationSelected: (index) =>
-                  context.go(destinations[index].path),
-              destinations: [
-                for (final item in destinations)
-                  NavigationDestination(
-                    icon: Icon(item.icon),
-                    label: item.label,
-                  ),
-              ],
+      bottomNavigationBar: !showSideNavigation
+          ? NavigationBarTheme(
+              data: NavigationBarTheme.of(context).copyWith(
+                labelTextStyle: width < 420
+                    ? const WidgetStatePropertyAll(TextStyle(fontSize: 12))
+                    : null,
+              ),
+              child: NavigationBar(
+                selectedIndex: selected,
+                onDestinationSelected: (index) =>
+                    context.go(destinations[index].path),
+                destinations: [
+                  for (final item in destinations)
+                    NavigationDestination(
+                      icon: Icon(item.icon),
+                      label: item.label,
+                      tooltip: item.label,
+                    ),
+                ],
+              ),
             )
           : null,
     );
 
-    if (width < 900) {
+    if (!showSideNavigation) {
       return _BackHandler(
         current: current,
         onBack: () => _goBack(context),
@@ -119,10 +154,14 @@ class AppShell extends StatelessWidget {
       onBack: () => _goBack(context),
       child: Scaffold(
         body: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _DesktopNavigation(
+              key: const ValueKey('desktop-navigation'),
               destinations: destinations,
               selectedIndex: selected,
+              showBrand: !mobile,
+              compact: compactSideNavigation,
               onDestinationSelected: (index) =>
                   context.go(destinations[index].path),
             ),
@@ -135,15 +174,7 @@ class AppShell extends StatelessWidget {
   }
 
   void _goBack(BuildContext context) {
-    if (backPath != null) {
-      context.go(backPath!);
-      return;
-    }
-    if (ModalRoute.of(context)?.canPop == true) {
-      context.pop();
-    } else {
-      context.go('/');
-    }
+    AppNavigationScope.back(context, fallback: backPath);
   }
 }
 
@@ -172,7 +203,7 @@ class _BackHandler extends StatelessWidget {
 }
 
 class _AppTitle extends StatelessWidget {
-  const _AppTitle({required this.title});
+  const _AppTitle({super.key, required this.title});
 
   final String? title;
 
@@ -250,18 +281,21 @@ class _ScrollTopButtonState extends State<_ScrollTopButton> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedScale(
-      scale: _visible ? 1 : 0,
-      duration: const Duration(milliseconds: 160),
-      child: FloatingActionButton.small(
-        tooltip: context.l10n.t('scrollToTop'),
-        onPressed: () => widget.controller.animateTo(
-          0,
-          duration: const Duration(milliseconds: 260),
-          curve: Curves.easeOutCubic,
-        ),
-        child: const Icon(Icons.keyboard_arrow_up_rounded),
-      ),
+    if (!_visible) return const SizedBox.shrink();
+    return FloatingActionButton.small(
+      tooltip: context.l10n.t('scrollToTop'),
+      onPressed: () {
+        if (MediaQuery.disableAnimationsOf(context)) {
+          widget.controller.jumpTo(0);
+        } else {
+          widget.controller.animateTo(
+            0,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+          );
+        }
+      },
+      child: const Icon(Icons.keyboard_arrow_up_rounded),
     );
   }
 }
@@ -274,12 +308,12 @@ class _ResponsiveContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    if (width < 900) return child;
+    final wide = width >= 900;
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1080),
+        constraints: BoxConstraints(maxWidth: wide ? 1080 : double.infinity),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: EdgeInsets.symmetric(horizontal: wide ? 32 : 0),
           child: child,
         ),
       ),
@@ -296,14 +330,19 @@ class _Destination {
 
 class _DesktopNavigation extends StatelessWidget {
   const _DesktopNavigation({
+    super.key,
     required this.destinations,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    required this.showBrand,
+    required this.compact,
   });
 
   final List<_Destination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+  final bool showBrand;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -315,26 +354,94 @@ class _DesktopNavigation extends StatelessWidget {
     return Material(
       color: background,
       child: SizedBox(
-        width: 280,
+        width: compact ? 80 : 280,
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            child: Column(
-              children: [
-                for (var index = 0; index < destinations.length; index++) ...[
-                  _DesktopNavigationItem(
-                    destination: destinations[index],
-                    selected: index == selectedIndex,
-                    onTap: () => onDestinationSelected(index),
-                  ),
-                  if (index != destinations.length - 1)
-                    const SizedBox(height: 6),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 8 : 12,
+              vertical: 16,
+            ),
+            child: SingleChildScrollView(
+              primary: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (showBrand) ...[
+                    _NavigationBrand(
+                      key: const ValueKey('desktop-navigation-brand'),
+                      compact: compact,
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  for (var index = 0; index < destinations.length; index++) ...[
+                    _DesktopNavigationItem(
+                      destination: destinations[index],
+                      selected: index == selectedIndex,
+                      onTap: () => onDestinationSelected(index),
+                      compact: compact,
+                    ),
+                    if (index != destinations.length - 1)
+                      const SizedBox(height: 6),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NavigationBrand extends StatelessWidget {
+  const _NavigationBrand({super.key, required this.compact});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final logo = ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.asset(
+        'assets/brand/app_icon.png',
+        width: 36,
+        height: 36,
+        fit: BoxFit.cover,
+        excludeFromSemantics: true,
+      ),
+    );
+    final label = Text(
+      'BShare',
+      maxLines: 1,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+        fontSize: compact ? 14 : 22,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: compact ? 0 : 16, vertical: 4),
+      child: compact
+          ? Column(
+              children: [
+                logo,
+                const SizedBox(height: 8),
+                FittedBox(fit: BoxFit.scaleDown, child: label),
+              ],
+            )
+          : Row(
+              children: [
+                logo,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: FittedBox(fit: BoxFit.scaleDown, child: label),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -344,11 +451,13 @@ class _DesktopNavigationItem extends StatelessWidget {
     required this.destination,
     required this.selected,
     required this.onTap,
+    required this.compact,
   });
 
   final _Destination destination;
   final bool selected;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -357,7 +466,7 @@ class _DesktopNavigationItem extends StatelessWidget {
         ? scheme.onPrimaryContainer
         : scheme.onSurfaceVariant;
 
-    return Semantics(
+    final item = Semantics(
       button: true,
       selected: selected,
       label: destination.label,
@@ -367,32 +476,38 @@ class _DesktopNavigationItem extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: onTap,
-          child: SizedBox(
-            height: 54,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 54),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Icon(destination.icon, size: 26, color: foreground),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      destination.label,
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 16,
-                        fontWeight: selected
-                            ? FontWeight.w800
-                            : FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 0 : 16,
+                vertical: 12,
               ),
+              child: compact
+                  ? Icon(destination.icon, size: 26, color: foreground)
+                  : Row(
+                      children: [
+                        Icon(destination.icon, size: 26, color: foreground),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            destination.label,
+                            style: TextStyle(
+                              color: foreground,
+                              fontSize: 16,
+                              fontWeight: selected
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
         ),
       ),
     );
+    return compact ? Tooltip(message: destination.label, child: item) : item;
   }
 }

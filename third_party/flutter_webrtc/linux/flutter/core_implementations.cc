@@ -15,6 +15,9 @@
 
 #include <cassert>
 #include <iostream>
+#include <memory>
+#include <mutex>
+#include <utility>
 #include <variant>
 
 #include "binary_messenger_impl.h"
@@ -77,6 +80,26 @@ namespace flutter {
 // ========== binary_messenger_impl.h ==========
 
 namespace {
+// A BinaryReply can be copied or dropped without being invoked. Share ownership
+// of its response handle so both paths release the reference and only one copy
+// can respond, including when replies arrive on different threads.
+class BinaryResponseState {
+ public:
+  explicit BinaryResponseState(FlBinaryMessengerResponseHandle* handle)
+      : handle_(FL_BINARY_MESSENGER_RESPONSE_HANDLE(g_object_ref(handle))) {}
+
+  ~BinaryResponseState() { g_clear_object(&handle_); }
+
+  FlBinaryMessengerResponseHandle* TakeHandle() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return std::exchange(handle_, nullptr);
+  }
+
+ private:
+  std::mutex mutex_;
+  FlBinaryMessengerResponseHandle* handle_;
+};
+
 // Passes |message| to |user_data|, which must be a BinaryMessageHandler, along
 // with a BinaryReply that will send a response on |message|'s response handle.
 //
@@ -88,10 +111,16 @@ static void ForwardToHandler(FlBinaryMessenger* messenger,
                              GBytes* message,
                              FlBinaryMessengerResponseHandle* response_handle,
                              gpointer user_data) {
-  auto handler = g_object_ref(response_handle);
-  BinaryReply reply_handler = [messenger, handler](const uint8_t* reply,
-                                                   size_t reply_size) mutable {
-    if (!handler) {
+  if (user_data == nullptr) {
+    std::cerr << "Error: user_data is null" << std::endl;
+    return;
+  }
+
+  auto state = std::make_shared<BinaryResponseState>(response_handle);
+  BinaryReply reply_handler = [messenger, state](const uint8_t* reply,
+                                                size_t reply_size) {
+    g_autoptr(FlBinaryMessengerResponseHandle) handle = state->TakeHandle();
+    if (!handle) {
       std::cerr << "Error: Response can be set only once. Ignoring "
                    "duplicate response."
                 << std::endl;
@@ -99,21 +128,16 @@ static void ForwardToHandler(FlBinaryMessenger* messenger,
     }
 
     g_autoptr(GBytes) response = g_bytes_new(reply, reply_size);
-    GError* error = nullptr;
+    g_autoptr(GError) error = nullptr;
     if (!fl_binary_messenger_send_response(
-            messenger, (FlBinaryMessengerResponseHandle*)handler, response,
-            &error)) {
-      g_warning("Failed to send binary response: %s", error->message);
+            messenger, handle, response, &error)) {
+      g_warning("Failed to send binary response: %s",
+                error ? error->message : "unknown error");
     }
   };
 
   const BinaryMessageHandler& message_handler =
       *static_cast<BinaryMessageHandler*>(user_data);
-
-  if (user_data == nullptr) {
-    std::cerr << "Error: user_data is null" << std::endl;
-    return;
-  }
 
   message_handler(
       static_cast<const uint8_t*>(g_bytes_get_data(message, nullptr)),

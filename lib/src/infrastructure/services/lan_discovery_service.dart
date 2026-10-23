@@ -9,6 +9,7 @@ class LanDiscoveryService {
   LanDiscoveryService(this._logger);
 
   static const int multicastPort = 53318;
+  static const announceInterval = Duration(seconds: 3);
   static final InternetAddress multicastAddress = InternetAddress(
     '224.0.0.251',
   );
@@ -16,66 +17,101 @@ class LanDiscoveryService {
 
   final AppLogger _logger;
   RawDatagramSocket? _socket;
+  StreamSubscription<RawSocketEvent>? _subscription;
   Timer? _announceTimer;
+  Future<void> _lifecycle = Future<void>.value();
   final _devices = StreamController<DeviceInfo>.broadcast();
+  bool _disposed = false;
 
   Stream<DeviceInfo> get devices => _devices.stream;
 
-  Future<void> start(DeviceInfo self, {required bool advertise}) async {
-    await stop();
-    _socket = await RawDatagramSocket.bind(
+  Future<void> _serialize(Future<void> Function() action) {
+    final operation = _lifecycle.then((_) => action());
+    _lifecycle = operation.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stack) {},
+    );
+    return operation;
+  }
+
+  Future<void> start(
+    DeviceInfo self, {
+    required bool advertise,
+  }) => _serialize(() async {
+    if (_disposed) throw StateError('Discovery service is disposed');
+    await _stop();
+    final socket = await RawDatagramSocket.bind(
       InternetAddress.anyIPv4,
       multicastPort,
       reuseAddress: true,
-      reusePort: true,
+      reusePort: !Platform.isAndroid,
     );
+    _socket = socket;
     try {
-      _socket!.joinMulticast(multicastAddress);
+      socket.joinMulticast(multicastAddress);
     } catch (error) {
       _logger.warn('Multicast join unavailable: $error');
     }
-    _socket!.listen((event) {
-      if (event != RawSocketEvent.read) return;
-      final datagram = _socket!.receive();
-      if (datagram == null) return;
-      try {
-        final payload = utf8.decode(datagram.data);
-        final json = jsonDecode(payload) as Map<String, dynamic>;
-        if (json['service'] != serviceType || json['id'] == self.id) return;
-        final device = DeviceInfo.fromJson({
-          ...json,
-          'lastSeen': DateTime.now().toIso8601String(),
-        });
-        _devices.add(device);
-      } catch (error) {
-        _logger.warn('Ignoring invalid discovery packet: $error');
-      }
-    });
-    if (advertise) {
-      _announce(self);
-      _announceTimer = Timer.periodic(
-        const Duration(seconds: 3),
-        (_) => _announce(self),
-      );
-    }
-  }
-
-  void _announce(DeviceInfo self) {
-    final data = utf8.encode(
-      jsonEncode({...self.toJson(), 'service': serviceType}),
+    _subscription = socket.listen(
+      (event) {
+        if (event != RawSocketEvent.read || _disposed) return;
+        // Drain every queued datagram per notification without referring to a
+        // socket that a later start operation may have replaced.
+        Datagram? datagram;
+        while ((datagram = socket.receive()) != null) {
+          try {
+            final json =
+                jsonDecode(utf8.decode(datagram!.data)) as Map<String, dynamic>;
+            if (json['service'] != serviceType || json['id'] == self.id) {
+              continue;
+            }
+            final device = DeviceInfo.fromJson({
+              ...json,
+              'lastSeen': DateTime.now().toIso8601String(),
+            });
+            _devices.add(device);
+          } catch (error) {
+            _logger.warn('Ignoring invalid discovery packet: $error');
+          }
+        }
+      },
+      onError: (Object error) {
+        _logger.warn('Discovery socket failed: $error');
+      },
     );
-    _socket?.send(data, multicastAddress, multicastPort);
-  }
+    if (advertise) {
+      final data = utf8.encode(
+        jsonEncode({...self.toJson(), 'service': serviceType}),
+      );
+      void announce() {
+        try {
+          socket.send(data, multicastAddress, multicastPort);
+        } catch (error) {
+          _logger.warn('Discovery announcement failed: $error');
+        }
+      }
 
-  Future<void> stop() async {
+      announce();
+      _announceTimer = Timer.periodic(announceInterval, (_) => announce());
+    }
+  });
+
+  Future<void> _stop() async {
     _announceTimer?.cancel();
     _announceTimer = null;
+    final subscription = _subscription;
+    _subscription = null;
     _socket?.close();
     _socket = null;
+    await subscription?.cancel();
   }
 
-  Future<void> dispose() async {
-    await stop();
+  Future<void> stop() => _serialize(_stop);
+
+  Future<void> dispose() => _serialize(() async {
+    if (_disposed) return;
+    _disposed = true;
+    await _stop();
     await _devices.close();
-  }
+  });
 }

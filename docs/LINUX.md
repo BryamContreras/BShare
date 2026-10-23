@@ -117,11 +117,12 @@ network-manager, wpasupplicant, dnsmasq-base, polkitd
 
 ## Debian / Ubuntu package
 
-The release package targets 64-bit PCs (`amd64`) running Debian 13, Ubuntu
-24.04 or newer, and derivatives based on those versions. Its runtime
-dependencies cover GTK 3, Flutter/WebRTC graphics support, NetworkManager,
-Wi-Fi management, DHCP support, and polkit. It accepts both the current `t64`
-GTK/GLib package names used by Ubuntu and the non-`t64` names used by Debian.
+The release package targets 64-bit PCs (`amd64`). Its minimum library versions
+are calculated from the actual compiled bundle. CI builds on Ubuntu 22.04 and
+tests installation there; bundles built on newer local systems may need newer
+distributions. Runtime dependencies cover GTK 3, Flutter/WebRTC graphics support,
+audio, NetworkManager, Wi-Fi management, DHCP support, and polkit. Package names
+are resolved by the build distribution's package metadata.
 
 Build a distributable package with:
 
@@ -146,6 +147,10 @@ For the complete Linux release (bundle, `.tar.gz`, and `.deb`), run:
 ```bash
 bash scripts/build_releases.sh --linux-only
 ```
+
+GitHub Actions also generates an RPM and checks it on Fedora 44. To package both
+formats from an existing release bundle, use `python3 tool/packaging_linux.py`.
+See [RELEASE.md](RELEASE.md) for required packaging tools and Actions artifacts.
 
 WSL2 is not enough for hotspot testing because it usually exposes only a
 virtual Ethernet interface, not the physical Wi-Fi adapter.

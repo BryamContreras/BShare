@@ -3,10 +3,10 @@ Version: @VERSION@
 Section: net
 Priority: optional
 Architecture: amd64
-Maintainer: Bryam Contreras <briamjoseelias@gmail.com>
-Homepage: https://github.com/BryamContreras/BShare
-Depends: libc6 (>= 2.38), libstdc++6 (>= 13), libgcc-s1, libgtk-3-0t64 | libgtk-3-0 (>= 3.24), libglib2.0-0t64 | libglib2.0-0 (>= 2.56), libgbm1, libdrm2, network-manager, wpasupplicant, dnsmasq-base, polkitd | policykit-1
-Description: Share files and screens over a local network
+Maintainer: BShare maintainers <maintainers@bshare.invalid>
+Installed-Size: @INSTALLED_SIZE@
+Depends: @DEPENDS@
+Description: Share files, screens and device cameras over a local network
  BShare discovers nearby devices on the same LAN or Wi-Fi network and transfers
  files directly between them. It also supports local screen sharing.
  .

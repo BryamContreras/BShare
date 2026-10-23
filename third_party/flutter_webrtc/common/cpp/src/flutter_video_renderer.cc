@@ -21,41 +21,54 @@ void FlutterVideoRenderer::initialize(
 const FlutterDesktopPixelBuffer* FlutterVideoRenderer::CopyPixelBuffer(
     size_t width,
     size_t height) const {
-  mutex_.lock();
+  std::lock_guard<std::mutex> lock(mutex_);
   if (pixel_buffer_.get() && frame_.get()) {
-    if (pixel_buffer_->width != frame_->width() ||
-        pixel_buffer_->height != frame_->height()) {
-      size_t buffer_size =
-          (size_t(frame_->width()) * size_t(frame_->height())) * (32 >> 3);
+    // ConvertToARGB already applies frame rotation. Its destination must have
+    // the rotated dimensions, otherwise a quarter turn stretches the image.
+    const bool quarter_turn = frame_->rotation() == RTCVideoFrame::kVideoRotation_90 ||
+                              frame_->rotation() == RTCVideoFrame::kVideoRotation_270;
+    const size_t output_width = quarter_turn ? frame_->height() : frame_->width();
+    const size_t output_height = quarter_turn ? frame_->width() : frame_->height();
+    if (pixel_buffer_->width != output_width ||
+        pixel_buffer_->height != output_height) {
+      size_t buffer_size = output_width * output_height * (32 >> 3);
       rgb_buffer_.reset(new uint8_t[buffer_size]);
-      pixel_buffer_->width = frame_->width();
-      pixel_buffer_->height = frame_->height();
+      pixel_buffer_->width = output_width;
+      pixel_buffer_->height = output_height;
+      frame_dirty_ = true;
     }
 
-    frame_->ConvertToARGB(RTCVideoFrame::Type::kABGR, rgb_buffer_.get(), 0,
-                          static_cast<int>(pixel_buffer_->width),
-                          static_cast<int>(pixel_buffer_->height));
+    // Flutter may request this texture more than once between video frames.
+    if (frame_dirty_) {
+      frame_->ConvertToARGB(RTCVideoFrame::Type::kABGR, rgb_buffer_.get(), 0,
+                            static_cast<int>(pixel_buffer_->width),
+                            static_cast<int>(pixel_buffer_->height));
+      frame_dirty_ = false;
+    }
 
     pixel_buffer_->buffer = rgb_buffer_.get();
-    mutex_.unlock();
     return pixel_buffer_.get();
   }
-  mutex_.unlock();
   return nullptr;
 }
 
 void FlutterVideoRenderer::OnFrame(scoped_refptr<RTCVideoFrame> frame) {
-  if (!first_frame_rendered) {
+  if (!frame || frame->width() <= 0 || frame->height() <= 0) {
+    return;
+  }
+  std::unique_lock<std::mutex> lock(mutex_);
+  const bool first_frame = !first_frame_rendered;
+  if (first_frame) {
     EncodableMap params;
     params[EncodableValue("event")] = "didFirstFrameRendered";
     params[EncodableValue("id")] = EncodableValue(texture_id_);
     event_channel_->Success(EncodableValue(params));
-    pixel_buffer_.reset(new FlutterDesktopPixelBuffer());
-    pixel_buffer_->width = 0;
-    pixel_buffer_->height = 0;
+    if (!pixel_buffer_) {
+      pixel_buffer_.reset(new FlutterDesktopPixelBuffer());
+    }
     first_frame_rendered = true;
   }
-  if (rotation_ != frame->rotation()) {
+  if (first_frame || rotation_ != frame->rotation()) {
     EncodableMap params;
     params[EncodableValue("event")] = "didTextureChangeRotation";
     params[EncodableValue("id")] = EncodableValue(texture_id_);
@@ -75,9 +88,9 @@ void FlutterVideoRenderer::OnFrame(scoped_refptr<RTCVideoFrame> frame) {
 
     last_frame_size_ = {(size_t)frame->width(), (size_t)frame->height()};
   }
-  mutex_.lock();
   frame_ = frame;
-  mutex_.unlock();
+  frame_dirty_ = true;
+  lock.unlock();
   registrar_->MarkTextureFrameAvailable(texture_id_);
 }
 
@@ -86,8 +99,14 @@ void FlutterVideoRenderer::SetVideoTrack(scoped_refptr<RTCVideoTrack> track) {
     if (track_)
       track_->RemoveRenderer(this);
     track_ = track;
-    last_frame_size_ = {0, 0};
-    first_frame_rendered = false;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      last_frame_size_ = {0, 0};
+      rotation_ = RTCVideoFrame::kVideoRotation_0;
+      first_frame_rendered = false;
+      frame_ = nullptr;
+      frame_dirty_ = false;
+    }
     if (track_)
       track_->AddRenderer(this);
   }

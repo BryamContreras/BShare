@@ -18,6 +18,10 @@
 	<string>BShare</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>BShare needs local network access to discover nearby devices and transfer files directly.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>BShare uses the camera to scan connection QR codes and share live camera video.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BShare uses the microphone when you enable audio during a live camera broadcast.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_bshare._tcp</string>

@@ -18,17 +18,31 @@ class FileTransferClient {
   static const _maximumConcurrentTransfers = 3;
 
   final AppLogger _logger;
+  final Set<Dio> _clients = {};
+  final Set<TransferControl> _activeControls = {};
+  bool _disposed = false;
 
   Dio _client({Duration receiveTimeout = const Duration(hours: 12)}) {
-    return Dio(
+    final client = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 8),
         receiveTimeout: receiveTimeout,
       ),
     );
+    _clients.add(client);
+    return client;
   }
 
-  void dispose() {}
+  void dispose() {
+    _disposed = true;
+    for (final control in _activeControls.toList()) {
+      control.cancel();
+    }
+    for (final client in _clients.toList()) {
+      client.close(force: true);
+    }
+    _clients.clear();
+  }
 
   Stream<SendProgress> sendFiles({
     required DeviceInfo target,
@@ -37,9 +51,30 @@ class FileTransferClient {
     required String senderName,
     required Map<String, TransferControl> controls,
   }) {
-    final controller = StreamController<SendProgress>();
-    unawaited(
-      _sendFiles(controller, target, files, senderId, senderName, controls),
+    final uniqueFiles = {
+      for (final file in files) file.path: file,
+    }.values.toList();
+    final transferControls = {
+      for (final file in uniqueFiles)
+        file.path: controls[file.path] ?? TransferControl(),
+    };
+    late final StreamController<SendProgress> controller;
+    controller = StreamController<SendProgress>(
+      onListen: () => unawaited(
+        _sendFiles(
+          controller,
+          target,
+          uniqueFiles,
+          senderId,
+          senderName,
+          transferControls,
+        ),
+      ),
+      onCancel: () {
+        for (final control in transferControls.values) {
+          control.cancel();
+        }
+      },
     );
     return controller.stream;
   }
@@ -54,19 +89,22 @@ class FileTransferClient {
     String? controlHost,
     int? controlPort,
   }) {
-    final controller = StreamController<SendProgress>();
-    unawaited(
-      _sendOne(
-        controller,
-        target,
-        file,
-        transferId,
-        senderId,
-        senderName,
-        control,
-        controlHost,
-        controlPort,
-      ).whenComplete(controller.close),
+    late final StreamController<SendProgress> controller;
+    controller = StreamController<SendProgress>(
+      onListen: () => unawaited(
+        _sendOne(
+          controller,
+          target,
+          file,
+          transferId,
+          senderId,
+          senderName,
+          control,
+          controlHost,
+          controlPort,
+        ).whenComplete(() => unawaited(controller.close())),
+      ),
+      onCancel: control.cancel,
     );
     return controller.stream;
   }
@@ -84,6 +122,10 @@ class FileTransferClient {
       return;
     }
 
+    if (_disposed) {
+      await controller.close();
+      return;
+    }
     final transferIds = {
       for (var index = 0; index < files.length; index++)
         files[index].path: _transferId(senderId, files[index], index),
@@ -111,40 +153,31 @@ class FileTransferClient {
     }
 
     var nextIndex = 0;
-    var active = 0;
-    final done = Completer<void>();
-
-    void pump() {
-      while (active < _maximumConcurrentTransfers && nextIndex < files.length) {
+    Future<void> worker() async {
+      while (nextIndex < files.length) {
         final index = nextIndex++;
         final file = files[index];
-        active++;
-        unawaited(
-          _sendOne(
-            controller,
-            target,
-            file,
-            transferIds[file.path]!,
-            senderId,
-            senderName,
-            controls[file.path]!,
-            null,
-            null,
-          ).whenComplete(() {
-            active--;
-            if (nextIndex >= files.length && active == 0) {
-              done.complete();
-            } else {
-              pump();
-            }
-          }),
+        await _sendOne(
+          controller,
+          target,
+          file,
+          transferIds[file.path]!,
+          senderId,
+          senderName,
+          controls[file.path]!,
+          null,
+          null,
         );
       }
     }
 
-    pump();
-    await done.future;
-    await controller.close();
+    try {
+      await Future.wait(
+        List.generate(_maximumConcurrentTransfers, (_) => worker()),
+      );
+    } finally {
+      await controller.close();
+    }
   }
 
   Future<void> _sendOne(
@@ -160,11 +193,13 @@ class FileTransferClient {
   ) async {
     final path = selected.path;
     final file = File(path);
-    final total = await file.length();
+    var total = selected.size;
     final speedMeter = TransferSpeedMeter()..record(0);
     var lastSent = 0;
+    final progressClock = Stopwatch()..start();
+    var lastProgressAt = 0;
     final cancelToken = CancelToken();
-    if (control.isCancelled) {
+    if (_disposed || control.isCancelled) {
       controller.add(
         SendProgress(
           id: path,
@@ -177,20 +212,28 @@ class FileTransferClient {
       );
       return;
     }
-    controller.add(
-      SendProgress(
-        id: path,
-        fileName: selected.name,
-        sentBytes: 0,
-        totalBytes: total,
-        bytesPerSecond: 0,
-        status: control.isPaused
-            ? TransferProgressStatus.paused
-            : TransferProgressStatus.sending,
-      ),
+    final detachCancellation = control.onCancel(
+      () => cancelToken.cancel('Transfer cancelled'),
     );
-    final dio = _client();
+    _activeControls.add(control);
+    Dio? dio;
     try {
+      total = await file.length();
+      await control.waitIfPaused();
+      if (_disposed) throw const TransferCancelledException();
+      controller.add(
+        SendProgress(
+          id: path,
+          fileName: selected.name,
+          sentBytes: 0,
+          totalBytes: total,
+          bytesPerSecond: 0,
+          status: control.isPaused
+              ? TransferProgressStatus.paused
+              : TransferProgressStatus.sending,
+        ),
+      );
+      dio = _client();
       final headers = <String, Object>{
         Headers.contentLengthHeader: total,
         'x-bshare-file-name': Uri.encodeComponent(
@@ -218,6 +261,9 @@ class FileTransferClient {
         cancelToken: cancelToken,
         onSendProgress: (sent, _) {
           lastSent = sent;
+          final elapsed = progressClock.elapsedMilliseconds;
+          if (elapsed - lastProgressAt < 100 && !control.isPaused) return;
+          lastProgressAt = elapsed;
           controller.add(
             SendProgress(
               id: path,
@@ -288,7 +334,10 @@ class FileTransferClient {
         ),
       );
     } finally {
-      dio.close(force: true);
+      detachCancellation();
+      _activeControls.remove(control);
+      dio?.close(force: true);
+      _clients.remove(dio);
     }
   }
 
@@ -296,12 +345,7 @@ class FileTransferClient {
     if (error is! DioException) return false;
     if (error.response?.statusCode == 499) return true;
     final data = error.response?.data?.toString().toLowerCase() ?? '';
-    final message = error.message?.toLowerCase() ?? '';
-    return data.contains('cancelled') ||
-        message.contains('cancelled') ||
-        message.contains('connection reset') ||
-        message.contains('broken pipe') ||
-        message.contains('connection closed');
+    return data.contains('cancelled');
   }
 
   String _failureMessage(Object error) {
@@ -329,15 +373,16 @@ class FileTransferClient {
     try {
       const chunkSize = 256 * 1024;
       while (!cancelToken.isCancelled) {
-        if (control.isPaused) {
-          await control.waitIfPaused();
-          continue;
-        }
-        if (control.isCancelled) break;
+        await control.waitIfPaused();
         final chunk = await handle.read(chunkSize);
         if (chunk.isEmpty) break;
         yield chunk;
       }
+    } on TransferCancelledException {
+      // Dio cancels its body subscription immediately when the token fires.
+      // A paused reader can resume after that cancellation; do not forward a
+      // late stream error to an already detached HTTP subscription.
+      if (!cancelToken.isCancelled) cancelToken.cancel('Transfer cancelled');
     } finally {
       await handle.close();
     }
@@ -352,6 +397,7 @@ class FileTransferClient {
     String? controlHost,
     int? controlPort,
   }) async {
+    if (_disposed) return;
     final dio = _client(receiveTimeout: const Duration(seconds: 8));
     try {
       final data = <String, Object?>{
@@ -377,6 +423,7 @@ class FileTransferClient {
       _logger.warn('Receiver does not support queue preview: $error');
     } finally {
       dio.close(force: true);
+      _clients.remove(dio);
     }
   }
 

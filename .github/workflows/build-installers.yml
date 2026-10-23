@@ -1,0 +1,121 @@
+name: Build installers
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bshare-installers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Analyze and test
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      build-number: ${{ steps.metadata.outputs.build-number }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.44.8'
+          channel: stable
+          cache: true
+      - name: Resolve shared installer version
+        id: metadata
+        env:
+          RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: >-
+          python3 tool/ci_metadata.py
+          --run-number "$GITHUB_RUN_NUMBER"
+          --github-output "$GITHUB_OUTPUT"
+          --tag "$RELEASE_TAG"
+      - name: Install native test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y g++ libgtk-3-dev pkg-config xvfb
+      - name: Resolve locked dependencies
+        run: flutter pub get --enforce-lockfile
+      - name: Install verification tool dependencies
+        run: python3 -m pip install --requirement tool/requirements-test.txt
+      - name: Analyze Dart
+        run: dart analyze --fatal-infos
+      - name: Flutter regression suite
+        run: flutter --suppress-analytics test --no-pub
+      - name: Packaging and media verification tools
+        run: python3 -m unittest discover -s tool -p 'test_*.py'
+      - name: Native Linux shutdown ownership
+        run: python3 test/native/test_linux_window_shutdown.py
+      - name: Native Linux controls with broken decoration icons
+        run: xvfb-run -a python3 test/native/test_linux_window_controls.py
+
+  windows:
+    name: Windows installer
+    needs: quality
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/build-windows.yml
+    with:
+      flutter-version: '3.44.8'
+      version: ${{ needs.quality.outputs.version }}
+      build-number: ${{ needs.quality.outputs.build-number }}
+
+  linux:
+    name: Linux DEB and RPM
+    needs: quality
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/build-linux.yml
+    with:
+      flutter-version: '3.44.8'
+      version: ${{ needs.quality.outputs.version }}
+      build-number: ${{ needs.quality.outputs.build-number }}
+
+  android:
+    name: Android signed APK
+    needs: quality
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/build-android.yml
+    with:
+      flutter-version: '3.44.8'
+      version: ${{ needs.quality.outputs.version }}
+      build-number: ${{ needs.quality.outputs.build-number }}
+      require-signing: true
+    secrets:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+  result:
+    name: Installer results
+    needs: [quality, windows, linux, android]
+    if: always() && github.event_name != 'pull_request'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every installer to finish successfully
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          jobs = json.loads(os.environ['JOB_RESULTS'])
+          lines = ['# BShare installers', '', '| Job | Result |', '| --- | --- |']
+          lines += [f"| {name} | {job['result']} |" for name, job in jobs.items()]
+          lines += ['', 'Download the Windows EXE, Linux DEB/RPM and signed Android APK from this run’s artifacts.']
+          Path(os.environ['GITHUB_STEP_SUMMARY']).write_text('\n'.join(lines) + '\n')
+          failed = [name for name, job in jobs.items() if job['result'] != 'success']
+          if failed:
+              raise SystemExit('Incomplete or failed jobs: ' + ', '.join(failed))
+          PY

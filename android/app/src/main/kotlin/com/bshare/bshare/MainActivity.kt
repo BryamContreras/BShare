@@ -1,5 +1,6 @@
 package com.bshare.bshare
 
+import android.Manifest
 import android.content.Intent
 import android.content.ActivityNotFoundException
 import android.net.Uri
@@ -24,6 +25,7 @@ import android.graphics.drawable.Drawable
 import android.content.pm.PackageManager
 import android.util.Base64
 import android.view.WindowManager
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
@@ -31,6 +33,8 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.NetworkInterface
+import java.net.Inet4Address
 import java.util.UUID
 import kotlin.concurrent.thread
 
@@ -42,6 +46,9 @@ class MainActivity : FlutterActivity() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var shareChannel: MethodChannel? = null
     private val pendingSharedFiles = mutableListOf<Map<String, Any>>()
+    private var viewerKeepsScreenOn = false
+    private var cameraKeepsScreenOn = false
+    private var cameraOriginalBrightness: Float? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -61,6 +68,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bshare/device").setMethodCallHandler { call, result ->
             when (call.method) {
                 "getDeviceName" -> result.success(deviceName())
+                "getAndroidSdkInt" -> result.success(Build.VERSION.SDK_INT)
                 else -> result.notImplemented()
             }
         }
@@ -82,11 +90,8 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bshare/screen").setMethodCallHandler { call, result ->
             when (call.method) {
                 "setKeepScreenOn" -> {
-                    if (call.argument<Boolean>("enabled") == true) {
-                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                    } else {
-                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                    }
+                    viewerKeepsScreenOn = call.argument<Boolean>("enabled") == true
+                    updateKeepScreenOn()
                     result.success(null)
                 }
                 else -> result.notImplemented()
@@ -103,6 +108,64 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 else -> result.notImplemented()
+            }
+        }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bshare/camera").setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "startForegroundService" -> {
+                        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                            throw SecurityException("Camera permission must be granted before sharing")
+                        }
+                        CameraShareForegroundService.start(this) { error ->
+                            if (error == null) result.success(null)
+                            else result.error("camera_platform_error", error.message, null)
+                        }
+                    }
+                    "stopForegroundService" -> {
+                        CameraShareForegroundService.stop(this)
+                        result.success(null)
+                    }
+                    "setMicrophoneActive" -> {
+                        val active = call.argument<Boolean>("active")
+                            ?: throw IllegalArgumentException("Microphone active state is required")
+                        if (active) {
+                            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
+                                ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                                throw SecurityException("Camera and microphone permissions must be granted before sharing audio")
+                            }
+                        }
+                        CameraShareForegroundService.setMicrophoneActive(active)
+                        result.success(null)
+                    }
+                    "setDisplayState" -> {
+                        val awake = call.argument<Boolean>("awake") == true
+                        val dimmed = awake && call.argument<Boolean>("dimmed") == true
+                        val attributes = window.attributes
+                        if (awake && cameraOriginalBrightness == null) {
+                            cameraOriginalBrightness = attributes.screenBrightness
+                        }
+                        cameraKeepsScreenOn = awake
+                        updateKeepScreenOn()
+                        attributes.screenBrightness = if (dimmed) 0.01f
+                            else cameraOriginalBrightness ?: attributes.screenBrightness
+                        window.attributes = attributes
+                        if (!awake) cameraOriginalBrightness = null
+                        result.success(null)
+                    }
+                    "listUsbAddresses" -> result.success(usbNetworkAddresses())
+                    "openUsbTetheringSettings" -> {
+                        try {
+                            startActivity(Intent("android.settings.TETHER_SETTINGS"))
+                        } catch (_: ActivityNotFoundException) {
+                            startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+                        }
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            } catch (error: Exception) {
+                result.error("camera_platform_error", error.message, null)
             }
         }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bshare/direct_network").setMethodCallHandler { call, result ->
@@ -141,6 +204,45 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun updateKeepScreenOn() {
+        if (viewerKeepsScreenOn || cameraKeepsScreenOn) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    private fun usbNetworkAddresses(): List<Map<String, Any>> {
+        val names = mutableSetOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val connectivity = getSystemService(ConnectivityManager::class.java)
+            for (network in connectivity.allNetworks) {
+                val capabilities = connectivity.getNetworkCapabilities(network) ?: continue
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_USB)) {
+                    connectivity.getLinkProperties(network)?.interfaceName?.let { names.add(it) }
+                }
+            }
+        }
+        val addresses = mutableListOf<Map<String, Any>>()
+        val interfaces = NetworkInterface.getNetworkInterfaces() ?: return addresses
+        for (iface in interfaces) {
+            val name = iface.name.lowercase()
+            val usb = name.startsWith("rndis") || name.startsWith("usb") ||
+                name.startsWith("ncm") || names.contains(iface.name)
+            if (!usb || !iface.isUp || iface.isLoopback) continue
+            for (address in iface.interfaceAddresses) {
+                val ip = address.address
+                if (ip !is Inet4Address || ip.isLoopbackAddress || ip.isAnyLocalAddress) continue
+                addresses.add(mapOf(
+                    "ip" to (ip.hostAddress ?: continue),
+                    "prefixLength" to address.networkPrefixLength.toInt(),
+                    "interfaceName" to iface.name,
+                ))
+            }
+        }
+        return addresses
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -148,6 +250,21 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        // The default Activity owns its FlutterEngine. Engine destruction can
+        // interrupt Dart's async detached cleanup after WebRTC releases capture.
+        // Close native execution owners here too; ordinary onStop/background
+        // does not end an intentional camera or screen-sharing session.
+        CameraShareForegroundService.stop(this)
+        ScreenShareForegroundService.stop(this)
+        cameraKeepsScreenOn = false
+        viewerKeepsScreenOn = false
+        updateKeepScreenOn()
+        cameraOriginalBrightness?.let { original ->
+            val attributes = window.attributes
+            attributes.screenBrightness = original
+            window.attributes = attributes
+        }
+        cameraOriginalBrightness = null
         stopLocalOnlyHotspot()
         disconnectWifi()
         super.onDestroy()

@@ -12,25 +12,32 @@ import 'utils.dart';
 class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
     implements VideoRenderer, AudioControl {
   RTCVideoRenderer() : super(RTCVideoValue.empty);
-  Completer? _initializing;
+  Future<void>? _initializing;
+  Future<void>? _disposing;
   int? _textureId;
   bool _disposed = false;
   MediaStream? _srcObject;
   StreamSubscription<dynamic>? _eventSubscription;
 
   @override
-  Future<void> initialize() async {
-    if (_initializing != null) {
-      await _initializing!.future;
-      return;
+  Future<void> initialize() {
+    if (_disposed) {
+      return Future.error(StateError('The RTCVideoRenderer is disposed'));
     }
-    _initializing = Completer();
-    final response = await WebRTC.invokeMethod('createVideoRenderer', {});
-    _textureId = response['textureId'];
-    _eventSubscription = EventChannel('FlutterWebRTC/Texture$textureId')
-        .receiveBroadcastStream()
-        .listen(eventListener, onError: errorListener);
-    _initializing!.complete(null);
+    return _initializing ??= _initialize();
+  }
+
+  Future<void> _initialize() async {
+    try {
+      final response = await WebRTC.invokeMethod('createVideoRenderer', {});
+      _textureId = response['textureId'];
+      _eventSubscription = EventChannel('FlutterWebRTC/Texture$textureId')
+          .receiveBroadcastStream()
+          .listen(eventListener, onError: errorListener);
+    } catch (_) {
+      _initializing = null;
+      rethrow;
+    }
   }
 
   @override
@@ -63,6 +70,7 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
       'streamId': stream?.id ?? '',
       'ownerTag': stream?.ownerTag ?? ''
     }).then((_) {
+      if (_disposed) return;
       value = (stream == null)
           ? RTCVideoValue.empty
           : value.copyWith(renderVideo: renderVideo);
@@ -83,8 +91,9 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
         'textureId': _textureId,
         'streamId': stream?.id ?? '',
         'ownerTag': stream?.ownerTag ?? '',
-        'trackId': trackId ?? '0'
+        if (trackId != null) 'trackId': trackId,
       });
+      if (_disposed) return;
       value = (stream == null)
           ? RTCVideoValue.empty
           : value.copyWith(renderVideo: renderVideo);
@@ -94,23 +103,32 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
   }
 
   @override
-  Future<void> dispose() async {
+  Future<void> dispose() => _disposing ??= _dispose();
+
+  Future<void> _dispose() async {
     if (_disposed) return;
-    await _eventSubscription?.cancel();
-    _eventSubscription = null;
-    if (_textureId != null) {
+    _disposed = true;
+    try {
+      // A texture created while disposal is starting still has to be released.
       try {
+        await _initializing;
+      } catch (_) {
+        // Failed initialization does not own a native texture.
+      }
+      await _eventSubscription?.cancel();
+      _eventSubscription = null;
+      if (_textureId != null) {
         await WebRTC.invokeMethod('videoRendererDispose', <String, dynamic>{
           'textureId': _textureId,
         });
-        _textureId = null;
-        _disposed = true;
-      } on PlatformException catch (e) {
-        throw 'Failed to RTCVideoRenderer::dispose: ${e.message}';
       }
+    } on PlatformException catch (e) {
+      throw 'Failed to RTCVideoRenderer::dispose: ${e.message}';
+    } finally {
+      _textureId = null;
+      _srcObject = null;
+      super.dispose();
     }
-
-    return super.dispose();
   }
 
   void eventListener(dynamic event) {

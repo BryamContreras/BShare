@@ -4,10 +4,10 @@ import 'dart:typed_data';
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/selected_transfer_file.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
+import 'package:bshare/src/presentation/navigation/app_navigation.dart';
 import 'package:bshare/src/presentation/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 import 'package:photo_manager/photo_manager.dart';
 
@@ -42,6 +42,7 @@ class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
   var _loadingMore = false;
   var _confirming = false;
   String? _errorKey;
+  int _assetGeneration = 0;
 
   @override
   void initState() {
@@ -58,6 +59,7 @@ class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
   }
 
   Future<void> _loadAlbums() async {
+    if (!mounted) return;
     setState(() {
       _loadingAlbums = true;
       _errorKey = null;
@@ -99,9 +101,12 @@ class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
   }
 
   Future<void> _loadAssets({required bool reset}) async {
+    if (!mounted) return;
     final album = _album;
     if (album == null) return;
     if (!reset && (!_hasMore || _loadingAssets || _loadingMore)) return;
+    if (reset) _assetGeneration++;
+    final generation = _assetGeneration;
 
     final page = reset ? 0 : _page;
     setState(() {
@@ -111,6 +116,7 @@ class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
         _page = 0;
         _hasMore = true;
         _loadingAssets = true;
+        _loadingMore = false;
       } else {
         _loadingMore = true;
       }
@@ -118,17 +124,17 @@ class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
 
     try {
       final assets = await album.getAssetListPaged(page: page, size: _pageSize);
-      if (!mounted || _album?.id != album.id) return;
+      if (!mounted || generation != _assetGeneration) return;
       setState(() {
         _assets = reset ? assets : [..._assets, ...assets];
         _page = page + 1;
         _hasMore = assets.length == _pageSize;
       });
     } catch (_) {
-      if (!mounted || _album?.id != album.id) return;
+      if (!mounted || generation != _assetGeneration) return;
       setState(() => _errorKey = 'mediaLoadFailed');
     } finally {
-      if (mounted && _album?.id == album.id) {
+      if (mounted && generation == _assetGeneration) {
         setState(() {
           _loadingAssets = false;
           _loadingMore = false;
@@ -165,29 +171,34 @@ class _MediaPickerScreenState extends ConsumerState<MediaPickerScreen> {
     setState(() => _confirming = true);
     final files = <SelectedTransferFile>[];
 
-    for (final asset in _selected.values) {
-      final file = await asset.originFile ?? await asset.file;
-      if (file == null) continue;
-      final stat = await file.stat();
-      files.add(
-        SelectedTransferFile(
-          path: file.path,
-          name: await _assetName(asset, file),
-          size: stat.size,
-        ),
-      );
+    try {
+      // Snapshot selection so a pending platform lookup cannot observe a
+      // collection changed by another tap.
+      for (final asset in _selected.values.toList()) {
+        if (!mounted) return;
+        final file = await asset.originFile ?? await asset.file;
+        if (!mounted) return;
+        if (file == null) continue;
+        final stat = await file.stat();
+        if (!mounted) return;
+        final name = await _assetName(asset, file);
+        if (!mounted) return;
+        files.add(
+          SelectedTransferFile(path: file.path, name: name, size: stat.size),
+        );
+      }
+      if (!mounted) return;
+      if (files.isEmpty) {
+        setState(() => _errorKey = 'mediaSelectionFailed');
+        return;
+      }
+      ref.read(sendControllerProvider).addSelectedFiles(files);
+      AppNavigationScope.back(context, fallback: '/send');
+    } catch (_) {
+      if (mounted) setState(() => _errorKey = 'mediaSelectionFailed');
+    } finally {
+      if (mounted) setState(() => _confirming = false);
     }
-
-    if (!mounted) return;
-    if (files.isEmpty) {
-      setState(() {
-        _confirming = false;
-        _errorKey = 'mediaSelectionFailed';
-      });
-      return;
-    }
-    ref.read(sendControllerProvider).addSelectedFiles(files);
-    context.go('/send');
   }
 
   Future<String> _assetName(AssetEntity asset, File file) async {

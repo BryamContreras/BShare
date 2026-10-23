@@ -1,0 +1,1031 @@
+{
+  "revision": "Camera focused viewing, fullscreen broadcasting, front/rear selection and temporary permission recovery",
+  "recordedAtUtc": "2026-10-21T23:18:05.178129+00:00",
+  "baselineCommit": "b223666e1d180127650512abc5cac63340840492",
+  "workingTreeUncommitted": true,
+  "device": {
+    "model": "SM-S908U (S22 Ultra)",
+    "android": "14",
+    "api": 34,
+    "transport": "Wi-Fi only"
+  },
+  "finalArtifact": {
+    "path": ".dart_tool/app_review/camera-ui-final-installed.apk",
+    "bytes": 40297339,
+    "sha256": "fc3ec608513af366646c92a011c1376e2afe3b8fb5e24268e7cfd012f2ae200a",
+    "package": "com.bshare.bshare.audit",
+    "label": "BShare Optimizada",
+    "build": "release AOT/R8 arm64-v8a; existing local Android debug signing certificate",
+    "signingCertificateSha256": "d2d1f71d6d8e5d8e7d1fc98b423b4b387799fffcaf4408500d4614ecf6d27b2a",
+    "installedHashMatchesDelivered": true,
+    "deliveredPathAtTimeOfMeasurement": "build/app/outputs/flutter-apk/bshare-optimized-release.apk"
+  },
+  "finalProductionSourceSha256": {
+    "android/app/build.gradle.kts": "740e708a68d8f7b4c5ffebddeeb887424406f2d7a307776f46321f1fb869fe83",
+    "android/app/proguard-rules.pro": "3ca2247b3abe59ebfd7f4fe0f4ac304c41b80b62883c206f3ee4264d33892a8d",
+    "android/app/src/main/AndroidManifest.xml": "616705a173d113a3d4add54fc67fa815de522fee4bde0aa85d8ae0c71b434396",
+    "android/app/src/main/kotlin/com/bshare/bshare/CameraShareForegroundService.kt": "44ce9d04853972314a24c96a6b5afec612b4519c7f6250b02710f12138044292",
+    "android/app/src/main/kotlin/com/bshare/bshare/MainActivity.kt": "0453b691d35d41d05cd3c278c21cf33aa2b6cd77c4578c6494a34b80a6fd51ca",
+    "ios/Runner/AppDelegate.swift": "2de010c2f80a6c287b9b970889f538c76570626c7aae17e9626f0b7731cae141",
+    "ios/Runner/Info.plist": "1cb7ecf492327c23f3a123a0f70140c1f382eb2f1328b9a9f136aa1c1eab20e4",
+    "lib/src/application/camera_session_controller.dart": "73843968ffa36fe0eead929da7759fea9c8f6977b365a54f642d948aa1b9d8cd",
+    "lib/src/application/providers.dart": "d3562212833ee563ad465994a3024f90a3a3e01ca1c9bd2a5ecd2ea3de4677a5",
+    "lib/src/application/receive_controller.dart": "6696843e55fd81fe138ff9080cdb97ddf92d95753287d52f428db1239572a5a7",
+    "lib/src/application/send_controller.dart": "bedd843b5844873a90e156b74a4558c91a79ff6eb2942603e9c9ea90621c2968",
+    "lib/src/domain/entities/app_settings.dart": "93ed6edef24cd6b033e3f9712109bb3c8cb9e5f00226aa2cd924bdc24e064a62",
+    "lib/src/domain/entities/camera_capture_settings.dart": "12f0021b97cd6977e658133dce201c33bbc16c30363dc4be9922814146e95192",
+    "lib/src/domain/entities/camera_connection_mode.dart": "e0ebb590f5482d2e729c9be83b8e76f719deeb6b9fd767e6646478ac314ed43e",
+    "lib/src/domain/entities/camera_device.dart": "31be26283b1b3fe78a8913356dd945b26639d2a9821831f18d7b41a94ea1f145",
+    "lib/src/domain/entities/direct_share_invite.dart": "55a22f194a317b1f7610bc021f0c305b3a5993f86d1578abe4a10d12fa9a9936",
+    "lib/src/domain/entities/screen_capture_settings.dart": "17fb65d6ea062d5d1db1d62f8c0f32f12652aa83b527af1e11a7abca3f4c81de",
+    "lib/src/domain/entities/transfer_control.dart": "be29a93e85dd82c71a53f096172e1c6a0048028857f34bc7fb7dae26ba06d285",
+    "lib/src/infrastructure/repositories/settings_repository.dart": "263bf8956513fb7805ecf946674739e186bc8eeca6ff582f61f43fa13bf1cdd7",
+    "lib/src/infrastructure/services/android_camera_execution_service.dart": "1b03f6be1f2861712b87d184eb05eb3bac35a896bdc2a928b84416e406b4aaf3",
+    "lib/src/infrastructure/services/camera_capture_lifecycle_gate.dart": "d716077a0cf29aa4530735bfd29e7c0d1800b0cbbb489c0d593db6032db6deb2",
+    "lib/src/infrastructure/services/camera_display_service.dart": "7a69793ba12395f7f0e12db56889e29f0ba24bf6d8ac5298543acb9504e5373b",
+    "lib/src/infrastructure/services/direct_network_service.dart": "6cef0a24a43ba07ca19e7ce11b654b3f49f0d2627825468a7c41737de68f2836",
+    "lib/src/infrastructure/services/file_server.dart": "fd47ee4cf543177d238057e83bac22b3087fc10204b02c45df002a6b5e84754c",
+    "lib/src/infrastructure/services/file_transfer_client.dart": "9a4015099e65fd028e40562579219b73d06c2974cc02949b9d3efa44109cc565",
+    "lib/src/infrastructure/services/lan_discovery_service.dart": "d22209003642e16b48882e25d70decfa91cdacebaf8c2eff12c6c46084178584",
+    "lib/src/infrastructure/services/network_service.dart": "2d11fae4813e60764f2f3ed798ec04990ab0b049b241882fdcf5622552ca3588",
+    "lib/src/infrastructure/services/permission_request_coordinator.dart": "8654f21f17ec0d9ab876f27868fafbd6e843d6071d0b0b5edee3d6a86804415d",
+    "lib/src/infrastructure/services/process_runner.dart": "06ea84c2667ae3787b2cd863d15b58d55b7067b0a355f5ea25642b28ee29e5be",
+    "lib/src/infrastructure/services/screen_share_service.dart": "aa7722c4f90b7ef7b0a647eba44dc6873d24f404125838eee749eb1ac7a70c64",
+    "lib/src/infrastructure/services/usb_camera_network_service.dart": "591966af0e87a4fd1830609bf894640027925a50114dce637e2d276f71d620e9",
+    "lib/src/presentation/app.dart": "36da46c50694bb8d65a66b551cd628ff33a5f94f946b1baaa332ea536147a9d9",
+    "lib/src/presentation/localization/app_localizations.dart": "b22382142fc1aa542e0fd9aac4ca2aabd7b292657b19a833d39476deb602afe3",
+    "lib/src/presentation/localization/camera_broadcast_localizations.dart": "69afe1dd3494ddcabd85b0db4458dc16212911c1c183e67cdf3c8f6a3727cb3e",
+    "lib/src/presentation/localization/camera_localizations.dart": "215f2711001a43198a35fd37a63cd57aa55011e9b027d2c91e22ae31ee5d2cf7",
+    "lib/src/presentation/localization/camera_ui_localizations.dart": "09d893b015f3d629bdb124b00a57cb23f31a557413021b537b0608e7b87a72e6",
+    "lib/src/presentation/localization/camera_viewer_localizations.dart": "8e71841189bb12269dc8b6ff7d18efd13edf6c7fbb9f67bf161ba146217ec07e",
+    "lib/src/presentation/navigation/app_navigation.dart": "1717f55abdef1e33c3d7ea01123d93de71e203478efb711c07eb2cd41bf98e5b",
+    "lib/src/presentation/screens/android_app_picker_screen.dart": "625b68318be25ac95baac02d7dd16868a985a5a441e61d13be90bece08303615",
+    "lib/src/presentation/screens/android_storage_picker_screen.dart": "20286266e405f01bb5350727e3236e7205c70f13da02e68f4b9251f0dd508ccb",
+    "lib/src/presentation/screens/camera_broadcast_screen.dart": "1623fc7b81e7adf9c7a44fe7e192248c8e0d6311508d303b76e4cea0666c5cba",
+    "lib/src/presentation/screens/camera_share_screen.dart": "63d3f3430d8267218860e30fe8230696cff6b1ac0a3d69ce42b3b0b8296c3b1e",
+    "lib/src/presentation/screens/camera_viewer_screen.dart": "b3fefb2c81172e1d4fc9657e409bbaf49f521e0d67521802f1953a18a84d8525",
+    "lib/src/presentation/screens/device_discovery_screen.dart": "92e7e45f9460ca62c81ea5f6157ede11dd5636814d670f6e1ac891da98daf001",
+    "lib/src/presentation/screens/direct_qr_scanner_screen.dart": "75525b40a6b7d55886d59afed2f3c76d7361bc350e7d7bef4cd8d4e34d90c627",
+    "lib/src/presentation/screens/home_screen.dart": "bc6dd1dcbd2ab230b17ec16bd11af517a90b1b386ea93e6a3048142cc9e1c335",
+    "lib/src/presentation/screens/media_picker_screen.dart": "0ab90f9808850e2525f03a5157fd1d3c28209756100b283ffdf8e2e4906945da",
+    "lib/src/presentation/screens/receive_screen.dart": "0519bce7633498e5029609cb6270bbd913bf5cb532b7e5096ccd3d157349bc28",
+    "lib/src/presentation/screens/screen_share_screen.dart": "41ea9dec512ed525d150f133a0060d2342817aea88db24cd470a2256910c26e3",
+    "lib/src/presentation/screens/screen_viewer_screen.dart": "57f9da774ccb52df53abd8d3346cf0a0c2ee21ade29317ed937d1f3f33a31ac7",
+    "lib/src/presentation/screens/send_files_screen.dart": "b6a261b80afd6fd492cd88cedd709303a3cdbbfea1bf2eea4f9106b1593dceed",
+    "lib/src/presentation/screens/settings_screen.dart": "f98a18a8dfebb0e167426b2fdd3640a7ff8de8d0d48ae68d72af69ba87508ee0",
+    "lib/src/presentation/widgets/app_shell.dart": "294eee15a965ff7652241cab52d9c0c484038fcbd0c8d31c32448bd7c8501b4c",
+    "lib/src/presentation/widgets/camera_display_overlay.dart": "2130d07b13347b2cc973803600c07c8c051ab982a6b493c4efaeff428af25fff",
+    "lib/src/presentation/widgets/discovery_status_card.dart": "02975441c70db26997ce6c5103058073a60a71c3cc0de5ea5434799e5a0ecf1c",
+    "lib/src/presentation/widgets/orientation_aware_video_view.dart": "872e740f4032800ca7067c604aa986adea2e52300f927632413acdc46e73fe2b",
+    "linux/runner/my_application.cc": "9ba1a10de0bca465dc81c7383365878e5393e8f4bb4777dcce423c93b75fa677",
+    "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/GetUserMediaImpl.java": "b19d0dd613517b27cc2a7e06dac44595d99aaae3d7636c72f7ba6ceb15fc3d6c",
+    "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/OrientationAwareScreenCapturer.java": "19bf12675a39f8e1117bf2dfeac51c6367dc92f3d18895ab4f643b9cbf676d61",
+    "third_party/flutter_webrtc/common/cpp/include/flutter_video_renderer.h": "b0b7ef1a19fdcf6942d0b46c332c3bf510ea8a4e258e59e4147ca172cf58e88b",
+    "third_party/flutter_webrtc/common/cpp/src/flutter_common.cc": "b4c731ced298014a6e9e08e98eed3d9c15d7db90abf5dd0c415c67d9d1508c1b",
+    "third_party/flutter_webrtc/common/cpp/src/flutter_peerconnection.cc": "8f07d55ea23e564f894db7722dc6a3007b880bd5646e70a14e47bcbcefddb218",
+    "third_party/flutter_webrtc/common/cpp/src/flutter_video_renderer.cc": "36b79966339c503943a573b19d3fa419c7f467f8c79c6e09b8633d2ad2b9dcba",
+    "third_party/flutter_webrtc/lib/src/native/media_stream_track_impl.dart": "e5f7a06759d1baf58d60b928c3342ddea2f111a1fea09fffaf051abf50d208e5",
+    "third_party/flutter_webrtc/lib/src/native/rtc_video_renderer_impl.dart": "70b2f549b228afb925467a8005d5b4f52a12d8912597f9422d73425f5aab5ecc",
+    "third_party/flutter_webrtc/linux/flutter/core_implementations.cc": "b1557ec95f2333f34936c38f4aa6afb8d9db8d82aae1f09faf96471db7293497",
+    "third_party/flutter_webrtc/test/native/flutter_video_renderer_test.cc": "e180e709ded434879b34ca22564c89f295059355b3a5bc3c143ff01d06ff5fce",
+    "third_party/flutter_webrtc/test/native/run_video_renderer_test.sh": "84cb2b269384509e7b025d4ffc949d47b737eb9036e5001abe4cdb8812fd761a",
+    "third_party/flutter_webrtc/test/native/test_binary_messenger_lifecycle.py": "1594883022a939cdee511e3b6d822a8f0ab98df8fc980b522b6b4eadced95b00",
+    "third_party/flutter_webrtc/test/native/test_peer_event_channel_lifecycle.py": "0b89ea5ceec01de866d764cb1c165a9ce5f5a55dbb71db326df8ef4e96dc596f",
+    "third_party/flutter_webrtc/test/native/test_screen_capturer.py": "aa021efe4200555416060e69445a18872355e83e7a0f158f23ff006336896250",
+    "third_party/flutter_webrtc/test/native/test_video_capturer_disposal.py": "69ba2a42dd65c9cdb489fa786c607b751615c7a8390dd6d1e5752ff896ba47bb",
+    "third_party/flutter_webrtc/third_party/libwebrtc/include/rtc_types.h": "f99b6229f23dab955eb0dc1cf81317d0d0709270e5e410e8c055974ebae39f63"
+  },
+  "automatedValidation": {
+    "flutterTestsPassed": 228,
+    "analyzerIssues": 0,
+    "statuses": {
+      "camera-ui-final-tests": {
+        "exitCode": 0,
+        "seconds": 145.37470960617065,
+        "command": [
+          "flutter",
+          "--suppress-analytics",
+          "test",
+          "--no-pub"
+        ]
+      },
+      "camera-ui-final-analyze": {
+        "exitCode": 0,
+        "seconds": 7.872409105300903,
+        "command": [
+          "flutter",
+          "--suppress-analytics",
+          "analyze",
+          "--no-pub"
+        ]
+      },
+      "camera-ui-final-android": {
+        "exitCode": 0,
+        "seconds": 233.38476514816284,
+        "command": [
+          "./gradlew",
+          "--no-daemon",
+          "-I",
+          "../.dart_tool/bshare-audit.init.gradle",
+          "-Ptarget-platform=android-arm64",
+          "-Ptarget=lib/main.dart",
+          "-Pdart-obfuscation=false",
+          "-Ptrack-widget-creation=false",
+          "-Ptree-shake-icons=true",
+          "assembleRelease"
+        ]
+      },
+      "camera-ui-final-linux": {
+        "exitCode": 0,
+        "seconds": 170.23896765708923,
+        "command": [
+          "flutter",
+          "--suppress-analytics",
+          "build",
+          "linux",
+          "--release",
+          "--no-pub"
+        ]
+      },
+      "camera-ui-final-pc": {
+        "exitCode": 0,
+        "pid": 301575
+      }
+    },
+    "qrReleaseDex": {
+      "apk": "/home/bryamelias/DEV/Dart/BShare/build/app/outputs/flutter-apk/bshare-optimized-release.apk",
+      "dexFiles": [
+        "classes.dex"
+      ],
+      "checks": [
+        {
+          "class": "com.google.mlkit.common.internal.CommonComponentRegistrar",
+          "classPresent": true,
+          "publicNoArgConstructor": true,
+          "dex": "classes.dex"
+        },
+        {
+          "class": "com.google.mlkit.vision.barcode.internal.BarcodeRegistrar",
+          "classPresent": true,
+          "publicNoArgConstructor": true,
+          "dex": "classes.dex"
+        },
+        {
+          "class": "com.google.mlkit.vision.common.internal.VisionCommonRegistrar",
+          "classPresent": true,
+          "publicNoArgConstructor": true,
+          "dex": "classes.dex"
+        }
+      ],
+      "passed": true,
+      "cameraRuntimeVerified": false
+    }
+  },
+  "initialPhysicalValidation": {
+    "schemaVersion": 1,
+    "scope": "Initial camera UI validation only. This is not a final-build or final-install acceptance report.",
+    "generatedAtUtc": "2026-10-21T23:14:40.951423+00:00",
+    "device": {
+      "model": "Samsung Galaxy S22 Ultra",
+      "androidApi": 34,
+      "package": "com.bshare.bshare.audit",
+      "transport": "Wi-Fi",
+      "usbPhysicalTestPerformed": false,
+      "iosPhysicalTestPerformed": false
+    },
+    "artifactUnderTest": {
+      "retainedInstalledApk": {
+        "path": ".dart_tool/app_review/camera-ui-installed.apk",
+        "sha256": "60a561cd92910476bd9017186293eca6215c0456f31ee3c2a63e92796ac32938",
+        "bytes": 40297339
+      },
+      "initialInstallRecord": {
+        "path": ".dart_tool/app_review/camera-ui-install.json",
+        "sha256": "cb27da7d009996498cd9ad6e684c7fcd5a44efe362dd4da7a42d9806075f3c13",
+        "bytes": 273,
+        "data": {
+          "package": "com.bshare.bshare.audit",
+          "remoteApk": "/data/app/~~VlfO8G8sLCnOD9l2f3oCbw==/com.bshare.bshare.audit-JJsCGz4AMqCPOIrBIJkHEg==/base.apk",
+          "installedSha256": "60a561cd92910476bd9017186293eca6215c0456f31ee3c2a63e92796ac32938",
+          "matchesDelivered": true
+        }
+      },
+      "initialSourceSnapshot": {
+        "path": ".dart_tool/app_review/camera-ui-production-sha256.json",
+        "sha256": "da8478a2eeb1c121bc75258b6b982ae8d83a2b428ab67ea75f3be6ff1c5b4c81",
+        "bytes": 9495,
+        "sourceFileCount": 73,
+        "sourceSha256": {
+          "android/app/build.gradle.kts": "740e708a68d8f7b4c5ffebddeeb887424406f2d7a307776f46321f1fb869fe83",
+          "android/app/proguard-rules.pro": "3ca2247b3abe59ebfd7f4fe0f4ac304c41b80b62883c206f3ee4264d33892a8d",
+          "android/app/src/main/AndroidManifest.xml": "616705a173d113a3d4add54fc67fa815de522fee4bde0aa85d8ae0c71b434396",
+          "android/app/src/main/kotlin/com/bshare/bshare/CameraShareForegroundService.kt": "44ce9d04853972314a24c96a6b5afec612b4519c7f6250b02710f12138044292",
+          "android/app/src/main/kotlin/com/bshare/bshare/MainActivity.kt": "0453b691d35d41d05cd3c278c21cf33aa2b6cd77c4578c6494a34b80a6fd51ca",
+          "ios/Runner/AppDelegate.swift": "2de010c2f80a6c287b9b970889f538c76570626c7aae17e9626f0b7731cae141",
+          "ios/Runner/Info.plist": "1cb7ecf492327c23f3a123a0f70140c1f382eb2f1328b9a9f136aa1c1eab20e4",
+          "lib/src/application/camera_session_controller.dart": "73843968ffa36fe0eead929da7759fea9c8f6977b365a54f642d948aa1b9d8cd",
+          "lib/src/application/providers.dart": "d3562212833ee563ad465994a3024f90a3a3e01ca1c9bd2a5ecd2ea3de4677a5",
+          "lib/src/application/receive_controller.dart": "6696843e55fd81fe138ff9080cdb97ddf92d95753287d52f428db1239572a5a7",
+          "lib/src/application/send_controller.dart": "bedd843b5844873a90e156b74a4558c91a79ff6eb2942603e9c9ea90621c2968",
+          "lib/src/domain/entities/app_settings.dart": "93ed6edef24cd6b033e3f9712109bb3c8cb9e5f00226aa2cd924bdc24e064a62",
+          "lib/src/domain/entities/camera_capture_settings.dart": "12f0021b97cd6977e658133dce201c33bbc16c30363dc4be9922814146e95192",
+          "lib/src/domain/entities/camera_connection_mode.dart": "e0ebb590f5482d2e729c9be83b8e76f719deeb6b9fd767e6646478ac314ed43e",
+          "lib/src/domain/entities/camera_device.dart": "31be26283b1b3fe78a8913356dd945b26639d2a9821831f18d7b41a94ea1f145",
+          "lib/src/domain/entities/direct_share_invite.dart": "55a22f194a317b1f7610bc021f0c305b3a5993f86d1578abe4a10d12fa9a9936",
+          "lib/src/domain/entities/screen_capture_settings.dart": "17fb65d6ea062d5d1db1d62f8c0f32f12652aa83b527af1e11a7abca3f4c81de",
+          "lib/src/domain/entities/transfer_control.dart": "be29a93e85dd82c71a53f096172e1c6a0048028857f34bc7fb7dae26ba06d285",
+          "lib/src/infrastructure/repositories/settings_repository.dart": "263bf8956513fb7805ecf946674739e186bc8eeca6ff582f61f43fa13bf1cdd7",
+          "lib/src/infrastructure/services/android_camera_execution_service.dart": "1b03f6be1f2861712b87d184eb05eb3bac35a896bdc2a928b84416e406b4aaf3",
+          "lib/src/infrastructure/services/camera_capture_lifecycle_gate.dart": "d716077a0cf29aa4530735bfd29e7c0d1800b0cbbb489c0d593db6032db6deb2",
+          "lib/src/infrastructure/services/camera_display_service.dart": "7a69793ba12395f7f0e12db56889e29f0ba24bf6d8ac5298543acb9504e5373b",
+          "lib/src/infrastructure/services/direct_network_service.dart": "6cef0a24a43ba07ca19e7ce11b654b3f49f0d2627825468a7c41737de68f2836",
+          "lib/src/infrastructure/services/file_server.dart": "fd47ee4cf543177d238057e83bac22b3087fc10204b02c45df002a6b5e84754c",
+          "lib/src/infrastructure/services/file_transfer_client.dart": "9a4015099e65fd028e40562579219b73d06c2974cc02949b9d3efa44109cc565",
+          "lib/src/infrastructure/services/lan_discovery_service.dart": "d22209003642e16b48882e25d70decfa91cdacebaf8c2eff12c6c46084178584",
+          "lib/src/infrastructure/services/network_service.dart": "2d11fae4813e60764f2f3ed798ec04990ab0b049b241882fdcf5622552ca3588",
+          "lib/src/infrastructure/services/permission_request_coordinator.dart": "39de966ad0827f3c092e02d739b252d21a75d97314bd66161365efaa5c54a119",
+          "lib/src/infrastructure/services/process_runner.dart": "06ea84c2667ae3787b2cd863d15b58d55b7067b0a355f5ea25642b28ee29e5be",
+          "lib/src/infrastructure/services/screen_share_service.dart": "aa7722c4f90b7ef7b0a647eba44dc6873d24f404125838eee749eb1ac7a70c64",
+          "lib/src/infrastructure/services/usb_camera_network_service.dart": "591966af0e87a4fd1830609bf894640027925a50114dce637e2d276f71d620e9",
+          "lib/src/presentation/app.dart": "36da46c50694bb8d65a66b551cd628ff33a5f94f946b1baaa332ea536147a9d9",
+          "lib/src/presentation/localization/app_localizations.dart": "b22382142fc1aa542e0fd9aac4ca2aabd7b292657b19a833d39476deb602afe3",
+          "lib/src/presentation/localization/camera_broadcast_localizations.dart": "69afe1dd3494ddcabd85b0db4458dc16212911c1c183e67cdf3c8f6a3727cb3e",
+          "lib/src/presentation/localization/camera_localizations.dart": "215f2711001a43198a35fd37a63cd57aa55011e9b027d2c91e22ae31ee5d2cf7",
+          "lib/src/presentation/localization/camera_ui_localizations.dart": "09d893b015f3d629bdb124b00a57cb23f31a557413021b537b0608e7b87a72e6",
+          "lib/src/presentation/localization/camera_viewer_localizations.dart": "8e71841189bb12269dc8b6ff7d18efd13edf6c7fbb9f67bf161ba146217ec07e",
+          "lib/src/presentation/navigation/app_navigation.dart": "1717f55abdef1e33c3d7ea01123d93de71e203478efb711c07eb2cd41bf98e5b",
+          "lib/src/presentation/screens/android_app_picker_screen.dart": "625b68318be25ac95baac02d7dd16868a985a5a441e61d13be90bece08303615",
+          "lib/src/presentation/screens/android_storage_picker_screen.dart": "20286266e405f01bb5350727e3236e7205c70f13da02e68f4b9251f0dd508ccb",
+          "lib/src/presentation/screens/camera_broadcast_screen.dart": "1623fc7b81e7adf9c7a44fe7e192248c8e0d6311508d303b76e4cea0666c5cba",
+          "lib/src/presentation/screens/camera_share_screen.dart": "63d3f3430d8267218860e30fe8230696cff6b1ac0a3d69ce42b3b0b8296c3b1e",
+          "lib/src/presentation/screens/camera_viewer_screen.dart": "b3fefb2c81172e1d4fc9657e409bbaf49f521e0d67521802f1953a18a84d8525",
+          "lib/src/presentation/screens/device_discovery_screen.dart": "92e7e45f9460ca62c81ea5f6157ede11dd5636814d670f6e1ac891da98daf001",
+          "lib/src/presentation/screens/direct_qr_scanner_screen.dart": "75525b40a6b7d55886d59afed2f3c76d7361bc350e7d7bef4cd8d4e34d90c627",
+          "lib/src/presentation/screens/home_screen.dart": "bc6dd1dcbd2ab230b17ec16bd11af517a90b1b386ea93e6a3048142cc9e1c335",
+          "lib/src/presentation/screens/media_picker_screen.dart": "0ab90f9808850e2525f03a5157fd1d3c28209756100b283ffdf8e2e4906945da",
+          "lib/src/presentation/screens/receive_screen.dart": "0519bce7633498e5029609cb6270bbd913bf5cb532b7e5096ccd3d157349bc28",
+          "lib/src/presentation/screens/screen_share_screen.dart": "41ea9dec512ed525d150f133a0060d2342817aea88db24cd470a2256910c26e3",
+          "lib/src/presentation/screens/screen_viewer_screen.dart": "57f9da774ccb52df53abd8d3346cf0a0c2ee21ade29317ed937d1f3f33a31ac7",
+          "lib/src/presentation/screens/send_files_screen.dart": "b6a261b80afd6fd492cd88cedd709303a3cdbbfea1bf2eea4f9106b1593dceed",
+          "lib/src/presentation/screens/settings_screen.dart": "f98a18a8dfebb0e167426b2fdd3640a7ff8de8d0d48ae68d72af69ba87508ee0",
+          "lib/src/presentation/widgets/app_shell.dart": "294eee15a965ff7652241cab52d9c0c484038fcbd0c8d31c32448bd7c8501b4c",
+          "lib/src/presentation/widgets/camera_display_overlay.dart": "2130d07b13347b2cc973803600c07c8c051ab982a6b493c4efaeff428af25fff",
+          "lib/src/presentation/widgets/discovery_status_card.dart": "02975441c70db26997ce6c5103058073a60a71c3cc0de5ea5434799e5a0ecf1c",
+          "lib/src/presentation/widgets/orientation_aware_video_view.dart": "872e740f4032800ca7067c604aa986adea2e52300f927632413acdc46e73fe2b",
+          "linux/runner/my_application.cc": "9ba1a10de0bca465dc81c7383365878e5393e8f4bb4777dcce423c93b75fa677",
+          "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/GetUserMediaImpl.java": "b19d0dd613517b27cc2a7e06dac44595d99aaae3d7636c72f7ba6ceb15fc3d6c",
+          "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/OrientationAwareScreenCapturer.java": "19bf12675a39f8e1117bf2dfeac51c6367dc92f3d18895ab4f643b9cbf676d61",
+          "third_party/flutter_webrtc/common/cpp/include/flutter_video_renderer.h": "b0b7ef1a19fdcf6942d0b46c332c3bf510ea8a4e258e59e4147ca172cf58e88b",
+          "third_party/flutter_webrtc/common/cpp/src/flutter_common.cc": "b4c731ced298014a6e9e08e98eed3d9c15d7db90abf5dd0c415c67d9d1508c1b",
+          "third_party/flutter_webrtc/common/cpp/src/flutter_peerconnection.cc": "8f07d55ea23e564f894db7722dc6a3007b880bd5646e70a14e47bcbcefddb218",
+          "third_party/flutter_webrtc/common/cpp/src/flutter_video_renderer.cc": "36b79966339c503943a573b19d3fa419c7f467f8c79c6e09b8633d2ad2b9dcba",
+          "third_party/flutter_webrtc/lib/src/native/media_stream_track_impl.dart": "e5f7a06759d1baf58d60b928c3342ddea2f111a1fea09fffaf051abf50d208e5",
+          "third_party/flutter_webrtc/lib/src/native/rtc_video_renderer_impl.dart": "70b2f549b228afb925467a8005d5b4f52a12d8912597f9422d73425f5aab5ecc",
+          "third_party/flutter_webrtc/linux/flutter/core_implementations.cc": "b1557ec95f2333f34936c38f4aa6afb8d9db8d82aae1f09faf96471db7293497",
+          "third_party/flutter_webrtc/test/native/flutter_video_renderer_test.cc": "e180e709ded434879b34ca22564c89f295059355b3a5bc3c143ff01d06ff5fce",
+          "third_party/flutter_webrtc/test/native/run_video_renderer_test.sh": "84cb2b269384509e7b025d4ffc949d47b737eb9036e5001abe4cdb8812fd761a",
+          "third_party/flutter_webrtc/test/native/test_binary_messenger_lifecycle.py": "1594883022a939cdee511e3b6d822a8f0ab98df8fc980b522b6b4eadced95b00",
+          "third_party/flutter_webrtc/test/native/test_peer_event_channel_lifecycle.py": "0b89ea5ceec01de866d764cb1c165a9ce5f5a55dbb71db326df8ef4e96dc596f",
+          "third_party/flutter_webrtc/test/native/test_screen_capturer.py": "aa021efe4200555416060e69445a18872355e83e7a0f158f23ff006336896250",
+          "third_party/flutter_webrtc/test/native/test_video_capturer_disposal.py": "69ba2a42dd65c9cdb489fa786c607b751615c7a8390dd6d1e5752ff896ba47bb",
+          "third_party/flutter_webrtc/third_party/libwebrtc/include/rtc_types.h": "f99b6229f23dab955eb0dc1cf81317d0d0709270e5e410e8c055974ebae39f63"
+        }
+      },
+      "finalBuildClaim": false,
+      "subsequentSourceChangesNotCoveredByThisInitialRun": [
+        "lib/src/infrastructure/services/permission_request_coordinator.dart"
+      ]
+    },
+    "initialBuildEvidence": {
+      "android": {
+        "path": ".dart_tool/app_review/camera-ui-android-status.json",
+        "sha256": "282cc928f29d3c83bb87853b659e7da8d75aca38072635961f5a4a9931ae8ec4",
+        "bytes": 303,
+        "data": {
+          "exitCode": 0,
+          "seconds": 216.97492599487305,
+          "command": [
+            "./gradlew",
+            "--no-daemon",
+            "-I",
+            "../.dart_tool/bshare-audit.init.gradle",
+            "-Ptarget-platform=android-arm64",
+            "-Ptarget=lib/main.dart",
+            "-Pdart-obfuscation=false",
+            "-Ptrack-widget-creation=false",
+            "-Ptree-shake-icons=true",
+            "assembleRelease"
+          ]
+        }
+      },
+      "linux": {
+        "path": ".dart_tool/app_review/camera-ui-linux-status.json",
+        "sha256": "98aa60fd1444e86eda1a9748d6ab917bd94fc055500a753c8d6519f599a2e4fb",
+        "bytes": 137,
+        "data": {
+          "exitCode": 0,
+          "seconds": 146.13950371742249,
+          "command": [
+            "flutter",
+            "--suppress-analytics",
+            "build",
+            "linux",
+            "--release",
+            "--no-pub"
+          ]
+        }
+      },
+      "tests": {
+        "passed": 226,
+        "path": ".dart_tool/app_review/camera-ui-full-tests.log",
+        "sha256": "3c73b5c84eb8b243140c919812403118f4ae5a53440b80dd22fee971af6573de",
+        "bytes": 46166,
+        "status": {
+          "exitCode": 0,
+          "seconds": 114.40948724746704
+        }
+      },
+      "analyzer": {
+        "path": ".dart_tool/app_review/camera-ui-full-analyze.log",
+        "sha256": "d6c882feeee80ff70083fcdf1b85c81e4dec06cd2aec7c2de6b8762f9d5c6f50",
+        "bytes": 96,
+        "status": {
+          "exitCode": 0,
+          "seconds": 11.834384679794312
+        }
+      },
+      "dexRegistrarCheck": {
+        "path": ".dart_tool/app_review/camera-ui-dex.json",
+        "sha256": "bf7ead863a619579b05d24f5c7318ebff3ee01aaff04aa5be3932a0fa68163a9",
+        "bytes": 766,
+        "passed": true,
+        "qrOpticalCameraRuntimeTestPerformed": false
+      }
+    },
+    "events": {
+      "path": ".dart_tool/app_review/camera-ui-events.json",
+      "sha256": "c253a11ec25d656525e41749602068624188b18d620aa74ffd5d65fbdaa96b7b",
+      "bytes": 829,
+      "data": {
+        "startedAtUtc": "2026-10-21T23:06:54.155882+00:00",
+        "events": [
+          {
+            "utc": "2026-10-21T23:10:36.325977+00:00",
+            "action": "nativePcViewerOpenedAndWaited4Seconds"
+          },
+          {
+            "utc": "2026-10-21T23:10:45.299429+00:00",
+            "action": "mobilePreviewHiddenConfirmed"
+          },
+          {
+            "utc": "2026-10-21T23:11:13.345382+00:00",
+            "action": "nativePcStopClickMissedAfterWindowResize",
+            "outcome": "notStopped; later screenshot still viewer"
+          },
+          {
+            "utc": "2026-10-21T23:11:28.835421+00:00",
+            "action": "nativePcWindowClosedWithLiveFrontVideo",
+            "outcome": "exitCode0; only one viewer connection in log; reconnect not performed"
+          },
+          {
+            "utc": "2026-10-21T23:12:39.616078+00:00",
+            "action": "dimWakeFirstTapKeptPreviewHiddenThenEyeRestoredPreview"
+          }
+        ]
+      }
+    },
+    "uiSnapshots": [
+      {
+        "path": ".dart_tool/app_review/camera-ui-pc-setup.png",
+        "sha256": "fc473d43d3cae2a3a264dcb2d2fe7999ced5f682151d3667127d069a95769e60",
+        "bytes": 48710,
+        "interpretation": "Initial desktop camera setup."
+      },
+      {
+        "path": ".dart_tool/app_review/camera-ui-pc-devices.png",
+        "sha256": "042e2caa2b6358a6465626ab5e9f825c289841d43533d1b03261a29bdefc2777",
+        "bytes": 44789,
+        "interpretation": "Initial desktop device choice."
+      },
+      {
+        "path": ".dart_tool/app_review/camera-ui-pc-focused-controls.png",
+        "sha256": "0bec029a47a6004cd3a45ae605b0e2b994425916467c9a999193fc3c34d41bbb",
+        "bytes": 304774,
+        "interpretation": "Exclusive native camera viewer with visible controls."
+      },
+      {
+        "path": ".dart_tool/app_review/camera-ui-pc-focused-hidden.png",
+        "sha256": "8bc87706f973d7f5a9ed64343ed1d4b2339a0603cfcc4cc8dc98af2811c6849f",
+        "bytes": 315537,
+        "interpretation": "Exclusive native viewer after inactivity; controls hidden."
+      },
+      {
+        "path": ".dart_tool/app_review/camera-ui-pc-controls-return.png",
+        "sha256": "2dd889c31bf7ddb270133bf7c2d7fcd280432a9d667984f399258b463f4a7669",
+        "bytes": 642734,
+        "interpretation": "Native viewer controls revealed again."
+      },
+      {
+        "path": ".dart_tool/app_review/camera-ui-pc-stopped.png",
+        "sha256": "10c720b9097c4f712b975f69c17aece0840ce7fa60a5b5fa1e2c6e7b823965be",
+        "bytes": 526714,
+        "interpretation": "Misleading historical filename: Stop click missed after resize; viewer remained active. Does not prove Stop."
+      },
+      {
+        "path": ".dart_tool/app_review/camera-ui-pc-reconnected.png",
+        "sha256": "6b76634e45ccf05c8a6082b9821129fced1916a4c1eda9659de7984554528004",
+        "bytes": 571476,
+        "interpretation": "Misleading historical filename: viewer still used its first connection. Does not prove reconnection."
+      },
+      {
+        "path": ".dart_tool/app_review/ui-installed-home.xml",
+        "sha256": "0ad2bde8b598680ef6ac35155cefeac5fe694c38b82ea6679805f72475a26acd",
+        "bytes": 11780,
+        "interpretation": "Mobile UI hierarchy; image contents are not embedded."
+      },
+      {
+        "path": ".dart_tool/app_review/ui-camera-setup.xml",
+        "sha256": "9dc18897bb4cb96cba0db69486b9686e5e69624817fb2c8a2dac59c7600dca0d",
+        "bytes": 11739,
+        "interpretation": "Mobile UI hierarchy; image contents are not embedded."
+      },
+      {
+        "path": ".dart_tool/app_review/ui-camera-two-options.xml",
+        "sha256": "c2ae72481e0c0db1ad77d7c3544fa7e158c029e06aa509f70e851db8150f08d7",
+        "bytes": 4110,
+        "interpretation": "Mobile UI hierarchy; image contents are not embedded."
+      },
+      {
+        "path": ".dart_tool/app_review/ui-system-back-camera-setup.xml",
+        "sha256": "9dc18897bb4cb96cba0db69486b9686e5e69624817fb2c8a2dac59c7600dca0d",
+        "bytes": 11739,
+        "interpretation": "Mobile UI hierarchy; image contents are not embedded."
+      }
+    ],
+    "privacy": "Only local artifact paths, byte counts and hashes are included for snapshots. No camera image bytes or previews are embedded.",
+    "nativePcInitialRun": {
+      "log": {
+        "path": ".dart_tool/app_review/camera-ui-native-pc.log",
+        "sha256": "dc734458bf3c235cd0d3303b6c2354cf3acf75e327aa9db45fd8aad4865d6f6b",
+        "bytes": 1332
+      },
+      "status": {
+        "path": ".dart_tool/app_review/camera-ui-native-pc-status.json",
+        "sha256": "b0f66bd564ffd08b09154376239ec63fe55db514ac95691ae5f290c55c7eb40c",
+        "bytes": 30,
+        "data": {
+          "pid": 271514,
+          "exitCode": 0
+        }
+      },
+      "viewerConnectionsObserved": 1,
+      "nativeViewerReceivedVideo": true,
+      "controlsAutoHideObserved": true,
+      "controlsRevealObserved": true,
+      "stopButtonPhysicallyVerified": false,
+      "reconnectPhysicallyVerified": false,
+      "missedStopClick": {
+        "utc": "2026-10-21T23:11:13.345382+00:00",
+        "action": "nativePcStopClickMissedAfterWindowResize",
+        "outcome": "notStopped; later screenshot still viewer"
+      },
+      "windowCloseWithLiveVideo": {
+        "utc": "2026-10-21T23:11:28.835421+00:00",
+        "action": "nativePcWindowClosedWithLiveFrontVideo",
+        "outcome": "exitCode0; only one viewer connection in log; reconnect not performed"
+      },
+      "exitCode": 0,
+      "nonFatalLogDiagnostics": [
+        "GTK accessibility atk_socket_embed plug_id assertion",
+        "FlutterEngineRemoveView kInvalidArguments for implicit view"
+      ],
+      "logDiagnosticScope": "Exit code was 0; these diagnostics remain recorded and are not described as an error-free log."
+    },
+    "browserProbe": {
+      "samples": {
+        "path": ".dart_tool/camera_audit/ui-probe/samples.json",
+        "sha256": "b48e4b0cf2e829ad26481dc1dc44235444b66b7d5175a9d13e5f41c10510127a",
+        "bytes": 31805
+      },
+      "summary": {
+        "path": ".dart_tool/camera_audit/ui-probe/summary.json",
+        "sha256": "f7e0c9ba62f3980ebb8511454fdbdff62342b7d24c319ea1771071efb68dfd3b",
+        "bytes": 170,
+        "data": {
+          "passed": true,
+          "samples": 31,
+          "decodedFramesBefore": 145,
+          "decodedFramesAfter": 3985,
+          "cameraIds": [
+            "0",
+            "1"
+          ],
+          "sources": [
+            "camera"
+          ]
+        }
+      },
+      "totalSamples": 31,
+      "samplesWithInboundVideoStats": 30,
+      "pollingIntervalApproximatelySeconds": 5,
+      "sourceValues": [
+        "camera"
+      ],
+      "cameraIds": [
+        "0",
+        "1"
+      ],
+      "generationValues": [
+        1
+      ],
+      "trackIdsByCamera": {
+        "0": [
+          "240c991d-b094-4404-af21-003a10f57ffa"
+        ],
+        "1": [
+          "1aebc417-cb22-4176-bbe9-201f671e4e39"
+        ]
+      },
+      "negotiatedCodecs": [
+        "video/H264"
+      ],
+      "codecParameters": [
+        "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
+      ],
+      "allObservedDecodedCountersStrictlyIncreasing": true,
+      "observedDroppedCounterRange": {
+        "minimum": 0,
+        "maximum": 0
+      },
+      "previewHiddenWindow": {
+        "confirmedHiddenAtUtc": "2026-10-21T23:10:45.299429+00:00",
+        "wakeAndEyeRestoreEventAtUtc": "2026-10-21T23:12:39.616078+00:00",
+        "samples": 22,
+        "firstUtc": "2026-10-21T23:10:49.715Z",
+        "lastUtc": "2026-10-21T23:12:36.747Z",
+        "connectionStates": {
+          "connected": 22
+        },
+        "firstDecodedCounter": 1192,
+        "lastDecodedCounter": 3868,
+        "rawDecodedCounterIncreaseIncludingCameraTransition": 2676,
+        "validIntervals": 20,
+        "excludedIntervals": [
+          {
+            "fromIndex": 12,
+            "toIndex": 13,
+            "reason": "cameraSettingsOrGenerationTransition"
+          }
+        ],
+        "measuredStatsSecondsExcludingTransitions": 101.96196,
+        "decodedFrameDeltaExcludingTransitions": 2559,
+        "weightedDecodedFpsExcludingTransitions": 25.0976,
+        "observedDroppedCounters": [
+          0
+        ]
+      },
+      "confirmedDimToBeforeWakeWindow": {
+        "dimSnapshotAtUtc": "2026-10-21T23:12:19.506949+00:00",
+        "wakeAndEyeRestoreEventAtUtc": "2026-10-21T23:12:39.616078+00:00",
+        "samples": 4,
+        "firstUtc": "2026-10-21T23:12:21.513Z",
+        "lastUtc": "2026-10-21T23:12:36.747Z",
+        "connectionStates": {
+          "connected": 4
+        },
+        "firstDecodedCounter": 3465,
+        "lastDecodedCounter": 3868,
+        "rawDecodedCounterIncreaseIncludingCameraTransition": 403,
+        "validIntervals": 3,
+        "excludedIntervals": [],
+        "measuredStatsSecondsExcludingTransitions": 15.230438,
+        "decodedFrameDeltaExcludingTransitions": 403,
+        "weightedDecodedFpsExcludingTransitions": 26.4602,
+        "observedDroppedCounters": [
+          0
+        ]
+      },
+      "byCamera": {
+        "0": {
+          "samples": 13,
+          "firstUtc": "2026-10-21T23:10:09.202Z",
+          "lastUtc": "2026-10-21T23:11:09.952Z",
+          "connectionStates": {
+            "connecting": 1,
+            "connected": 12
+          },
+          "firstDecodedCounter": 145,
+          "lastDecodedCounter": 1793,
+          "rawDecodedCounterIncreaseIncludingCameraTransition": 1648,
+          "validIntervals": 11,
+          "excludedIntervals": [
+            {
+              "fromIndex": 0,
+              "toIndex": 1,
+              "reason": "missingOrAmbiguousInboundVideoStats"
+            }
+          ],
+          "measuredStatsSecondsExcludingTransitions": 55.690776,
+          "decodedFrameDeltaExcludingTransitions": 1648,
+          "weightedDecodedFpsExcludingTransitions": 29.592,
+          "observedDroppedCounters": [
+            0
+          ]
+        },
+        "1": {
+          "samples": 18,
+          "firstUtc": "2026-10-21T23:11:15.005Z",
+          "lastUtc": "2026-10-21T23:12:41.787Z",
+          "connectionStates": {
+            "connected": 18
+          },
+          "firstDecodedCounter": 1910,
+          "lastDecodedCounter": 3985,
+          "rawDecodedCounterIncreaseIncludingCameraTransition": 2075,
+          "validIntervals": 17,
+          "excludedIntervals": [],
+          "measuredStatsSecondsExcludingTransitions": 86.777564,
+          "decodedFrameDeltaExcludingTransitions": 2075,
+          "weightedDecodedFpsExcludingTransitions": 23.9117,
+          "observedDroppedCounters": [
+            0
+          ]
+        }
+      },
+      "interpretation": "Remote decoded counters advanced while the mobile preview was hidden and after native dimming. Camera switch retained generation 1 and the observed browser connection; track ID changed."
+    },
+    "dimmingEvidence": {
+      "snapshot": {
+        "path": ".dart_tool/camera_audit/physical-final/ui-after-60-second-dim-recorded.json",
+        "sha256": "6279e23a95653a96d44a837e7d3320a2839b127943a6d721f3e5743578129b8c",
+        "bytes": 417
+      },
+      "recordedAtUtc": "2026-10-21T23:12:19.506949+00:00",
+      "files": {
+        "window": {
+          "path": ".dart_tool/camera_audit/physical-final/ui-after-60-second-dim-window.txt",
+          "sha256": "d9ae5c5ef5214a9df7024481014a4cf4d2cc4677461691aed659d066a3997249",
+          "bytes": 324764
+        },
+        "power": {
+          "path": ".dart_tool/camera_audit/physical-final/ui-after-60-second-dim-power.txt",
+          "sha256": "8ddd914a7f8dbc27b0d8bf6848afdb63911f225b9f25d638eb9614479491e1bb",
+          "bytes": 254843
+        },
+        "keyguard": {
+          "path": ".dart_tool/camera_audit/physical-final/ui-after-60-second-dim-keyguard.txt",
+          "sha256": "bb6844bc07a8d15689c500ce9a226ebda21f8b7cc6326667985c6ffd792a6c14",
+          "bytes": 4867
+        },
+        "camera": {
+          "path": ".dart_tool/camera_audit/physical-final/ui-after-60-second-dim-camera.txt",
+          "sha256": "04c54a631225feb311a7b46ff9fff80c623ef2c687021df2f7480c466c0a9ee6",
+          "bytes": 1110230
+        },
+        "services": {
+          "path": ".dart_tool/camera_audit/physical-final/ui-after-60-second-dim-services.txt",
+          "sha256": "f1890e04ef2b96d97b95f1aeee6ea6cb9f89efe2a8449c4328fa04c475a5315b",
+          "bytes": 3378
+        }
+      },
+      "windowBrightnessOverride": 0.01,
+      "powerWindowBrightnessOverride": 0.01,
+      "awake": true,
+      "keyguardShowing": false,
+      "cameraClientStillActive": true,
+      "cameraId": "1"
+    },
+    "resourcesAfterSystemBackStop": {
+      "recorded": {
+        "path": ".dart_tool/camera_audit/physical-final/ui-after-system-back-stop-recorded.json",
+        "sha256": "c8c8cf9aeb86404ec71445dd7707f572f36d55dd9845c46d0278bd0709d7eed5",
+        "bytes": 91,
+        "data": {
+          "recordedAtUtc": "2026-10-21T23:12:56.042379+00:00",
+          "httpUnavailable": "URLError"
+        }
+      },
+      "files": {
+        "camera": {
+          "path": ".dart_tool/camera_audit/physical-final/ui-after-system-back-stop-camera.txt",
+          "sha256": "0b3a33350b5ba4103a2ecfcc336d93bec6dfcf47f9fca57edb1547956fdf2e76",
+          "bytes": 1110054
+        },
+        "keyguard": {
+          "path": ".dart_tool/camera_audit/physical-final/ui-after-system-back-stop-keyguard.txt",
+          "sha256": "bb6844bc07a8d15689c500ce9a226ebda21f8b7cc6326667985c6ffd792a6c14",
+          "bytes": 4867
+        },
+        "power": {
+          "path": ".dart_tool/camera_audit/physical-final/ui-after-system-back-stop-power.txt",
+          "sha256": "b3a3770954f56183aa0570408d4d916ffa74d10c166e7051d5506d75b4611d48",
+          "bytes": 253377
+        },
+        "projection": {
+          "path": ".dart_tool/camera_audit/physical-final/ui-after-system-back-stop-projection.txt",
+          "sha256": "c9984061dea1dafa0730a04035772ed72a9d6d5ee72f1f3c26f2e335005136d4",
+          "bytes": 76
+        },
+        "services": {
+          "path": ".dart_tool/camera_audit/physical-final/ui-after-system-back-stop-services.txt",
+          "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0",
+          "bytes": 66
+        },
+        "window": {
+          "path": ".dart_tool/camera_audit/physical-final/ui-after-system-back-stop-window.txt",
+          "sha256": "a9988866dac50ea9018243d965d8a8919a3173abbe94eed24fa6f1279f28f413",
+          "bytes": 318969
+        }
+      },
+      "activeCameraClients": [],
+      "cameraDisconnectRecordedInServiceLog": true,
+      "applicationForegroundServices": [],
+      "mediaProjectionActive": false,
+      "cameraShareWakeLockReleased": true,
+      "keepScreenOnWindowFlagCleared": true,
+      "windowBrightnessOverrideRestoredToSystem": true,
+      "powerBrightnessOverrideRecordedValue": "NaN",
+      "keyguardShowing": false,
+      "httpServerResponding": false,
+      "httpUnavailableErrorClass": "URLError",
+      "httpInterpretation": "Owned receiver was unavailable after system Back; snapshot records URLError and no remaining application services. Snapshot does not preserve a precise socket errno."
+    },
+    "limitations": [
+      "Initial artifact SHA256 60a561... only; final rebuild and installation must be validated separately.",
+      "The initial permission flow required a retry after a denial result and was subsequently changed. This initial run does not validate that subsequent permission fix.",
+      "The native Linux viewer and browser probe were simultaneous legitimate receivers during part of this run. This is a two-peer workload, not a single-peer benchmark.",
+      "Decoded cadence is computed as delta framesDecoded / delta inbound-rtp RTCStats.timestamp in milliseconds. Intervals spanning camera/settings/generation changes are excluded from cadence metrics.",
+      "Sampling approximately every five seconds demonstrates observed counter progress and connection state; it cannot rule out every shorter pause between samples.",
+      "These metrics do not measure end-to-end latency, battery cost, sustained 60 FPS support or a performance improvement against a controlled baseline.",
+      "Configured FPS and resolution are ceilings/settings. Negotiated sizes and actual FPS can adapt with hardware, lighting and receiver load. The work changes camera UI and lifecycle presentation; FPS values are not presented as an improvement claim.",
+      "Browser H264 codec identity is directly present in these new samples, even though an older generic helper still says codec identity is unavailable.",
+      "Initial PC Stop and reconnect are not approved: the Stop click missed after the window resized, and the native log contains one viewer connection before exit code 0.",
+      "USB cable and iOS device behavior were not physically tested in this run."
+    ],
+    "analysisWork": {
+      "productionOrCanonicalReportFilesModified": false,
+      "persistentProcessesStarted": false,
+      "onlyOutputCreated": ".dart_tool/app_review/camera-ui-initial-validation.json"
+    }
+  },
+  "changeBetweenInitialAndFinalBuilds": [
+    "lib/src/infrastructure/services/permission_request_coordinator.dart"
+  ],
+  "finalPhysicalValidation": {
+    "temporaryCameraPermission": {
+      "beforeRequest": "Preguntar siempre / ONE_TIME, granted=false",
+      "dialogAppearedAfterExplicitShareAction": true,
+      "selected": "Solo esta vez",
+      "startedOnFirstAttemptAfterGrant": true,
+      "permissionWasNotGrantedViaAdb": true
+    },
+    "mobile": {
+      "dedicatedFullscreenView": true,
+      "frontRearSwitchWithLocalPreviewHidden": true,
+      "onlyLocalPreviewHidden": true,
+      "stopReturnsToCameraSetup": true,
+      "backFromSetupReturnsHome": true
+    },
+    "pc": {
+      "intentionalConnections": 2,
+      "negotiatedCodec": "H264",
+      "stopReturnedToSetup": true,
+      "stopRevealedOnInteraction": true,
+      "stopHiddenAfterInactivity": true,
+      "reconnectedAfterStop": true,
+      "windowClosedWithLiveFrontCamera": true,
+      "windowExitCode": 0,
+      "sourceContinuedAfterViewerStop": true,
+      "sourceContinuedAfterWindowClose": true,
+      "existingNonfatalDiagnostics": [
+        "GTK Atk plug_id assertion at startup",
+        "FlutterEngineRemoveView implicit-view diagnostic on shutdown"
+      ]
+    },
+    "cleanup": {
+      "transmissionServicesStopped": true,
+      "noActiveCameraClients": true,
+      "noMediaProjection": true,
+      "keepScreenOnCleared": true,
+      "windowBrightnessRestored": true,
+      "powerBrightnessOverrideRestored": true,
+      "cameraHttpClosed": true,
+      "ownDesktopProcessExited": true,
+      "ownBrowserAndProbeStopped": true,
+      "ownedDesktopListenersClosed": [
+        53317,
+        53318,
+        9227
+      ],
+      "adbForwardOrReverseMappingsAdded": false,
+      "remoteUiDumpRemoved": true
+    }
+  },
+  "evidence": [
+    {
+      "path": ".dart_tool/app_review/camera-ui-final-tests.log",
+      "bytes": 47800,
+      "sha256": "d9bfe42bd6e2d94a9754dc0ae3c8ad4fcc4a0ffb4d1fc6d574b51e1e6e38db8f"
+    },
+    {
+      "path": ".dart_tool/app_review/camera-ui-final-analyze.log",
+      "bytes": 96,
+      "sha256": "ebee83b44e6d277cbe24ff5c0b714143f35b37aa0e6aa553c20b07d3f7f64b8b"
+    },
+    {
+      "path": ".dart_tool/app_review/camera-ui-final-android.log",
+      "bytes": 48091,
+      "sha256": "d28cdbce621af0f28231091ad34ffd0a18287d4b343227e54a211768f0466824"
+    },
+    {
+      "path": ".dart_tool/app_review/camera-ui-final-linux.log",
+      "bytes": 180,
+      "sha256": "396dce43381e29ecbf68f9161f54e2f6b3875679b5f89b8e84ad46c7503f63a2"
+    },
+    {
+      "path": ".dart_tool/app_review/camera-ui-final-pc.log",
+      "bytes": 1640,
+      "sha256": "50ac6ceac7082fa9a3e039aa64ecdf75f8a8fcd67c149b31eab63117eb9fbf24"
+    },
+    {
+      "path": ".dart_tool/app_review/ui-final-home.xml",
+      "bytes": 9439,
+      "sha256": "8563bc601a35ade9279f125dd64a16e8f930d83fa15f2b4882f724508b5195d5"
+    },
+    {
+      "path": ".dart_tool/app_review/ui-final-temporary-permission-dialog.xml",
+      "bytes": 5577,
+      "sha256": "6a8ad29542b7a9f9a88c1263c96019b9e6b9fafefa2fba5514f13cb9c84b1d6f"
+    },
+    {
+      "path": ".dart_tool/app_review/ui-final-live-permission-first-attempt.xml",
+      "bytes": 4110,
+      "sha256": "33a533f34e502d9d865980ae686f6d2844fcab9fd704d36da28b42ec1c9778ea"
+    },
+    {
+      "path": ".dart_tool/app_review/ui-final-front-preview-hidden.xml",
+      "bytes": 4810,
+      "sha256": "0c67a53443d78fbac5108180d967ccb73b203fcf38f02acffa8fab2917e3a226"
+    },
+    {
+      "path": ".dart_tool/app_review/ui-final-after-stop-button.xml",
+      "bytes": 11739,
+      "sha256": "9dc18897bb4cb96cba0db69486b9686e5e69624817fb2c8a2dac59c7600dca0d"
+    },
+    {
+      "path": ".dart_tool/app_review/ui-final-idle-home.xml",
+      "bytes": 9439,
+      "sha256": "8563bc601a35ade9279f125dd64a16e8f930d83fa15f2b4882f724508b5195d5"
+    },
+    {
+      "path": ".dart_tool/app_review/camera-ui-final-pc-controls.png",
+      "bytes": 1934,
+      "sha256": "1399739467aa75fbe972fc220f7309f8c7e21718d6b35dbf0e6755c5a036b386"
+    },
+    {
+      "path": ".dart_tool/app_review/camera-ui-final-pc-hidden.png",
+      "bytes": 319525,
+      "sha256": "1cb00a5cad9aaaedd11c0606d31a05931788265a7e62fa538ad31f11d71cde7b"
+    },
+    {
+      "path": ".dart_tool/app_review/camera-ui-final-pc-revealed.png",
+      "bytes": 300786,
+      "sha256": "bd80f9e4020ac0441acdb970dea890ff928b07426b6cd049c12ae02b35ed5882"
+    },
+    {
+      "path": ".dart_tool/app_review/camera-ui-final-pc-after-stop.png",
+      "bytes": 44941,
+      "sha256": "4aaf78bc81ac6c139c0ede1e0131dff7d81a9f69bf20cf74da521717bb6436fa"
+    },
+    {
+      "path": ".dart_tool/app_review/camera-ui-final-pc-reconnected-front.png",
+      "bytes": 267414,
+      "sha256": "034c1f20f1c4bef941fd47d529b61179c8eb2d16e74ad980c97fd027fef39da5"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-after-stop-camera.txt",
+      "bytes": 1110201,
+      "sha256": "dfba5401ac88ceaa5b0a5771fbb29bde8ddd314e756714ee36609e0a67c9603c"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-after-stop-keyguard.txt",
+      "bytes": 4867,
+      "sha256": "bb6844bc07a8d15689c500ce9a226ebda21f8b7cc6326667985c6ffd792a6c14"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-after-stop-power.txt",
+      "bytes": 256700,
+      "sha256": "65dd0ff1b1d01c51cbb123c6a0d43c37625f09ba611d2fab45be9f97c19af8ce"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-after-stop-projection.txt",
+      "bytes": 76,
+      "sha256": "c9984061dea1dafa0730a04035772ed72a9d6d5ee72f1f3c26f2e335005136d4"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-after-stop-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-after-stop-window.txt",
+      "bytes": 311406,
+      "sha256": "254817dbe1f3e71062ef94064a3c54089572edff69430eb7ec3c6a6ac7e85588"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-pc-window-close-camera.txt",
+      "bytes": 1110375,
+      "sha256": "d66efdea7f662f6786683b86b54bdfe186c7e2b66ab11f3932bda1ba23f3c862"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-pc-window-close-keyguard.txt",
+      "bytes": 4867,
+      "sha256": "bb6844bc07a8d15689c500ce9a226ebda21f8b7cc6326667985c6ffd792a6c14"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-pc-window-close-power.txt",
+      "bytes": 257125,
+      "sha256": "f22bc1451ee846ca90a56579278f0a12771f8fb179b6d1d950401c53cd0341ce"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-pc-window-close-projection.txt",
+      "bytes": 76,
+      "sha256": "c9984061dea1dafa0730a04035772ed72a9d6d5ee72f1f3c26f2e335005136d4"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-pc-window-close-services.txt",
+      "bytes": 3363,
+      "sha256": "f0b3928ad69c6ec7a5b5e0dfa4209c369aee7a224b5ce2ee9f7fa859b9219a65"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-pc-window-close-window.txt",
+      "bytes": 317189,
+      "sha256": "c425c88120b669a40377e2ce9ac9604a957e57e89207b2f1e8f149bb1d79fbd1"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-viewer-stop-camera.txt",
+      "bytes": 1057040,
+      "sha256": "c3c899a823419a4ae7bc30bd1130d555a466de404eaab52706193b96315898a4"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-viewer-stop-keyguard.txt",
+      "bytes": 4867,
+      "sha256": "bb6844bc07a8d15689c500ce9a226ebda21f8b7cc6326667985c6ffd792a6c14"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-viewer-stop-power.txt",
+      "bytes": 256585,
+      "sha256": "aa78cea017719814eed257a618c5ea57028b8dba45f5c790354c1f25ac2f4314"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-viewer-stop-projection.txt",
+      "bytes": 76,
+      "sha256": "c9984061dea1dafa0730a04035772ed72a9d6d5ee72f1f3c26f2e335005136d4"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-viewer-stop-services.txt",
+      "bytes": 3366,
+      "sha256": "b96d4afaa0fbc9d1c2799f7be1dbcbab779198c7cb228483c118f9172d7c4faa"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-viewer-stop-window.txt",
+      "bytes": 317191,
+      "sha256": "815e3ca547789ff16f2af6be67c672dcc3e7f9a84400a336405d76e8f67314c5"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-after-stop-recorded.json",
+      "bytes": 91,
+      "sha256": "bf2774a4bc9330e3d57e24ea857d391cacc89882e73daeaf445e29a8d2512b39"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-pc-window-close-recorded.json",
+      "bytes": 415,
+      "sha256": "16ea08a7bfd594dfb8099b24a05bdc2f3ef67b547636f17c275d5814551c5335"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-final/ui-final-source-after-viewer-stop-recorded.json",
+      "bytes": 417,
+      "sha256": "678563f4a4127f547220d285f81cbc64c6392846e2dc9ff407a0d389176e8777"
+    }
+  ],
+  "limits": [
+    "Physical validation used one S22 Ultra and one Linux PC over Wi-Fi; other Android devices and iOS are not physically verified.",
+    "Physical USB testing remains pending because the user can currently test Wi-Fi only.",
+    "Initial probe contains two receivers during part of the run and sampled statistics about every five seconds; it does not establish end-to-end latency, absence of sub-sample pauses or a performance improvement.",
+    "Camera images and raw device dumps remain in ignored local evidence; only their hashes are included here.",
+    "The prior s22-camera-review.json is historical evidence for the earlier APK."
+  ],
+  "finalDesktopArtifacts": [
+    {
+      "path": "build/linux/x64/release/bundle/bshare",
+      "bytes": 30432,
+      "sha256": "410714c83b84516cf95239f5cc649c51844151d59b5473f81d20ad506e9b4f00"
+    },
+    {
+      "path": "build/linux/x64/release/bundle/lib/libapp.so",
+      "bytes": 8700816,
+      "sha256": "5ed4e3bed165b0b5aacc7735af03076323ce3877055aac1bcbb6b4c57783c673"
+    }
+  ],
+  "historicalEvidenceNote": "This report describes the earlier camera UI revision. Its retained APK is linked here; the shared delivery path is reused by later builds."
+}

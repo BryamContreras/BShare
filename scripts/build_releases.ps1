@@ -74,11 +74,18 @@ if (-not $SkipAndroid) {
 }
 
 if (-not $SkipWindows) {
-    flutter build windows --release
+    flutter build windows --release --no-pub
+    if ($LASTEXITCODE -ne 0) {
+        throw "Flutter Windows build failed with exit code $LASTEXITCODE."
+    }
+
+    # The shared packager includes the app-local Microsoft C++ runtime and
+    # compiles the same installer used in GitHub Actions.
+    & (Join-Path $root 'packaging/windows/build-installer.ps1') -OutputDirectory "$releaseRoot\windows" -Version $versionName -BuildNumber $buildNumber -SkipInstaller:(-not $BuildInstaller)
 
     $windowsBundle = Join-Path $windowsPath 'BShare-windows-x64'
     New-Item -ItemType Directory -Path $windowsBundle -Force | Out-Null
-    Copy-Item -Path 'build\windows\x64\runner\Release\*' -Destination $windowsBundle -Recurse -Force
+    Copy-Item -Path 'build\installer\windows\payload\*' -Destination $windowsBundle -Recurse -Force
 
     $zipPath = Join-Path $windowsPath "BShare-$safeVersion-windows-x64.zip"
     if (Test-Path -LiteralPath $zipPath) {
@@ -88,19 +95,10 @@ if (-not $SkipWindows) {
     $artifacts.Add("windows/BShare-windows-x64/")
     $artifacts.Add("windows/BShare-$safeVersion-windows-x64.zip")
 
-    $iscc = Get-Command iscc -ErrorAction SilentlyContinue
-    if (-not $iscc) {
-        $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-    }
-    if ($BuildInstaller -and -not $iscc) {
-        throw 'Inno Setup compiler was not found. Install Inno Setup or remove -BuildInstaller.'
-    }
-    if ($iscc) {
-        & $iscc.Source "/DMyAppVersion=$versionName" "/DMyAppBuildNumber=$buildNumber" 'installer\windows\BShare.iss'
-        $setup = Get-ChildItem -Path $windowsPath -Filter 'BShare-Setup-*.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        if ($setup) {
-            $artifacts.Add("windows/$($setup.Name)")
-        }
+    if ($BuildInstaller) {
+        $setupName = "BShare-$version-windows-x64-setup.exe"
+        $artifacts.Add("windows/$setupName")
+        $artifacts.Add("windows/$setupName.sha256")
     }
 }
 

@@ -4,11 +4,11 @@ import 'dart:io';
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/android_app_file.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
+import 'package:bshare/src/presentation/navigation/app_navigation.dart';
 import 'package:bshare/src/presentation/widgets/app_shell.dart';
 import 'package:bshare/src/presentation/widgets/formatters.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 class AndroidAppPickerScreen extends ConsumerStatefulWidget {
   const AndroidAppPickerScreen({super.key});
@@ -34,7 +34,9 @@ class _AndroidAppPickerScreenState
     _filterController.addListener(() {
       setState(() => _query = _filterController.text.trim().toLowerCase());
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadApps());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadApps();
+    });
   }
 
   @override
@@ -50,7 +52,7 @@ class _AndroidAppPickerScreenState
       _error = null;
     });
     try {
-      await Future<void>.delayed(const Duration(milliseconds: 120));
+      if (!mounted) return;
       final apps = Platform.isAndroid
           ? await ref.read(androidAppsServiceProvider).listInstalledApps()
           : const <AndroidAppFile>[];
@@ -88,7 +90,7 @@ class _AndroidAppPickerScreenState
                   ref
                       .read(sendControllerProvider)
                       .addAndroidApps(_selected.toList());
-                  context.go('/send');
+                  AppNavigationScope.back(context, fallback: '/send');
                 },
           icon: const Icon(Icons.check_rounded),
         ),

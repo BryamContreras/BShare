@@ -4,10 +4,26 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:bshare/src/domain/entities/direct_share_invite.dart';
+import 'package:bshare/src/infrastructure/services/android_platform_info_service.dart';
+import 'package:bshare/src/infrastructure/services/permission_request_coordinator.dart';
+import 'package:bshare/src/infrastructure/services/process_runner.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class DirectNetworkService {
+  DirectNetworkService({
+    ProcessRunner? processRunner,
+    AndroidPlatformInfoService? platformInfo,
+    PermissionRequestCoordinator? permissionCoordinator,
+    Future<PermissionStatus> Function(Permission)? readPermissionStatus,
+  }) : _processRunner = processRunner ?? const ProcessRunner(),
+       _androidPlatformInfo =
+           platformInfo ?? AndroidPlatformInfoService.instance,
+       _permissionCoordinator =
+           permissionCoordinator ?? PermissionRequestCoordinator.instance,
+       _readPermissionStatus =
+           readPermissionStatus ?? ((permission) => permission.status);
+
   static const _channel = MethodChannel('bshare/direct_network');
   static final _random = Random.secure();
 
@@ -15,17 +31,53 @@ class DirectNetworkService {
   StreamSubscription<String>? _windowsHotspotStdout;
   StreamSubscription<String>? _windowsHotspotStderr;
   StringBuffer? _windowsHotspotStderrBuffer;
+  Future<void>? _windowsHotspotStdoutDone;
+  Future<void>? _windowsHotspotStderrDone;
   String? _linuxHotspotConnectionName;
+  final ProcessRunner _processRunner;
+  final AndroidPlatformInfoService _androidPlatformInfo;
+  final PermissionRequestCoordinator _permissionCoordinator;
+  final Future<PermissionStatus> Function(Permission) _readPermissionStatus;
+  Future<void>? _disposal;
+  Future<DirectNetworkCredentials>? _hotspotStart;
+  Future<void>? _hotspotStop;
 
-  Future<DirectNetworkCredentials> startLocalOnlyHotspot() async {
-    if (Platform.isWindows) return _startWindowsLegacyHotspot();
-    if (Platform.isLinux) return _startLinuxNmcliHotspot();
+  Future<DirectNetworkCredentials> startLocalOnlyHotspot() {
+    if (_disposal != null) {
+      return Future.error(StateError('Direct network service is disposed'));
+    }
+    return _hotspotStart ??= _startLocalOnlyHotspot().whenComplete(() {
+      _hotspotStart = null;
+    });
+  }
+
+  Future<DirectNetworkCredentials> _startLocalOnlyHotspot() async {
+    await _hotspotStop;
+    if (_disposal != null) {
+      throw StateError('Direct network service is disposed');
+    }
+    if (!_androidPlatformInfo.isAndroid) {
+      if (Platform.isWindows) return _startWindowsLegacyHotspot();
+      if (Platform.isLinux) return _startLinuxNmcliHotspot();
+    }
     _ensureAndroid();
     return _startAndroidLocalOnlyHotspot();
   }
 
   Future<DirectNetworkCredentials> _startAndroidLocalOnlyHotspot() async {
-    await _requestWifiPermissions();
+    final sdkInt = await _androidPlatformInfo.sdkInt();
+    _ensureActive();
+    if (sdkInt < 26) {
+      throw UnsupportedError(
+        'Local-only hotspot requires Android 8.0 or newer',
+      );
+    }
+    await _requirePermission(
+      sdkInt >= 33
+          ? Permission.nearbyWifiDevices
+          : Permission.locationWhenInUse,
+    );
+    _ensureActive();
     final raw = await _channel.invokeMapMethod<String, Object?>(
       'startLocalOnlyHotspot',
     );
@@ -39,22 +91,44 @@ class DirectNetworkService {
     return credentials;
   }
 
-  Future<void> stopLocalOnlyHotspot() async {
-    if (Platform.isWindows) {
-      await _stopWindowsLegacyHotspot();
+  Future<void> stopLocalOnlyHotspot() {
+    return _hotspotStop ??= _stopLocalOnlyHotspot().whenComplete(() {
+      _hotspotStop = null;
+    });
+  }
+
+  Future<void> _stopLocalOnlyHotspot() async {
+    try {
+      await _hotspotStart;
+    } catch (_) {
+      // Starting already reports its own failure; still finish any cleanup.
+    }
+    if (!_androidPlatformInfo.isAndroid) {
+      if (Platform.isWindows) {
+        await _stopWindowsLegacyHotspot();
+        return;
+      }
+      if (Platform.isLinux) {
+        await _stopLinuxNmcliHotspot();
+        return;
+      }
       return;
     }
-    if (Platform.isLinux) {
-      await _stopLinuxNmcliHotspot();
-      return;
-    }
-    if (!Platform.isAndroid) return;
     await _channel.invokeMethod<void>('stopLocalOnlyHotspot');
   }
 
   Future<void> connectToWifi(DirectNetworkCredentials credentials) async {
     _ensureAndroid();
-    await _requestWifiPermissions();
+    _ensureActive();
+    final sdkInt = await _androidPlatformInfo.sdkInt();
+    _ensureActive();
+    if (sdkInt >= 29) {
+      // MainActivity uses startScan + WifiNetworkSpecifier on this path.
+      // startScan still requires location on Android 13 and newer; nearby
+      // Wi-Fi access does not replace that permission.
+      await _requirePermission(Permission.locationWhenInUse);
+      _ensureActive();
+    }
     await _channel.invokeMethod<void>('connectToWifi', credentials.toJson());
   }
 
@@ -62,7 +136,7 @@ class DirectNetworkService {
     DirectNetworkCredentials credentials,
   ) async {
     _ensureAndroid();
-    await _requestWifiPermissions();
+    _ensureActive();
     await _channel.invokeMethod<void>(
       'openWifiJoinSettings',
       credentials.toJson(),
@@ -70,18 +144,20 @@ class DirectNetworkService {
   }
 
   Future<bool> ensureWifiReady() async {
-    if (!Platform.isAndroid) return false;
-    await _requestWifiPermissions();
+    if (!_androidPlatformInfo.isAndroid) return false;
+    _ensureActive();
     return await _channel.invokeMethod<bool>('ensureWifiReady') ?? false;
   }
 
   Future<void> openWifiPanel() async {
     _ensureAndroid();
+    _ensureActive();
     await _channel.invokeMethod<void>('openWifiPanel');
   }
 
   Future<bool> bindToCurrentWifi() async {
-    if (!Platform.isAndroid) return false;
+    if (!_androidPlatformInfo.isAndroid) return false;
+    _ensureActive();
     return await _channel.invokeMethod<bool>('bindToCurrentWifi') ?? false;
   }
 
@@ -90,7 +166,8 @@ class DirectNetworkService {
     required int port,
     String path = '/api/ping',
   }) async {
-    if (!Platform.isAndroid) return false;
+    if (!_androidPlatformInfo.isAndroid) return false;
+    _ensureActive();
     return await _channel.invokeMethod<bool>('bindToWifiForHost', {
           'host': host,
           'port': port,
@@ -100,7 +177,7 @@ class DirectNetworkService {
   }
 
   Future<void> disconnectWifi() async {
-    if (!Platform.isAndroid) return;
+    if (!_androidPlatformInfo.isAndroid) return;
     await _channel.invokeMethod<void>('disconnectWifi');
   }
 
@@ -121,12 +198,22 @@ class DirectNetworkService {
     ]);
     _windowsHotspotProcess = process;
     _windowsHotspotStderrBuffer = StringBuffer();
+    final stderrDone = Completer<void>();
+    _windowsHotspotStderrDone = stderrDone.future;
     _windowsHotspotStderr = process.stderr
         .transform(systemEncoding.decoder)
-        .listen(_windowsHotspotStderrBuffer!.write);
+        .listen(
+          _windowsHotspotStderrBuffer!.write,
+          onError: (Object error) {
+            _windowsHotspotStderrBuffer?.write(error);
+          },
+          onDone: stderrDone.complete,
+        );
 
     final started = Completer<Map<String, dynamic>>();
     final stdoutBuffer = StringBuffer();
+    final stdoutDone = Completer<void>();
+    _windowsHotspotStdoutDone = stdoutDone.future;
     _windowsHotspotStdout = process.stdout
         .transform(systemEncoding.decoder)
         .listen(
@@ -148,10 +235,18 @@ class DirectNetworkService {
               started.completeError(error, stackTrace);
             }
           },
+          onDone: () {
+            stdoutDone.complete();
+            if (!started.isCompleted) {
+              final decoded = _tryDecodeJsonLine(stdoutBuffer.toString());
+              if (decoded != null) started.complete(decoded);
+            }
+          },
         );
 
     unawaited(
-      process.exitCode.then((exitCode) {
+      process.exitCode.then((exitCode) async {
+        await Future.wait([stdoutDone.future, stderrDone.future]);
         if (started.isCompleted) return;
         final errorText = _windowsHotspotStderrBuffer?.toString().trim();
         started.completeError(
@@ -167,7 +262,7 @@ class DirectNetworkService {
     try {
       raw = await started.future.timeout(const Duration(seconds: 20));
     } on Object {
-      process.kill();
+      await terminateProcess(process);
       await _clearWindowsProcessHandles();
       rethrow;
     }
@@ -236,26 +331,26 @@ class DirectNetworkService {
       process.stdin.writeln('stop');
       await process.stdin.flush();
       await process.stdin.close();
-      await process.exitCode.timeout(
-        const Duration(seconds: 8),
-        onTimeout: () {
-          process.kill();
-          return -1;
-        },
-      );
+      await process.exitCode.timeout(const Duration(seconds: 8));
     } catch (_) {
-      process.kill();
+      await terminateProcess(process);
     } finally {
       await _clearWindowsProcessHandles();
     }
   }
 
   Future<void> _clearWindowsProcessHandles() async {
+    try {
+      await _windowsHotspotProcess?.stdin.close();
+    } catch (_) {}
+    await Future.wait([?_windowsHotspotStdoutDone, ?_windowsHotspotStderrDone]);
     await _windowsHotspotStdout?.cancel();
     await _windowsHotspotStderr?.cancel();
     _windowsHotspotStdout = null;
     _windowsHotspotStderr = null;
     _windowsHotspotStderrBuffer = null;
+    _windowsHotspotStdoutDone = null;
+    _windowsHotspotStderrDone = null;
     _windowsHotspotProcess = null;
   }
 
@@ -421,27 +516,12 @@ class DirectNetworkService {
     bool allowFailure = false,
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    Process? process;
     try {
-      process = await Process.start(
+      final result = await _processRunner.run(
         'nmcli',
         arguments,
+        timeout: timeout,
         environment: {'LC_ALL': 'C'},
-      );
-      final stdout = process.stdout.transform(systemEncoding.decoder).join();
-      final stderr = process.stderr.transform(systemEncoding.decoder).join();
-      final exitCode = await process.exitCode.timeout(
-        timeout,
-        onTimeout: () {
-          process?.kill();
-          throw TimeoutException('nmcli timed out', timeout);
-        },
-      );
-      final result = ProcessResult(
-        process.pid,
-        exitCode,
-        await stdout,
-        await stderr,
       );
       if (result.exitCode != 0 && !allowFailure) {
         throw StateError(_nmcliError(arguments, result));
@@ -455,11 +535,20 @@ class DirectNetworkService {
         'NetworkManager/nmcli is required to create a Linux hotspot',
       );
     } on TimeoutException {
-      process?.kill();
       if (allowFailure) {
         return ProcessResult(0, 124, '', 'nmcli timed out');
       }
       throw StateError('NetworkManager timed out while creating the hotspot');
+    }
+  }
+
+  Future<void> dispose() => _disposal ??= _dispose();
+
+  Future<void> _dispose() async {
+    try {
+      await stopLocalOnlyHotspot();
+    } finally {
+      await disconnectWifi();
     }
   }
 
@@ -619,16 +708,25 @@ try {
     return base64Encode(bytes);
   }
 
-  Future<void> _requestWifiPermissions() async {
-    final nearby = await Permission.nearbyWifiDevices.request();
-    final location = await Permission.locationWhenInUse.request();
-    if (!nearby.isGranted && !location.isGranted) {
-      throw StateError('Wi-Fi permissions were denied');
+  Future<void> _requirePermission(Permission permission) async {
+    final status = await _permissionCoordinator.request(permission);
+    // The first location result may describe coarse access even if the user
+    // denied fine access. Recheck the full permission group without opening
+    // another dialog, and never cache a grant across protected operations.
+    if (!status.isGranted ||
+        !(await _readPermissionStatus(permission)).isGranted) {
+      throw StateError('Wi-Fi permission was denied: $permission');
+    }
+  }
+
+  void _ensureActive() {
+    if (_disposal != null) {
+      throw StateError('Direct network service is disposed');
     }
   }
 
   void _ensureAndroid() {
-    if (!Platform.isAndroid) {
+    if (!_androidPlatformInfo.isAndroid) {
       throw UnsupportedError(
         'BShare direct network is only supported on Android, Windows, and Linux',
       );

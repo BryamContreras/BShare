@@ -47,9 +47,48 @@ class FileServer {
 
   final AppLogger _logger;
   HttpServer? _server;
+  Future<void>? _serveTask;
+  bool _stopping = false;
+  Future<void> _lifecycle = Future<void>.value();
+  final Set<Future<void>> _requests = {};
+  final Map<String, TransferControl> _activeTransfers = {};
+  final Set<String> _reservedPaths = {};
+  String _downloadDirectory = '';
+  bool _autoAccept = true;
+
+  /// A camera/screen signaling listener does not implicitly accept files.
+  bool fileReceptionEnabled = true;
+
+  /// Checks current access without opening a permission dialog for a remote
+  /// request. It is rechecked after a local acceptance decision before writing.
+  Future<bool> Function(String path)? fileAccessHandler;
+
+  /// Applies to subsequent requests; requests already in progress retain their
+  /// original destination and acceptance decision.
+  void updateReceiverSettings({
+    required String downloadDirectory,
+    required bool autoAccept,
+  }) {
+    _downloadDirectory = downloadDirectory;
+    _autoAccept = autoAccept;
+  }
+
+  Future<T> _serialize<T>(Future<T> Function() action) {
+    final operation = _lifecycle.then((_) => action());
+    _lifecycle = operation.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stack) {},
+    );
+    return operation;
+  }
+
   ScreenOfferHandler? screenOfferHandler;
   ScreenMetadataHandler? screenMetadataHandler;
+  ScreenOfferHandler? cameraOfferHandler;
+  ScreenMetadataHandler? cameraMetadataHandler;
+  List<String>? cameraAllowedRemoteSubnets;
   TransferCommandHandler? transferCommandHandler;
+  void Function()? onIdle;
 
   int? get port => _server?.port;
   bool get isRunning => _server != null;
@@ -63,23 +102,25 @@ class FileServer {
     required ReceiveProgressHandler onProgress,
     required ReceiveQueueHandler onQueue,
     required ReceiveControlResolver resolveControl,
-  }) async {
+  }) => _serialize(() async {
     if (_server != null) return _server!.port;
-    _server = await _bindAvailableServer(preferredPort);
-    _logger.info('HTTP receiver listening on ${_server!.port}');
-    unawaited(
-      _serve(
-        downloadDirectory,
-        autoAccept,
-        onIncoming,
-        onSaved,
-        onProgress,
-        onQueue,
-        resolveControl,
-      ),
+    final server = await _bindAvailableServer(preferredPort);
+    _server = server;
+    updateReceiverSettings(
+      downloadDirectory: downloadDirectory,
+      autoAccept: autoAccept,
     );
-    return _server!.port;
-  }
+    _logger.info('HTTP receiver listening on ${server.port}');
+    _serveTask = _serve(
+      server,
+      onIncoming,
+      onSaved,
+      onProgress,
+      onQueue,
+      resolveControl,
+    );
+    return server.port;
+  });
 
   Future<HttpServer> _bindAvailableServer(int preferredPort) async {
     final ports = _candidatePorts(preferredPort);
@@ -122,6 +163,39 @@ class FileServer {
   bool _isValidPort(int port) => port > 0 && port <= 65535;
 
   Future<void> _serve(
+    HttpServer server,
+    IncomingTransferHandler onIncoming,
+    TransferSavedHandler onSaved,
+    ReceiveProgressHandler onProgress,
+    ReceiveQueueHandler onQueue,
+    ReceiveControlResolver resolveControl,
+  ) async {
+    try {
+      await for (final request in server) {
+        late final Future<void> task;
+        task =
+            _handleRequest(
+              request,
+              _downloadDirectory,
+              _autoAccept,
+              onIncoming,
+              onSaved,
+              onProgress,
+              onQueue,
+              resolveControl,
+            ).whenComplete(() {
+              _requests.remove(task);
+              if (_requests.isEmpty && !_stopping) onIdle?.call();
+            });
+        _requests.add(task);
+      }
+    } catch (error) {
+      _logger.warn('Receiver stopped accepting requests: $error');
+    }
+  }
+
+  Future<void> _handleRequest(
+    HttpRequest request,
     String downloadDirectory,
     bool autoAccept,
     IncomingTransferHandler onIncoming,
@@ -130,39 +204,44 @@ class FileServer {
     ReceiveQueueHandler onQueue,
     ReceiveControlResolver resolveControl,
   ) async {
-    final server = _server;
-    if (server == null) return;
-    await for (final request in server) {
+    try {
+      if (_stopping) {
+        request.response.statusCode = HttpStatus.serviceUnavailable;
+        await _json(request.response, {
+          'ok': false,
+          'error': 'receiver-stopping',
+        });
+        return;
+      }
       if (request.method == 'GET' && request.uri.path == '/api/ping') {
-        _json(request.response, {'ok': true});
-        continue;
-      }
-      if (request.method == 'POST' && request.uri.path == '/api/screen/offer') {
-        await _handleScreenOffer(request);
-        continue;
-      }
-      if (request.method == 'GET' &&
+        await _json(request.response, {'ok': true});
+      } else if (request.method == 'POST' &&
+          request.uri.path == '/api/screen/offer') {
+        await _handleVideoOffer(request, screenOfferHandler, 'screen');
+      } else if (request.method == 'GET' &&
           request.uri.path == '/api/screen/metadata') {
-        _handleScreenMetadata(request);
-        continue;
-      }
-      if (request.method == 'POST' &&
+        await _handleVideoMetadata(request, screenMetadataHandler, 'screen');
+      } else if (request.method == 'POST' &&
+          request.uri.path == '/api/camera/offer') {
+        if (await _allowCameraInterface(request)) {
+          await _handleVideoOffer(request, cameraOfferHandler, 'camera');
+        }
+      } else if (request.method == 'GET' &&
+          request.uri.path == '/api/camera/metadata') {
+        if (await _allowCameraInterface(request)) {
+          await _handleVideoMetadata(request, cameraMetadataHandler, 'camera');
+        }
+      } else if (request.method == 'POST' &&
           request.uri.path == '/api/transfers/queue') {
-        await _handleTransferQueue(request, onQueue);
-        continue;
-      }
-      if (request.method == 'POST' &&
+        if (await _allowFileTransfer(request, downloadDirectory)) {
+          await _handleTransferQueue(request, onQueue);
+        }
+      } else if (request.method == 'POST' &&
           request.uri.path == '/api/transfers/control') {
         await _handleTransferControl(request);
-        continue;
-      }
-      if (request.method != 'POST' || request.uri.path != '/api/transfers') {
-        request.response.statusCode = HttpStatus.notFound;
-        await request.response.close();
-        continue;
-      }
-      unawaited(
-        _handleTransfer(
+      } else if (request.method == 'POST' &&
+          request.uri.path == '/api/transfers') {
+        await _handleTransfer(
           request,
           downloadDirectory,
           autoAccept,
@@ -170,48 +249,124 @@ class FileServer {
           onSaved,
           onProgress,
           resolveControl,
-        ),
-      );
+        );
+      } else {
+        request.response.statusCode = HttpStatus.notFound;
+      }
+    } catch (error) {
+      _logger.warn('Request failed: $error');
+      try {
+        request.response.statusCode = HttpStatus.badRequest;
+        await _json(request.response, {'ok': false, 'error': error.toString()});
+      } catch (_) {}
+    } finally {
+      try {
+        await request.response.close();
+      } catch (_) {}
     }
   }
 
-  Future<void> _handleScreenOffer(HttpRequest request) async {
-    final handler = screenOfferHandler;
+  Future<bool> _allowFileTransfer(
+    HttpRequest request,
+    String downloadDirectory,
+  ) async {
+    var allowed = fileReceptionEnabled;
+    if (allowed && fileAccessHandler != null) {
+      try {
+        allowed = await fileAccessHandler!(downloadDirectory);
+      } catch (error) {
+        _logger.warn('Could not check receiver storage access: $error');
+        allowed = false;
+      }
+    }
+    // A local Stop or permission rejection may arrive while the check awaits.
+    if (allowed && fileReceptionEnabled && !_stopping) return true;
+    request.response.statusCode = HttpStatus.forbidden;
+    await _json(request.response, {
+      'ok': false,
+      'error': fileReceptionEnabled
+          ? 'storage-permission-required'
+          : 'file-reception-disabled',
+    });
+    return false;
+  }
+
+  Future<bool> _allowCameraInterface(HttpRequest request) async {
+    final allowed = cameraAllowedRemoteSubnets;
+    final remote = request.connectionInfo?.remoteAddress;
+    if (allowed == null ||
+        (remote != null &&
+            allowed.any((subnet) => _matchesSubnet(remote, subnet)))) {
+      return true;
+    }
+    request.response.statusCode = HttpStatus.forbidden;
+    await _json(request.response, {
+      'ok': false,
+      'error': 'camera-usb-interface-required',
+    });
+    return false;
+  }
+
+  bool _matchesSubnet(InternetAddress remote, String subnet) {
+    final parts = subnet.split('/');
+    final network = InternetAddress.tryParse(parts.first);
+    if (network == null || remote.type != network.type) return false;
+    final prefix = parts.length == 2 ? int.tryParse(parts[1]) : null;
+    final bytes = remote.rawAddress;
+    if (prefix == null || prefix < 0 || prefix > bytes.length * 8) return false;
+    final networkBytes = network.rawAddress;
+    for (var index = 0; index < bytes.length; index++) {
+      final bits = (prefix - index * 8).clamp(0, 8);
+      if (bits == 0) return true;
+      final mask = (0xff << (8 - bits)) & 0xff;
+      if ((bytes[index] & mask) != (networkBytes[index] & mask)) return false;
+    }
+    return true;
+  }
+
+  Future<void> _handleVideoOffer(
+    HttpRequest request,
+    ScreenOfferHandler? handler,
+    String source,
+  ) async {
     if (handler == null) {
       request.response.statusCode = HttpStatus.serviceUnavailable;
-      _json(request.response, {
+      await _json(request.response, {
         'ok': false,
-        'error': 'screen-share-not-active',
+        'error': '$source-share-not-active',
       });
       return;
     }
     try {
       final body = await utf8.decoder.bind(request).join();
       final answer = await handler(jsonDecode(body) as Map<String, dynamic>);
-      _json(request.response, {'ok': true, 'answer': answer});
+      await _json(request.response, {'ok': true, 'answer': answer});
     } catch (error) {
-      _logger.error('Screen signaling failed', error);
+      _logger.error('$source signaling failed', error);
       request.response.statusCode = HttpStatus.internalServerError;
-      _json(request.response, {'ok': false, 'error': error.toString()});
+      await _json(request.response, {'ok': false, 'error': error.toString()});
     }
   }
 
-  void _handleScreenMetadata(HttpRequest request) {
-    final handler = screenMetadataHandler;
+  Future<void> _handleVideoMetadata(
+    HttpRequest request,
+    ScreenMetadataHandler? handler,
+    String source,
+  ) async {
     if (handler == null) {
       request.response.statusCode = HttpStatus.serviceUnavailable;
-      _json(request.response, {
+      await _json(request.response, {
         'ok': false,
-        'error': 'screen-share-not-active',
+        'error': '$source-share-not-active',
       });
       return;
     }
     try {
-      _json(request.response, {'ok': true, 'metadata': handler()});
+      await _json(request.response, {'ok': true, 'metadata': handler()});
     } catch (error) {
-      _logger.error('Screen metadata failed', error);
+      _logger.error('$source metadata failed', error);
       request.response.statusCode = HttpStatus.internalServerError;
-      _json(request.response, {'ok': false, 'error': error.toString()});
+      await _json(request.response, {'ok': false, 'error': error.toString()});
     }
   }
 
@@ -252,11 +407,11 @@ class FileServer {
         controlHost: controlHost,
         controlPort: controlPort,
       );
-      _json(request.response, {'ok': true});
+      await _json(request.response, {'ok': true});
     } catch (error) {
       _logger.error('Receive queue update failed', error);
       request.response.statusCode = HttpStatus.badRequest;
-      _json(request.response, {'ok': false, 'error': error.toString()});
+      await _json(request.response, {'ok': false, 'error': error.toString()});
     }
   }
 
@@ -264,7 +419,10 @@ class FileServer {
     final handler = transferCommandHandler;
     if (handler == null) {
       request.response.statusCode = HttpStatus.serviceUnavailable;
-      _json(request.response, {'ok': false, 'error': 'control-not-active'});
+      await _json(request.response, {
+        'ok': false,
+        'error': 'control-not-active',
+      });
       return;
     }
     try {
@@ -274,15 +432,18 @@ class FileServer {
       final action = json['action']?.toString();
       if (id == null || action == null) {
         request.response.statusCode = HttpStatus.badRequest;
-        _json(request.response, {'ok': false, 'error': 'invalid-control'});
+        await _json(request.response, {
+          'ok': false,
+          'error': 'invalid-control',
+        });
         return;
       }
       await handler(id, action);
-      _json(request.response, {'ok': true});
+      await _json(request.response, {'ok': true});
     } catch (error) {
       _logger.error('Transfer control failed', error);
       request.response.statusCode = HttpStatus.internalServerError;
-      _json(request.response, {'ok': false, 'error': error.toString()});
+      await _json(request.response, {'ok': false, 'error': error.toString()});
     }
   }
 
@@ -295,6 +456,10 @@ class FileServer {
     ReceiveProgressHandler onProgress,
     ReceiveControlResolver resolveControl,
   ) async {
+    if (!fileReceptionEnabled) {
+      await _allowFileTransfer(request, downloadDirectory);
+      return;
+    }
     final id = Uri.decodeComponent(
       request.headers.value('x-bshare-transfer-id') ?? const Uuid().v4(),
     );
@@ -327,136 +492,239 @@ class FileServer {
       controlHost: controlHost,
       controlPort: controlPort,
     );
-    final control = resolveControl(transfer.id);
-
-    if (control.isCancelled) {
-      request.response.statusCode = 499;
-      _json(request.response, {'ok': false, 'status': 'cancelled'});
-      onProgress(
-        transfer: transfer,
-        receivedBytes: 0,
-        totalBytes: transfer.size,
-        bytesPerSecond: 0,
-        status: TransferProgressStatus.cancelled,
-      );
-      return;
-    }
-
-    final accepted =
-        autoAccept ||
-        await onIncoming(
-          transfer,
-        ).timeout(const Duration(minutes: 5), onTimeout: () => false);
-    if (!accepted) {
-      request.response.statusCode = HttpStatus.forbidden;
-      _json(request.response, {'ok': false, 'status': 'rejected'});
-      return;
-    }
-
-    String? targetPath;
-    IOSink? sink;
-    var received = 0;
-    final speedMeter = TransferSpeedMeter()..record(0);
-
-    Future<void> cleanupPartialFile() async {
-      try {
-        await sink?.flush();
-        await sink?.close();
-      } catch (_) {}
-      sink = null;
-      if (targetPath != null) {
-        try {
-          final file = File(targetPath);
-          if (await file.exists()) {
-            await file.delete();
-          }
-        } catch (_) {}
+    if (!await _allowFileTransfer(request, downloadDirectory)) {
+      // This ID can already be queued on the receiver. A rejected upload must
+      // finish that item even when the permission check precedes acceptance.
+      if (!_activeTransfers.containsKey(id)) {
+        onProgress(
+          transfer: transfer,
+          receivedBytes: 0,
+          totalBytes: transfer.size,
+          bytesPerSecond: 0,
+          status: TransferProgressStatus.failed,
+          message: 'Storage access is no longer available',
+        );
       }
+      return;
     }
-
+    if (_activeTransfers.containsKey(id)) {
+      request.response.statusCode = HttpStatus.conflict;
+      await _json(request.response, {
+        'ok': false,
+        'error': 'transfer-already-active',
+      });
+      return;
+    }
+    final control = resolveControl(transfer.id);
+    _activeTransfers[id] = control;
     try {
-      final dir = Directory(downloadDirectory);
-      if (!await dir.exists()) await dir.create(recursive: true);
-      targetPath = await _availablePath(dir.path, transfer.fileName);
-      final parent = Directory(p.dirname(targetPath));
-      if (!await parent.exists()) await parent.create(recursive: true);
-      final file = File(targetPath);
-      sink = file.openWrite();
-      onProgress(
-        transfer: transfer,
-        receivedBytes: 0,
-        totalBytes: transfer.size,
-        bytesPerSecond: 0,
-        status: TransferProgressStatus.receiving,
-      );
-      await for (final chunk in request) {
-        await control.waitIfPaused();
-        received += chunk.length;
-        sink!.add(chunk);
+      if (control.isCancelled) {
+        request.response.statusCode = 499;
+        await _json(request.response, {'ok': false, 'status': 'cancelled'});
+        onProgress(
+          transfer: transfer,
+          receivedBytes: 0,
+          totalBytes: transfer.size,
+          bytesPerSecond: 0,
+          status: TransferProgressStatus.cancelled,
+        );
+        return;
+      }
+
+      final cancelled = Completer<bool>();
+      final detachCancellation = control.onCancel(() {
+        if (!cancelled.isCompleted) cancelled.complete(false);
+        if (!transfer.decision.isCompleted) transfer.decision.complete(false);
+      });
+      bool accepted;
+      try {
+        accepted =
+            autoAccept ||
+            await Future.any([
+              onIncoming(transfer).timeout(
+                const Duration(minutes: 5),
+                onTimeout: () {
+                  if (!transfer.decision.isCompleted) {
+                    transfer.decision.complete(false);
+                  }
+                  return false;
+                },
+              ),
+              cancelled.future,
+            ]);
+      } finally {
+        detachCancellation();
+      }
+      if (!accepted || control.isCancelled) {
+        request.response.statusCode = control.isCancelled
+            ? 499
+            : HttpStatus.forbidden;
+        await _json(request.response, {
+          'ok': false,
+          'status': control.isCancelled ? 'cancelled' : 'rejected',
+        });
+        onProgress(
+          transfer: transfer,
+          receivedBytes: 0,
+          totalBytes: transfer.size,
+          bytesPerSecond: 0,
+          status: control.isCancelled
+              ? TransferProgressStatus.cancelled
+              : TransferProgressStatus.failed,
+          message: control.isCancelled ? null : 'Transfer rejected',
+        );
+        return;
+      }
+
+      if (!await _allowFileTransfer(request, downloadDirectory)) {
+        onProgress(
+          transfer: transfer,
+          receivedBytes: 0,
+          totalBytes: transfer.size,
+          bytesPerSecond: 0,
+          status: TransferProgressStatus.failed,
+          message: 'Storage access is no longer available',
+        );
+        return;
+      }
+
+      String? targetPath;
+      IOSink? sink;
+      var received = 0;
+      final speedMeter = TransferSpeedMeter()..record(0);
+
+      Future<void> cleanupPartialFile() async {
+        try {
+          await sink?.flush();
+          await sink?.close();
+        } catch (_) {}
+        sink = null;
+        if (targetPath != null) {
+          try {
+            final file = File(targetPath);
+            if (await file.exists()) {
+              await file.delete();
+            }
+          } catch (_) {}
+        }
+      }
+
+      try {
+        final dir = Directory(downloadDirectory);
+        if (!await dir.exists()) await dir.create(recursive: true);
+        targetPath = await _availablePath(dir.path, transfer.fileName);
+        final parent = Directory(p.dirname(targetPath));
+        if (!await parent.exists()) await parent.create(recursive: true);
+        final file = File(targetPath);
+        sink = file.openWrite();
+        onProgress(
+          transfer: transfer,
+          receivedBytes: 0,
+          totalBytes: transfer.size,
+          bytesPerSecond: 0,
+          status: TransferProgressStatus.receiving,
+        );
+        final progressClock = Stopwatch()..start();
+        var lastProgressAt = 0;
+        Stream<List<int>> receiveChunks() async* {
+          final chunks = StreamIterator(request);
+          final cancelled = Completer<bool>();
+          final detachCancellation = control.onCancel(() {
+            if (!cancelled.isCompleted) cancelled.complete(false);
+          });
+          try {
+            while (await Future.any([chunks.moveNext(), cancelled.future])) {
+              await control.waitIfPaused();
+              final chunk = chunks.current;
+              received += chunk.length;
+              if (transfer.size >= 0 && received > transfer.size) {
+                throw const FormatException('Transfer exceeds advertised size');
+              }
+              yield chunk;
+              final elapsed = progressClock.elapsedMilliseconds;
+              if (elapsed - lastProgressAt >= 100) {
+                lastProgressAt = elapsed;
+                onProgress(
+                  transfer: transfer,
+                  receivedBytes: received,
+                  totalBytes: transfer.size,
+                  bytesPerSecond: speedMeter.record(received),
+                  status: TransferProgressStatus.receiving,
+                );
+              }
+            }
+            await control.waitIfPaused();
+          } finally {
+            detachCancellation();
+            await chunks.cancel();
+          }
+        }
+
+        await sink!.addStream(receiveChunks());
+        await sink!.flush();
+        await sink!.close();
+        sink = null;
+
+        if (transfer.size >= 0 && received != transfer.size) {
+          await cleanupPartialFile();
+          _logger.warn(
+            'Transfer incomplete: received $received of ${transfer.size} bytes',
+          );
+          request.response.statusCode = HttpStatus.badRequest;
+          await _json(request.response, {
+            'ok': false,
+            'error': 'incomplete transfer',
+          });
+          onProgress(
+            transfer: transfer,
+            receivedBytes: received,
+            totalBytes: transfer.size,
+            bytesPerSecond: 0,
+            status: TransferProgressStatus.failed,
+            message: 'Incomplete transfer',
+          );
+          return;
+        }
+
+        await onSaved(transfer: transfer, savedPath: targetPath);
         onProgress(
           transfer: transfer,
           receivedBytes: received,
           totalBytes: transfer.size,
           bytesPerSecond: speedMeter.record(received),
-          status: TransferProgressStatus.receiving,
+          status: TransferProgressStatus.completed,
+          savedPath: targetPath,
         );
-      }
-      await sink!.flush();
-      await sink!.close();
-      sink = null;
-
-      if (transfer.size > 0 && received < transfer.size) {
+        await _json(request.response, {'ok': true, 'path': targetPath});
+      } on TransferCancelledException {
         await cleanupPartialFile();
-        _logger.warn(
-          'Transfer incomplete: received $received of ${transfer.size} bytes',
+        request.response.statusCode = 499;
+        await _json(request.response, {'ok': false, 'status': 'cancelled'});
+        onProgress(
+          transfer: transfer,
+          receivedBytes: received,
+          totalBytes: transfer.size,
+          bytesPerSecond: 0,
+          status: TransferProgressStatus.cancelled,
         );
-        request.response.statusCode = HttpStatus.badRequest;
-        _json(request.response, {'ok': false, 'error': 'incomplete transfer'});
+      } catch (error) {
+        await cleanupPartialFile();
+        _logger.error('Receive failed', error);
         onProgress(
           transfer: transfer,
           receivedBytes: received,
           totalBytes: transfer.size,
           bytesPerSecond: 0,
           status: TransferProgressStatus.failed,
-          message: 'Incomplete transfer',
+          message: error.toString(),
         );
-        return;
+        request.response.statusCode = HttpStatus.internalServerError;
+        await _json(request.response, {'ok': false, 'error': error.toString()});
+      } finally {
+        if (targetPath != null) _reservedPaths.remove(targetPath);
       }
-
-      await onSaved(transfer: transfer, savedPath: targetPath);
-      onProgress(
-        transfer: transfer,
-        receivedBytes: received,
-        totalBytes: transfer.size,
-        bytesPerSecond: speedMeter.record(received),
-        status: TransferProgressStatus.completed,
-        savedPath: targetPath,
-      );
-      _json(request.response, {'ok': true, 'path': targetPath});
-    } on TransferCancelledException {
-      await cleanupPartialFile();
-      request.response.statusCode = 499;
-      _json(request.response, {'ok': false, 'status': 'cancelled'});
-      onProgress(
-        transfer: transfer,
-        receivedBytes: received,
-        totalBytes: transfer.size,
-        bytesPerSecond: 0,
-        status: TransferProgressStatus.cancelled,
-      );
-    } catch (error) {
-      await cleanupPartialFile();
-      _logger.error('Receive failed', error);
-      onProgress(
-        transfer: transfer,
-        receivedBytes: received,
-        totalBytes: transfer.size,
-        bytesPerSecond: 0,
-        status: TransferProgressStatus.failed,
-        message: error.toString(),
-      );
-      request.response.statusCode = HttpStatus.internalServerError;
-      _json(request.response, {'ok': false, 'error': error.toString()});
+    } finally {
+      _activeTransfers.remove(id);
     }
   }
 
@@ -471,13 +739,15 @@ class FileServer {
   }
 
   Future<String> _availablePath(String dir, String fileName) async {
-    var candidate = p.join(dir, fileName);
-    if (!await File(candidate).exists()) return candidate;
     final relativeDir = p.dirname(fileName);
     final ext = p.extension(fileName);
     final base = p.basenameWithoutExtension(fileName);
+    var candidate = p.join(dir, fileName);
     var index = 1;
-    while (await File(candidate).exists()) {
+    while (true) {
+      if (!await File(candidate).exists() && _reservedPaths.add(candidate)) {
+        return candidate;
+      }
       candidate = p.join(
         dir,
         relativeDir == '.' ? '' : relativeDir,
@@ -485,21 +755,39 @@ class FileServer {
       );
       index++;
     }
-    return candidate;
   }
 
-  void _json(HttpResponse response, Map<String, Object?> body) {
+  Future<void> _json(HttpResponse response, Map<String, Object?> body) async {
+    if (response.statusCode >= HttpStatus.badRequest) {
+      response.persistentConnection = false;
+    }
     response.headers.contentType = ContentType.json;
     response.write(jsonEncode(body));
-    unawaited(response.close());
+    await response.close();
   }
 
-  Future<void> stop() async {
-    final server = _server;
-    _server = null;
-    screenOfferHandler = null;
-    screenMetadataHandler = null;
-    transferCommandHandler = null;
-    await server?.close(force: true);
-  }
+  Future<void> stop() => _serialize(() async {
+    _stopping = true;
+    try {
+      final server = _server;
+      _server = null;
+      screenOfferHandler = null;
+      screenMetadataHandler = null;
+      cameraOfferHandler = null;
+      cameraMetadataHandler = null;
+      cameraAllowedRemoteSubnets = null;
+      transferCommandHandler = null;
+      onIdle = null;
+      for (final control in _activeTransfers.values.toList()) {
+        control.cancel();
+      }
+      await server?.close(force: true);
+      final serving = _serveTask;
+      _serveTask = null;
+      await serving;
+      await Future.wait(_requests.toList());
+    } finally {
+      _stopping = false;
+    }
+  });
 }

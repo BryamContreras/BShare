@@ -7,10 +7,15 @@ import org.webrtc.VideoCapturer;
 import org.webrtc.VideoFrame;
 import org.webrtc.VideoSink;
 
+import com.cloudwebrtc.webrtc.utils.EglUtils;
+
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.media.projection.MediaProjection;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Surface;
 import android.view.WindowManager;
 import android.app.Activity;
@@ -34,24 +39,27 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
     private final Intent mediaProjectionPermissionResultData;
     private final MediaProjection.Callback externalMediaProjectionCallback;
     private final MediaProjection.Callback mediaProjectionCallback;
+    private final int maxShortSide;
     private int width;
     private int height;
     private int oldWidth;
     private int oldHeight;
     private VirtualDisplay virtualDisplay;
     private Surface virtualDisplaySurface;
-    private SurfaceTextureHelper surfaceTextureHelper;
+    private volatile SurfaceTextureHelper surfaceTextureHelper;
     private CapturerObserver capturerObserver;
     private long numCapturedFrames = 0;
     private MediaProjection mediaProjection;
-    private boolean isDisposed = false;
+    private volatile boolean isDisposed = false;
+    private volatile boolean captureStarted = false;
     private MediaProjectionManager mediaProjectionManager;
     private WindowManager windowManager;
     private boolean resizePending = false;
-    private boolean usesCapturedContentResize = false;
+    private volatile boolean usesCapturedContentResize = false;
     private int pendingWidth;
     private int pendingHeight;
-    private int resizeSerial = 0;
+    private int activeStopCalls;
+    private final Runnable resizeTask = this::applyPendingCaptureFormat;
 
     /**
      * Constructs a new Screen Capturer.
@@ -64,11 +72,19 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
      **/
     public OrientationAwareScreenCapturer(Intent mediaProjectionPermissionResultData,
                                           MediaProjection.Callback mediaProjectionCallback) {
+        this(mediaProjectionPermissionResultData, mediaProjectionCallback, 0);
+    }
+
+    public OrientationAwareScreenCapturer(Intent mediaProjectionPermissionResultData,
+                                          MediaProjection.Callback mediaProjectionCallback,
+                                          int maxShortSide) {
+        this.maxShortSide = Math.max(0, maxShortSide);
         this.mediaProjectionPermissionResultData = mediaProjectionPermissionResultData;
         this.externalMediaProjectionCallback = mediaProjectionCallback;
         this.mediaProjectionCallback = new MediaProjection.Callback() {
             @Override
             public void onStop() {
+                dispose();
                 if (externalMediaProjectionCallback != null) {
                     externalMediaProjectionCallback.onStop();
                 }
@@ -76,6 +92,9 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
 
             @Override
             public void onCapturedContentResize(int width, int height) {
+                if (width <= 0 || height <= 0) {
+                    return;
+                }
                 usesCapturedContentResize = true;
                 Log.d(TAG, "Captured content resized to " + width + "x" + height);
                 requestCaptureFormat(width, height);
@@ -84,7 +103,9 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
     }
 
     public void onFrame(VideoFrame frame) {
-        checkNotDisposed();
+        if (isDisposed || !captureStarted) {
+            return;
+        }
         numCapturedFrames++;
         maybeUpdateCaptureFormatFromDisplay();
         capturerObserver.onFrameCaptured(frame);
@@ -138,33 +159,98 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
     @Override
     public synchronized void startCapture(
             final int width, final int height, final int ignoredFramerate) {
-        //checkNotDisposed();
+        checkNotDisposed();
+        if (captureStarted) {
+            return;
+        }
+        if (activeStopCalls != 0) {
+            throw new IllegalStateException("capturer is stopping.");
+        }
 
         final DisplayMetrics metrics = currentDisplayMetrics();
-        this.width = metrics.widthPixels > 0 ? metrics.widthPixels : width;
-        this.height = metrics.heightPixels > 0 ? metrics.heightPixels : height;
+        final int sourceWidth = metrics.widthPixels > 0 ? metrics.widthPixels : width;
+        final int sourceHeight = metrics.heightPixels > 0 ? metrics.heightPixels : height;
+        final double scale = captureScale(sourceWidth, sourceHeight);
+        this.width = scaledDimension(sourceWidth, scale);
+        this.height = scaledDimension(sourceHeight, scale);
         this.oldWidth = this.width;
         this.oldHeight = this.height;
+        usesCapturedContentResize = false;
 
         mediaProjection = mediaProjectionManager.getMediaProjection(
                 Activity.RESULT_OK, mediaProjectionPermissionResultData);
 
-        // Let MediaProjection callback use the SurfaceTextureHelper thread.
-        mediaProjection.registerCallback(mediaProjectionCallback, surfaceTextureHelper.getHandler());
+        // Capture helpers are replaced on rotation. Keep projection callbacks
+        // on a stable handler so revocation cannot be lost when a helper quits.
+        mediaProjection.registerCallback(mediaProjectionCallback, new Handler(Looper.getMainLooper()));
 
         createVirtualDisplay();
+        captureStarted = true;
         capturerObserver.onCapturerStarted(true);
         surfaceTextureHelper.startListening(this);
     }
 
     @Override
-    public synchronized void stopCapture() {
-        checkNotDisposed();
-        ThreadUtils.invokeAtFrontUninterruptibly(surfaceTextureHelper.getHandler(), new Runnable() {
+    public void stopCapture() {
+        stopCapture(false);
+    }
+
+    private void stopCapture(final boolean disposing) {
+        final SurfaceTextureHelper helper = retainStopHelper(disposing);
+        if (helper == null) {
+            return;
+        }
+        try {
+            stopCaptureOnHelper(helper);
+        } finally {
+            releaseStopHelper(helper);
+        }
+    }
+
+    private synchronized SurfaceTextureHelper retainStopHelper(final boolean disposing) {
+        if (isDisposed) {
+            return null;
+        }
+        if (disposing) {
+            isDisposed = true;
+        }
+        captureStarted = false;
+        // Resize hands off ownership under this same monitor. Retain the
+        // selected helper until every concurrent stop has finished using it.
+        final SurfaceTextureHelper helper = surfaceTextureHelper;
+        if (helper != null) {
+            activeStopCalls++;
+        }
+        return helper;
+    }
+
+    private void releaseStopHelper(final SurfaceTextureHelper helper) {
+        boolean disposeHelper = false;
+        synchronized (this) {
+            activeStopCalls--;
+            if (isDisposed && activeStopCalls == 0 && surfaceTextureHelper == helper) {
+                surfaceTextureHelper = null;
+                disposeHelper = true;
+            }
+        }
+        if (disposeHelper) {
+            // Release EGL/thread after pending stop calls and texture frames.
+            helper.dispose();
+        }
+    }
+
+    private void stopCaptureOnHelper(final SurfaceTextureHelper helper) {
+        // Do not hold this capturer's monitor while waiting for the capture
+        // thread: a queued resize also needs that monitor.
+        ThreadUtils.invokeAtFrontUninterruptibly(helper.getHandler(), new Runnable() {
             @Override
             public void run() {
-                surfaceTextureHelper.stopListening();
-                capturerObserver.onCapturerStopped();
+                helper.getHandler().removeCallbacks(resizeTask);
+                resizePending = false;
+                helper.stopListening();
+                if (virtualDisplay != null || mediaProjection != null) {
+                    capturerObserver.onCapturerStopped();
+                }
                 if (virtualDisplay != null) {
                     virtualDisplay.release();
                     virtualDisplay = null;
@@ -182,8 +268,8 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
     }
 
     @Override
-    public synchronized void dispose() {
-        isDisposed = true;
+    public void dispose() {
+        stopCapture(true);
     }
 
     /**
@@ -202,26 +288,34 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
     }
 
     private synchronized void requestCaptureFormat(final int nextWidth, final int nextHeight) {
-        if (nextWidth <= 0 || nextHeight <= 0 || surfaceTextureHelper == null) {
+        if (isDisposed || !captureStarted || nextWidth <= 0 || nextHeight <= 0 || surfaceTextureHelper == null) {
             return;
         }
-        pendingWidth = nextWidth;
-        pendingHeight = nextHeight;
-        if (resizePending || (this.oldWidth == nextWidth && this.oldHeight == nextHeight)) {
+        final double scale = captureScale(nextWidth, nextHeight);
+        pendingWidth = scaledDimension(nextWidth, scale);
+        pendingHeight = scaledDimension(nextHeight, scale);
+        if (resizePending || (this.oldWidth == pendingWidth && this.oldHeight == pendingHeight)) {
             return;
         }
         resizePending = true;
-        surfaceTextureHelper.getHandler().post(new Runnable() {
-            @Override
-            public void run() {
-                applyPendingCaptureFormat();
-            }
-        });
+        if (!surfaceTextureHelper.getHandler().post(resizeTask)) {
+            resizePending = false;
+        }
+    }
+
+    private double captureScale(int width, int height) {
+        if (maxShortSide == 0 || width <= 0 || height <= 0) return 1.0;
+        return Math.min(1.0, (double) maxShortSide / Math.min(width, height));
+    }
+
+    private static int scaledDimension(int size, double scale) {
+        // Even dimensions work with hardware H264 encoders. Avoid upscaling.
+        return scale >= 1.0 ? size : Math.max(2, ((int) (size * scale) / 2) * 2);
     }
 
     private synchronized void applyPendingCaptureFormat() {
         try {
-            if (isDisposed || surfaceTextureHelper == null || mediaProjection == null) {
+            if (isDisposed || !captureStarted || surfaceTextureHelper == null || mediaProjection == null) {
                 resizePending = false;
                 return;
             }
@@ -234,36 +328,13 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
             resizeVirtualDisplay();
             this.oldWidth = pendingWidth;
             this.oldHeight = pendingHeight;
-            resizeSerial++;
-            scheduleStabilizingResize(resizeSerial, 350);
-            scheduleStabilizingResize(resizeSerial, 900);
-            scheduleStabilizingResize(resizeSerial, 1500);
             Log.d(TAG, "Screen capture resized to " + width + "x" + height);
         } catch (Throwable error) {
+            this.width = this.oldWidth;
+            this.height = this.oldHeight;
             Log.w(TAG, "Screen capture resize failed", error);
         } finally {
             resizePending = false;
-        }
-    }
-
-    private void scheduleStabilizingResize(final int serial, final long delayMillis) {
-        surfaceTextureHelper.getHandler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                applyStabilizingResize(serial);
-            }
-        }, delayMillis);
-    }
-
-    private synchronized void applyStabilizingResize(final int serial) {
-        if (serial != resizeSerial || isDisposed || surfaceTextureHelper == null || mediaProjection == null) {
-            return;
-        }
-        try {
-            resizeVirtualDisplay();
-            Log.d(TAG, "Screen capture surface refreshed at " + width + "x" + height);
-        } catch (Throwable error) {
-            Log.w(TAG, "Screen capture surface refresh failed", error);
         }
     }
 
@@ -277,19 +348,58 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
     }
 
     private void resizeVirtualDisplay() {
-        if (virtualDisplay != null) {
-            surfaceTextureHelper.stopListening();
+        if (virtualDisplay != null && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            // WebRTC recreates VirtualDisplay before Android 12 because resize
+            // can scale the screen incorrectly on those releases.
+            virtualDisplay.release();
+            virtualDisplay = null;
+            createVirtualDisplay();
+        } else if (virtualDisplay != null) {
+            // Android can keep the old EGL output dimensions when the same
+            // BufferQueue producer is resized. A new Surface wrapper around
+            // the old SurfaceTexture does not change that producer. Replace
+            // the texture/helper while retaining the single VirtualDisplay.
+            final SurfaceTextureHelper oldHelper = surfaceTextureHelper;
             final Surface oldSurface = virtualDisplaySurface;
-            virtualDisplay.setSurface(null);
+            final SurfaceTextureHelper resizedHelper = SurfaceTextureHelper.create(
+                    "texture_screen_thread", EglUtils.getRootEglBaseContext());
+            if (resizedHelper == null) {
+                throw new IllegalStateException("Cannot create resized screen capture texture");
+            }
+            Surface resizedSurface = null;
+            boolean listenerStopped = false;
+            try {
+                resizedHelper.setTextureSize(width, height);
+                resizedSurface = new Surface(resizedHelper.getSurfaceTexture());
+                oldHelper.stopListening();
+                listenerStopped = true;
+                virtualDisplay.resize(width, height, VIRTUAL_DISPLAY_DPI);
+                virtualDisplay.setSurface(resizedSurface);
+                surfaceTextureHelper = resizedHelper;
+                virtualDisplaySurface = resizedSurface;
+                resizedHelper.startListening(this);
+            } catch (RuntimeException error) {
+                surfaceTextureHelper = oldHelper;
+                virtualDisplaySurface = oldSurface;
+                try {
+                    virtualDisplay.resize(oldWidth, oldHeight, VIRTUAL_DISPLAY_DPI);
+                    virtualDisplay.setSurface(oldSurface);
+                    if (listenerStopped) {
+                        oldHelper.startListening(this);
+                    }
+                } catch (RuntimeException rollbackError) {
+                    error.addSuppressed(rollbackError);
+                }
+                if (resizedSurface != null) {
+                    resizedSurface.release();
+                }
+                resizedHelper.dispose();
+                throw error;
+            }
             if (oldSurface != null) {
                 oldSurface.release();
             }
-            virtualDisplaySurface = null;
-            updateSurfaceTextureSize();
-            virtualDisplay.resize(width, height, VIRTUAL_DISPLAY_DPI);
-            virtualDisplaySurface = new Surface(surfaceTextureHelper.getSurfaceTexture());
-            virtualDisplay.setSurface(virtualDisplaySurface);
-            surfaceTextureHelper.startListening(this);
+            oldHelper.dispose();
         } else {
             updateSurfaceTextureSize();
             releaseVirtualDisplaySurface();

@@ -1,0 +1,1101 @@
+{
+  "recordedAtUtc": "2026-10-21T22:54:54.580353+00:00",
+  "status": "wifi_validation_completed; physical_usb_and_ios_not_tested",
+  "scope": {
+    "revision": "Device camera, mobile navigation and display lifecycle",
+    "baselineCommit": "b223666e1d180127650512abc5cac63340840492",
+    "workingTreeModified": true,
+    "sourceHashStatus": "Production code frozen by the root operator; current modified/new production files are hashed below.",
+    "notes": [
+      "Final Android and Linux artifacts are hashed below. The installed Android APK matches the delivered APK; final Wi-Fi smoke, three viewer Stop/reconnect cycles, two active-window closes and resource cleanup completed.",
+      "The preceding APK a74fa8a14f5f71a709bee62e1956356b0b6b532ba77264265166c7ae27626259 carried the detailed 720p/15, permission and rotation measurements. Those remain labeled separately. The final APK fa6684503e2ff5ace47e7f9373c0ca0581644d469dd824790a5a83cf3430dc26 was then tested for 36 Wi-Fi samples with both cameras at 1080p/30, switching, dim/awake behavior and normal Stop.",
+      "Desktop lifetime fixes were checked with controlled native harnesses and then real Linux GUI tests. Final active-window closes returned process status zero. This is a single-engine Linux application test, not validation of multi-engine embedding, Windows or macOS.",
+      "Historical screen-sharing rotation/FPS measurements in s22-app-review.json concern screen sharing, not these camera sessions."
+    ]
+  },
+  "device": {
+    "model": "Samsung Galaxy S22 Ultra SM-S908U",
+    "android": "14",
+    "api": 34,
+    "physicalTransport": "Wi-Fi"
+  },
+  "build": {
+    "package": "com.bshare.bshare.audit",
+    "label": "BShare Optimizada",
+    "version": "1.0.2",
+    "versionCode": 3,
+    "mode": "release",
+    "signature": "Existing local Android debug key; release AOT and R8 enabled, not a store-signed distribution.",
+    "apk": {
+      "path": "build/app/outputs/flutter-apk/bshare-optimized-release.apk",
+      "bytes": 40297411,
+      "sha256": "fa6684503e2ff5ace47e7f9373c0ca0581644d469dd824790a5a83cf3430dc26"
+    },
+    "installedApk": {
+      "installReportedSuccessfulByDeviceOperator": true,
+      "expectedSha256": "fa6684503e2ff5ace47e7f9373c0ca0581644d469dd824790a5a83cf3430dc26",
+      "pulledInstalledSha256": "fa6684503e2ff5ace47e7f9373c0ca0581644d469dd824790a5a83cf3430dc26",
+      "matchesBuild": true,
+      "verificationStatus": "verified",
+      "evidence": {
+        "path": ".dart_tool/camera_audit/installed-sha256.txt",
+        "bytes": 65,
+        "sha256": "9c46d1d876a7518c1e2828cb9b3fc89f00cccbedb3d4b7b89e0a7f6a249116a4"
+      },
+      "note": "The current installed-APK hash file matches the final APK hash.",
+      "verificationScope": "Installed base.apk was pulled after the final install and its SHA-256 matched the delivered APK; temporary pulled APK was deleted."
+    },
+    "linux": {
+      "status": "built_and_physically_verified",
+      "executable": {
+        "path": "build/linux/x64/release/bundle/bshare",
+        "bytes": 30432,
+        "sha256": "410714c83b84516cf95239f5cc649c51844151d59b5473f81d20ad506e9b4f00"
+      },
+      "aotLibrary": {
+        "path": "build/linux/x64/release/bundle/lib/libapp.so",
+        "bytes": 8700816,
+        "sha256": "7028bf72cbfe5a5ca0e067f305d0a0f97ffbbf303d72782179b1eb73885e661a"
+      },
+      "webrtcPlugin": {
+        "path": "build/linux/x64/release/bundle/lib/libflutter_webrtc_plugin.so",
+        "bytes": 1044672,
+        "sha256": "38eebf8f66be44a848d74c5687861730efd89ba1b9f21c5b5ea48cf71337354a"
+      }
+    },
+    "previousAndroidMeasuredBuild": {
+      "apk": {
+        "bytes": 40297411,
+        "sha256": "a74fa8a14f5f71a709bee62e1956356b0b6b532ba77264265166c7ae27626259",
+        "pathAtTimeOfMeasurement": "build/app/outputs/flutter-apk/bshare-optimized-release.apk",
+        "artifactRetained": false
+      },
+      "installedApk": {
+        "sha256": "a74fa8a14f5f71a709bee62e1956356b0b6b532ba77264265166c7ae27626259",
+        "matchesBuild": true,
+        "verificationScope": "Historical pull-and-hash verification recorded by the device operator; intermediate APK and hash file were superseded by the final delivery, so they are not presented as current file artifacts.",
+        "historicalHashRecord": {
+          "originalPath": ".dart_tool/camera_audit/installed-sha256.txt",
+          "bytes": 65,
+          "recordSha256": "bc7f7e9ef23c94c66667dd69aadd638ffae42921b041afd00947300b88f8d4bd",
+          "currentFileReplacedByFinalDeliveryRecord": true
+        }
+      },
+      "scope": "This APK carried the 48-sample physical camera performance/dim/rotation review."
+    }
+  },
+  "automatedValidation": {
+    "flutterTests": {
+      "passed": true,
+      "count": 205,
+      "elapsedSecondsFromReporter": 90,
+      "log": {
+        "path": ".dart_tool/app_review/camera-shutdown-full-tests.log",
+        "bytes": 40442,
+        "sha256": "cf4c13750e0d17465d3ee3b187b5c2aa19fed8f31bcc79d8f93d9f4a035771c9"
+      },
+      "coverage": [
+        "Mobile/desktop navigation and labels",
+        "Camera source acquisition, switch, rollback and capture cleanup",
+        "Duplicate starts and cancellation while acquisition is pending",
+        "Independent front/rear and enumerated-device settings",
+        "Camera display dim/wake timing and restoration",
+        "USB interface/subnet checks and explicit rejection without a wired path",
+        "QR/camera resource exclusion and late permission callbacks",
+        "Permission completion waits for a resumed lifecycle before camera foreground work.",
+        "App exit awaits shared capture/viewer/receiver cleanup; repeated exit/detached notifications share one cleanup."
+      ]
+    },
+    "flutterAnalyze": {
+      "passed": true,
+      "elapsedSeconds": 12.0,
+      "log": {
+        "path": ".dart_tool/app_review/camera-shutdown-analyze.log",
+        "bytes": 97,
+        "sha256": "4ea156fbf14ff4310118154b3bdd0b418ef9f63dfaa2237ee139ced3c8ed47c6"
+      }
+    },
+    "androidReleaseBuild": {
+      "gradleReportedSuccess": true,
+      "elapsedSecondsFromGradle": 207,
+      "toolReturnCode": 0,
+      "toolElapsedSeconds": 208.773,
+      "log": {
+        "path": ".dart_tool/app_review/camera-shutdown-build-android.log",
+        "bytes": 48091,
+        "sha256": "d73aa6ffbab4d2b748ecc0281e42c4a5353426a28f92092423c73c2034fd1825"
+      },
+      "statusEvidence": {
+        "path": ".dart_tool/app_review/camera-shutdown-build-android-status.json",
+        "bytes": 51,
+        "sha256": "fa11c07422faf6c9eeed78125f137bc254126e87ce69ad50c241f32a8c42f37c"
+      },
+      "warnings": [
+        "Gradle reports deprecated features that require review before Gradle 10."
+      ]
+    },
+    "releaseDex": {
+      "passed": true,
+      "retainedRegistrars": [
+        {
+          "class": "com.google.mlkit.common.internal.CommonComponentRegistrar",
+          "classPresent": true,
+          "publicNoArgConstructor": true,
+          "dex": "classes.dex"
+        },
+        {
+          "class": "com.google.mlkit.vision.barcode.internal.BarcodeRegistrar",
+          "classPresent": true,
+          "publicNoArgConstructor": true,
+          "dex": "classes.dex"
+        },
+        {
+          "class": "com.google.mlkit.vision.common.internal.VisionCommonRegistrar",
+          "classPresent": true,
+          "publicNoArgConstructor": true,
+          "dex": "classes.dex"
+        }
+      ],
+      "cameraRuntimeVerifiedByDexCheck": false,
+      "evidence": {
+        "path": ".dart_tool/camera_audit/wifi-final-dex.json",
+        "bytes": 766,
+        "sha256": "bf7ead863a619579b05d24f5c7318ebff3ee01aaff04aa5be3932a0fa68163a9"
+      },
+      "artifactSha256": "a74fa8a14f5f71a709bee62e1956356b0b6b532ba77264265166c7ae27626259",
+      "scope": "This DEX evidence identifies the preceding measured Android APK. Final APK changes only awaited app-exit cleanup; final-artifact DEX recheck is not claimed here."
+    },
+    "desktopPeerLifecycleHarness": {
+      "scope": "Controlled C++ peer EventChannel lifetime harness; native runtime viewer behavior is recorded separately.",
+      "cyclesPerRun": 200,
+      "nativePassed": true,
+      "addressSanitizerPassed": true,
+      "preFixBaselineReproducedUseAfterFree": true,
+      "evidence": [
+        {
+          "path": ".dart_tool/app_review/desktop-peer-lifecycle-native.log",
+          "bytes": 120,
+          "sha256": "c8399903d68ef3c78d3be833adebf4ac1563ed03afd6914e8bf0b561ff315217"
+        },
+        {
+          "path": ".dart_tool/app_review/desktop-peer-lifecycle-asan.log",
+          "bytes": 120,
+          "sha256": "c8399903d68ef3c78d3be833adebf4ac1563ed03afd6914e8bf0b561ff315217"
+        },
+        {
+          "path": ".dart_tool/app_review/desktop-peer-lifecycle-baseline-asan.log",
+          "bytes": 6853,
+          "sha256": "c1d05336ffdbda073c1d227303f6c829e1ebb2cc1187d92a63bb3788ea458611"
+        }
+      ],
+      "limitation": "Controlled checks complement the final native viewer stop/reconnect and active-window-close tests; they do not establish behavior on untested desktop platforms.",
+      "realBundledLibraryPassed": true,
+      "realBundledLibraryEvidence": {
+        "path": ".dart_tool/app_review/desktop-peer-lifecycle-real.log",
+        "bytes": 174,
+        "sha256": "38dfdd70fe92de32d568b0999b9297991d43e9f6ce584b89b8c2a064bf964dfc"
+      }
+    },
+    "androidActivityDestructionBytecode": {
+      "cameraForegroundServiceStopPresent": true,
+      "screenForegroundServiceStopPresent": true,
+      "keepScreenOnResetPresent": true,
+      "brightnessRestorationPresent": true,
+      "scope": "Compiled MainActivity.onDestroy inspection; no physical destruction test claimed.",
+      "evidence": {
+        "path": ".dart_tool/camera_audit/native-activity-destroy.txt",
+        "bytes": 2736,
+        "sha256": "a8ca9e1570bcb8688d8a943771622d776630705e8c8e9dba6a1e4fad24d43bbe"
+      }
+    },
+    "linuxReleaseBuild": {
+      "passed": true,
+      "toolReturnCode": 0,
+      "returnCodeSource": "Device operator reported completed build tool exit 0.",
+      "log": {
+        "path": ".dart_tool/app_review/camera-shutdown-build-linux.log",
+        "bytes": 113,
+        "sha256": "0e1f715aeef31889c144d841f94cef94bc8bdfd01668e930bddd1879ee63a293"
+      }
+    },
+    "linuxBinaryMessengerHarness": {
+      "passed": true,
+      "messageLifecycles": 1400,
+      "scope": "Sanitizer harness: messenger handles, copied/concurrent replies and error ownership.",
+      "evidence": {
+        "path": ".dart_tool/camera_audit/binary-messenger-sanitizers.log",
+        "bytes": 127,
+        "sha256": "ef9cfcbf8a05dc1c05d44309f2ab71ab06ecaf5c3a87a96cef3aef19a1335152"
+      }
+    },
+    "linuxRunnerShutdownHarness": {
+      "passed": true,
+      "ownedWindowsAndEngines": 500,
+      "scope": "Sanitizer harness: owned runner resources, delayed GTask/thread references, repeated cleanup and unrelated-window preservation.",
+      "evidence": {
+        "path": ".dart_tool/app_review/linux-runner-shutdown-sanitizers.log",
+        "bytes": 149,
+        "sha256": "beb2b3b1d1358f69f047518f8f2b7a548aa6f40ceef0c6062ec438205b65223f"
+      }
+    }
+  },
+  "physicalValidation": {
+    "wifiCameraPhoneToPc": {
+      "passed": true,
+      "samples": 48,
+      "firstUtc": "2026-10-21T22:21:03.957Z",
+      "lastUtc": "2026-10-21T22:25:01.796Z",
+      "receiver": "Headless Brave WebRTC receiver on Linux; native Flutter Linux viewer also received actual camera video.",
+      "observedCodecs": [
+        "video/H264"
+      ],
+      "groups": [
+        {
+          "cameraId": "0",
+          "requestedFrameRate": 30,
+          "generation": 1,
+          "samples": 6,
+          "firstUtc": "2026-10-21T22:21:03.957Z",
+          "lastUtc": "2026-10-21T22:21:29.360Z",
+          "weightedDecodedFps": 29.34,
+          "minimumIntervalDecodedFps": 28.9215,
+          "maximumIntervalDecodedFps": 30.0053,
+          "metadataResolutionLimits": [
+            1080
+          ],
+          "decodedRtpSizes": [
+            {
+              "width": 1920,
+              "height": 1080
+            },
+            {
+              "width": 480,
+              "height": 270
+            },
+            {
+              "width": 960,
+              "height": 540
+            },
+            {
+              "width": 1280,
+              "height": 720
+            }
+          ],
+          "videoElementSizes": [
+            {
+              "width": 720,
+              "height": 1280
+            },
+            {
+              "width": 1080,
+              "height": 1920
+            },
+            {
+              "width": 270,
+              "height": 480
+            },
+            {
+              "width": 540,
+              "height": 960
+            }
+          ],
+          "decodedFrameDelta": 597,
+          "measuredStatsSeconds": 20.347633,
+          "validIntervals": 4,
+          "connectionStates": {
+            "connecting": 1,
+            "connected": 5
+          },
+          "droppedFrames": {
+            "delta": 0,
+            "intervalsWithCounters": 4,
+            "allValidIntervalsHaveCounters": true
+          },
+          "shorterEdgeWithinConfiguredResolutionInAllSamples": true
+        },
+        {
+          "cameraId": "1",
+          "requestedFrameRate": 15,
+          "generation": 1,
+          "samples": 42,
+          "firstUtc": "2026-10-21T22:21:34.394Z",
+          "lastUtc": "2026-10-21T22:25:01.796Z",
+          "weightedDecodedFps": 15.0094,
+          "minimumIntervalDecodedFps": 14.8585,
+          "maximumIntervalDecodedFps": 15.1591,
+          "metadataResolutionLimits": [
+            720
+          ],
+          "decodedRtpSizes": [
+            {
+              "width": 1280,
+              "height": 720
+            }
+          ],
+          "videoElementSizes": [
+            {
+              "width": 720,
+              "height": 1280
+            },
+            {
+              "width": 1280,
+              "height": 720
+            }
+          ],
+          "decodedFrameDelta": 3113,
+          "measuredStatsSeconds": 207.403247,
+          "validIntervals": 41,
+          "connectionStates": {
+            "connected": 42
+          },
+          "droppedFrames": {
+            "delta": 0,
+            "intervalsWithCounters": 41,
+            "allValidIntervalsHaveCounters": true
+          },
+          "shorterEdgeWithinConfiguredResolutionInAllSamples": true
+        }
+      ],
+      "connectionStates": {
+        "connecting": 1,
+        "connected": 47
+      },
+      "cameraTransitions": [
+        {
+          "fromIndex": 5,
+          "toIndex": 6,
+          "fromUtc": "2026-10-21T22:21:29.360Z",
+          "toUtc": "2026-10-21T22:21:34.394Z",
+          "from": {
+            "cameraId": "0",
+            "requestedFrameRate": 30,
+            "generation": 1
+          },
+          "to": {
+            "cameraId": "1",
+            "requestedFrameRate": 15,
+            "generation": 1
+          },
+          "connectionFrom": "connected",
+          "connectionTo": "connected"
+        }
+      ],
+      "sourceGenerations": [
+        1
+      ],
+      "measurement": "Delta framesDecoded / delta inbound-rtp RTCStats.timestamp (milliseconds); source/profile transitions excluded.",
+      "latencyMeasured": false,
+      "limitations": [
+        "Requested FPS is a cap/configuration; these results do not establish sustained 60 FPS support.",
+        "Zero reported framesDropped does not establish zero packet loss.",
+        "Short interval extrema can reflect scheduling/counter timing.",
+        "The analysis helper has a generic note claiming no codec identity; this final probe includes codec MIME types, which are summarized directly above."
+      ],
+      "evidence": [
+        {
+          "path": ".dart_tool/camera_audit/wifi-camera-final/samples.json",
+          "bytes": 49484,
+          "sha256": "1a8e4eacdeeafeb27958384650ee18b8cb5659bf527eebc1ea89ff0b427301c2"
+        },
+        {
+          "path": ".dart_tool/camera_audit/wifi-camera-final/analysis.json",
+          "bytes": 85175,
+          "sha256": "f7a9c46e27d0ebba6829eff9a2b2dee82e5773e4a712b5cd79751b295db6034d"
+        },
+        {
+          "path": ".dart_tool/camera_audit/wifi-camera-final/summary.json",
+          "bytes": 170,
+          "sha256": "78dd0bdad9ea179297e0eeabce0fddc20cff48762060f4f6614ef99d1bafc882"
+        }
+      ],
+      "testedAndroidApkSha256": "a74fa8a14f5f71a709bee62e1956356b0b6b532ba77264265166c7ae27626259"
+    },
+    "firstPermissionStart": {
+      "passed": true,
+      "recordedAtUtc": "2026-10-21T22:21:18.716542+00:00",
+      "cameraPermissionRevokedBeforeStart": true,
+      "dialogAccepted": "Only this time",
+      "cameraSharedWithoutRetry": true,
+      "nearbyWifiPermissionRevokedBeforeStart": true,
+      "nearbyDialogObserved": false,
+      "priorForegroundLifecycleErrorAbsentInCapturedAppLog": true,
+      "scope": "CAMERA permission was revoked and granted Only this time; capture started without the earlier retry. No nearby Wi-Fi permission dialog appeared, so that branch was not physically exercised.",
+      "evidence": [
+        {
+          "path": ".dart_tool/camera_audit/wifi-camera-final/permission-result.json",
+          "bytes": 349,
+          "sha256": "3664e457293fb1b28b5f7e31a1d831ae26cebbe9bcfeca94b5b5910456eaf4cd"
+        },
+        {
+          "path": ".dart_tool/camera_audit/wifi-camera-final/app-only.log",
+          "bytes": 218044,
+          "sha256": "9dd7857eab694c036289e1893d7bda1e00e45bdd0881914f4513fee6b78afb1e"
+        },
+        {
+          "path": ".dart_tool/app_review/wifi-final-camera-permission.xml",
+          "bytes": 10665,
+          "sha256": "8fce3ce1f5195e4d61b01a3e13fe93dbffc11c8d8c241c432a88d3feacb6185b"
+        }
+      ],
+      "testedAndroidApkSha256": "a74fa8a14f5f71a709bee62e1956356b0b6b532ba77264265166c7ae27626259"
+    },
+    "dimAfterInactivityWithoutLocking": {
+      "passed": true,
+      "recordedAtUtc": "2026-10-21T22:22:43.661149+00:00",
+      "window": {
+        "keepScreenOn": true,
+        "brightnessOverride": 0.01
+      },
+      "dimOverlayPresent": true,
+      "wakefulness": "Awake",
+      "keyguardShowing": false,
+      "cameraWakeLockActive": true,
+      "decodedIntervalBracketingObservation": {
+        "fromUtc": "2026-10-21T22:22:40.515Z",
+        "toUtc": "2026-10-21T22:22:45.561Z",
+        "statsElapsedSeconds": 5.047786,
+        "fromDecodedFrames": 1824,
+        "toDecodedFrames": 1900,
+        "decodedFrameDelta": 76,
+        "decodedFps": 15.0561,
+        "droppedFrameDelta": 0,
+        "connectionFrom": "connected",
+        "connectionTo": "connected"
+      },
+      "timingScope": "Observed after an inactivity period exceeding one minute. Exact 60-second timer boundaries are covered by controlled tests; this physical snapshot does not measure the threshold to millisecond precision.",
+      "evidence": [
+        {
+          "path": ".dart_tool/camera_audit/physical-final/dim-recorded.json",
+          "bytes": 415,
+          "sha256": "0a13a3dfb8dcee96cc09ee078494cef770d354ad99bc41fc0eec2442c14a7961"
+        },
+        {
+          "path": ".dart_tool/camera_audit/physical-final/dim-window.txt",
+          "bytes": 315798,
+          "sha256": "171b083acb5191dc3b37afe7f197a4e0b352af574061181cb62201ac550c62f5"
+        },
+        {
+          "path": ".dart_tool/camera_audit/physical-final/dim-power.txt",
+          "bytes": 251830,
+          "sha256": "aab722fbbcb74ad2ed70e075e2ae429944b7f85d358e4b88e0b1cbf378e2e8a9"
+        },
+        {
+          "path": ".dart_tool/camera_audit/physical-final/dim-keyguard.txt",
+          "bytes": 4867,
+          "sha256": "bb6844bc07a8d15689c500ce9a226ebda21f8b7cc6326667985c6ffd792a6c14"
+        },
+        {
+          "path": ".dart_tool/camera_audit/physical-final/dim-services.txt",
+          "bytes": 3375,
+          "sha256": "d358038694d825714779d307e1e5fa8d94752cd7a4fd6c6dbf4d70a49779dd0d"
+        },
+        {
+          "path": ".dart_tool/app_review/wifi-final-dim.xml",
+          "bytes": 9456,
+          "sha256": "d60266a7c9c936893a040556041e33869ce3d69b315edd192360d0678a8f3fb2"
+        }
+      ],
+      "testedAndroidApkSha256": "a74fa8a14f5f71a709bee62e1956356b0b6b532ba77264265166c7ae27626259"
+    },
+    "portraitLandscape": {
+      "passed": true,
+      "portrait": {
+        "recordedAtUtc": "2026-10-21T22:22:43.661149+00:00",
+        "width": 720,
+        "height": 1280,
+        "generation": 1
+      },
+      "landscape": {
+        "recordedAtUtc": "2026-10-21T22:22:55.701273+00:00",
+        "width": 1280,
+        "height": 720,
+        "generation": 1
+      },
+      "sameTrackIdAcrossRecordedRotation": true,
+      "reconnectObserved": false,
+      "scope": "Metadata and receiver dimensions changed to landscape while generation/track and sampled connection were retained. This camera test has no reference-shape distortion metric.",
+      "evidence": [
+        {
+          "path": ".dart_tool/camera_audit/physical-final/landscape-recorded.json",
+          "bytes": 427,
+          "sha256": "9ccba9c38127c4c16ade6f28cd419224431d9d86c28203bd8177916b59fda19e"
+        },
+        {
+          "path": ".dart_tool/camera_audit/physical-final/landscape-window.txt",
+          "bytes": 315669,
+          "sha256": "943be26949d2d914b09dbbf962f4ec06843760beee7d32164bd512f49dc045af"
+        }
+      ],
+      "testedAndroidApkSha256": "a74fa8a14f5f71a709bee62e1956356b0b6b532ba77264265166c7ae27626259"
+    },
+    "settingsDuringStream": {
+      "recordedAtUtc": "2026-10-21T22:30:11.789966+00:00",
+      "frontSavedProfileRestored": {
+        "resolution": 1080,
+        "frameRate": 30
+      },
+      "settingsUiShows1080pAnd30Fps": true,
+      "individualCameraEntriesPresent": true,
+      "activeStreamAtRecordedTime": {
+        "source": "camera",
+        "cameraId": "1",
+        "resolution": 720,
+        "frameRate": 15,
+        "generation": 1
+      },
+      "scope": "Saved front settings were restored to 1080p/30. The existing session retained 720p/15, because profile changes apply on the next start or camera switch.",
+      "evidence": [
+        {
+          "path": ".dart_tool/app_review/wifi-final-individual-cameras.xml",
+          "bytes": 13930,
+          "sha256": "c039096549c79806d47dca2876ee34f4a90c5afd1de24544c8663add3634c225"
+        },
+        {
+          "path": ".dart_tool/camera_audit/physical-final/still-sharing-after-settings-recorded.json",
+          "bytes": 415,
+          "sha256": "67480d2b15908f579a62d41e28b9a061ab6de30ec8574ed3c2a9ecf39fc4d55d"
+        }
+      ],
+      "testedAndroidApkSha256": "a74fa8a14f5f71a709bee62e1956356b0b6b532ba77264265166c7ae27626259",
+      "restoredProfileAppliedOnSubsequentStart": true,
+      "subsequentStartEvidence": {
+        "path": ".dart_tool/app_review/wifi-final-defaults-restarted.xml",
+        "bytes": 10668,
+        "sha256": "36be51dcfcd5777fec7bd15b7fe22a5b6c28cf4703bbe0cf62c62c9cc6096ad6"
+      }
+    },
+    "normalStopResourceCleanup": {
+      "status": "passed_on_final_delivered_android_apk",
+      "passed": true,
+      "androidApkSha256": "fa6684503e2ff5ace47e7f9373c0ca0581644d469dd824790a5a83cf3430dc26",
+      "recordedAtUtc": "2026-10-21T22:51:17.541827+00:00",
+      "checks": {
+        "noForegroundServices": true,
+        "noActiveCameraClients": true,
+        "noMediaProjection": true,
+        "ownedHttpListenerClosed": true,
+        "keepScreenOnCleared": true,
+        "brightnessOverrideRestored": true,
+        "cameraWakeLockReleased": true
+      },
+      "evidence": [
+        {
+          "path": ".dart_tool/camera_audit/physical-final/delivery-final-stop-recorded.json",
+          "bytes": 91,
+          "sha256": "b19d1d3e756d2861b5e4db8e885a4bde4071b257130128a6b7ab97e03495d958"
+        },
+        {
+          "path": ".dart_tool/camera_audit/physical-final/delivery-final-stop-services.txt",
+          "bytes": 66,
+          "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+        },
+        {
+          "path": ".dart_tool/camera_audit/physical-final/delivery-final-stop-camera.txt",
+          "bytes": 1109768,
+          "sha256": "d503322d4afe81a5d0d5d5d2784317f0722502245898e1596c15e34bb76bae90"
+        },
+        {
+          "path": ".dart_tool/camera_audit/physical-final/delivery-final-stop-projection.txt",
+          "bytes": 76,
+          "sha256": "c9984061dea1dafa0730a04035772ed72a9d6d5ee72f1f3c26f2e335005136d4"
+        },
+        {
+          "path": ".dart_tool/camera_audit/physical-final/delivery-final-stop-power.txt",
+          "bytes": 228777,
+          "sha256": "035dd6b5e3e1a63694e7abdd02fff0c0d54cfec15bb958bb14c74e89731a9e72"
+        },
+        {
+          "path": ".dart_tool/camera_audit/physical-final/delivery-final-stop-window.txt",
+          "bytes": 309793,
+          "sha256": "801544b6fa79a4d5ee2ff27515292ed8fa4da8683ecd5b6e638df2c60a743fc6"
+        }
+      ]
+    },
+    "linuxNativeViewerStop": {
+      "status": "passed_on_final_delivered_linux_build",
+      "passed": true,
+      "completedStopReconnectCycles": 3,
+      "cycles": [
+        {
+          "cycle": 1,
+          "startedUtc": "2026-10-21T22:48:19.490491+00:00",
+          "endedUtc": "2026-10-21T22:48:27.741226+00:00"
+        },
+        {
+          "cycle": 2,
+          "startedUtc": "2026-10-21T22:48:27.741704+00:00",
+          "endedUtc": "2026-10-21T22:48:35.966387+00:00"
+        },
+        {
+          "cycle": 3,
+          "startedUtc": "2026-10-21T22:48:35.967244+00:00",
+          "endedUtc": "2026-10-21T22:48:44.200715+00:00"
+        }
+      ],
+      "androidApkSha256": "fa6684503e2ff5ace47e7f9373c0ca0581644d469dd824790a5a83cf3430dc26",
+      "linuxArtifacts": {
+        "executable": "410714c83b84516cf95239f5cc649c51844151d59b5473f81d20ad506e9b4f00",
+        "aotLibrary": "7028bf72cbfe5a5ca0e067f305d0a0f97ffbbf303d72782179b1eb73885e661a",
+        "webrtcPlugin": "38eebf8f66be44a848d74c5687861730efd89ba1b9f21c5b5ea48cf71337354a"
+      },
+      "nativeNegotiations": 4,
+      "nativeInboundStatsWithDecodedVideo": 4,
+      "noActiveStreamCancelErrorAbsent": true,
+      "platformExceptionAbsent": true,
+      "scope": "Three scripted Stop/reconnect cycles; native logs show initial viewing plus three new video sessions. Representative stopped/watching screenshots were inspected.",
+      "evidence": [
+        {
+          "path": ".dart_tool/camera_audit/delivery-desktop-cycles.json",
+          "bytes": 393,
+          "sha256": "00aa539c55a21c766bedc1be1d78689aef177ef90c9ae14d0bda7577308ed77e"
+        },
+        {
+          "path": ".dart_tool/app_review/camera-shutdown-active-close-2.log",
+          "bytes": 3980,
+          "sha256": "7518369dfe2e9cb4293f300776cb654dced4009a5f4e57c3d9edaa067da3c552"
+        },
+        {
+          "path": ".dart_tool/camera_audit/delivery-cycle-3-watching.png",
+          "bytes": 166298,
+          "sha256": "e21e1ae55cc834aff9bba53bb07bfa94a6b1da33cbc86749e4866cbae8ba36b3"
+        }
+      ]
+    },
+    "usbCameraPhoneToPc": {
+      "status": "not_tested",
+      "passed": null,
+      "reason": "User can currently test Wi-Fi only."
+    },
+    "ios": {
+      "compiled": false,
+      "deviceTested": false,
+      "reason": "Linux host; no iOS build/device verification."
+    },
+    "finalLinuxActiveApplicationClose": {
+      "status": "passed",
+      "linuxArtifacts": {
+        "executable": "410714c83b84516cf95239f5cc649c51844151d59b5473f81d20ad506e9b4f00",
+        "aotLibrary": "7028bf72cbfe5a5ca0e067f305d0a0f97ffbbf303d72782179b1eb73885e661a",
+        "webrtcPlugin": "38eebf8f66be44a848d74c5687861730efd89ba1b9f21c5b5ea48cf71337354a"
+      },
+      "completedTests": 2,
+      "results": [
+        {
+          "test": 1,
+          "activeVideoBeforeClose": true,
+          "exitCode": 0,
+          "processGone": true,
+          "recordedAtUtc": "2026-10-21T22:47:06.475561+00:00"
+        },
+        {
+          "test": 2,
+          "activeVideoBeforeClose": true,
+          "exitCode": 0,
+          "processGone": true,
+          "recordedAtUtc": "2026-10-21T22:49:58.042345+00:00",
+          "androidApkSha256": "fa6684503e2ff5ace47e7f9373c0ca0581644d469dd824790a5a83cf3430dc26"
+        }
+      ],
+      "passedRecordedTests": true,
+      "firstLogObservations": {
+        "noActiveStreamCancelErrorAbsent": true,
+        "sigsegvAbsentInCapturedLog": true,
+        "gtkAtkStartupDiagnosticPresent": true,
+        "flutterImplicitViewRemovalDiagnosticPresent": true,
+        "note": "GTK ATK startup and Flutter SDK implicit-view disposal diagnostics were observed and reported pre-existing. The successful exit does not mean the log contains no diagnostics."
+      },
+      "evidence": [
+        {
+          "path": ".dart_tool/camera_audit/active-close-results.json",
+          "bytes": 571,
+          "sha256": "bf0c364b7e0e8e06f62f1623d792ae0a0d2cd4bdd05139fe678b357a79a4c6e2"
+        },
+        {
+          "path": ".dart_tool/app_review/camera-shutdown-active-close-1.log",
+          "bytes": 1121,
+          "sha256": "099135d59fde5c8388f235bae955c340aea6005cc591aeaf21cd837c7db0956a"
+        },
+        {
+          "path": ".dart_tool/app_review/camera-shutdown-active-close-2.log",
+          "bytes": 3980,
+          "sha256": "7518369dfe2e9cb4293f300776cb654dced4009a5f4e57c3d9edaa067da3c552"
+        },
+        {
+          "path": ".dart_tool/camera_audit/shutdown-final-front-watching-2.png",
+          "bytes": 144236,
+          "sha256": "4f903fa6bfe846f032a03fccb71362984f97d8afafd92621f5032364d81fd6da"
+        }
+      ],
+      "passed": true
+    },
+    "finalAndroidSmoke": {
+      "status": "passed",
+      "passed": true,
+      "androidApkSha256": "fa6684503e2ff5ace47e7f9373c0ca0581644d469dd824790a5a83cf3430dc26",
+      "startWithoutRetry": true,
+      "samples": 36,
+      "firstUtc": "2026-10-21T22:48:01.268Z",
+      "lastUtc": "2026-10-21T22:50:59.945Z",
+      "observedCodecs": [
+        "video/H264"
+      ],
+      "groups": [
+        {
+          "cameraId": "0",
+          "requestedFrameRate": 30,
+          "generation": 1,
+          "samples": 15,
+          "weightedDecodedFps": 29.0152,
+          "minimumIntervalDecodedFps": 26.1757,
+          "maximumIntervalDecodedFps": 30.175,
+          "decodedFrameDelta": 1913,
+          "measuredStatsSeconds": 65.930894,
+          "connectionStates": {
+            "connecting": 1,
+            "connected": 14
+          },
+          "droppedFrames": {
+            "delta": 0,
+            "intervalsWithCounters": 13,
+            "allValidIntervalsHaveCounters": true
+          }
+        },
+        {
+          "cameraId": "1",
+          "requestedFrameRate": 30,
+          "generation": 1,
+          "samples": 21,
+          "weightedDecodedFps": 23.906,
+          "minimumIntervalDecodedFps": 22.5872,
+          "maximumIntervalDecodedFps": 24.2038,
+          "decodedFrameDelta": 2452,
+          "measuredStatsSeconds": 102.568459,
+          "connectionStates": {
+            "connected": 21
+          },
+          "droppedFrames": {
+            "delta": 0,
+            "intervalsWithCounters": 20,
+            "allValidIntervalsHaveCounters": true
+          }
+        }
+      ],
+      "cameraTransitions": [
+        {
+          "fromIndex": 14,
+          "toIndex": 15,
+          "fromUtc": "2026-10-21T22:49:12.321Z",
+          "toUtc": "2026-10-21T22:49:17.566Z",
+          "from": {
+            "cameraId": "0",
+            "requestedFrameRate": 30,
+            "generation": 1
+          },
+          "to": {
+            "cameraId": "1",
+            "requestedFrameRate": 30,
+            "generation": 1
+          },
+          "connectionFrom": "connected",
+          "connectionTo": "connected"
+        }
+      ],
+      "generationRetainedAcrossCameraSwitch": true,
+      "sourceSettings": {
+        "rear": {
+          "resolution": 1080,
+          "frameRate": 30
+        },
+        "front": {
+          "resolution": 1080,
+          "frameRate": 30
+        }
+      },
+      "measurementsScope": "Actual decoded cadence. Earlier 720p/15 measurements belong to the explicitly labeled preceding APK; final delivery differs in exit cleanup and keeps the same capture/settings/dim implementation. Front camera did not sustain its configured 30-FPS ceiling in this run; no cause is inferred.",
+      "evidence": [
+        {
+          "path": ".dart_tool/camera_audit/wifi-camera-delivery/samples.json",
+          "bytes": 36974,
+          "sha256": "460544b860f3a98beaa939ea7824f7aef08e25afa8e922a4b39dfe0d52dc80d5"
+        },
+        {
+          "path": ".dart_tool/camera_audit/wifi-camera-delivery/summary.json",
+          "bytes": 170,
+          "sha256": "25963015388a8e340d816b1ef6eb21381eecddd949e5ca66c07a0867b31b4e42"
+        },
+        {
+          "path": ".dart_tool/camera_audit/wifi-camera-delivery/analysis.json",
+          "bytes": 66721,
+          "sha256": "60c165ed60d8843e2bbbeaf8fedaaa2ed2cce10bc853e9e4985c0d87407de424"
+        },
+        {
+          "path": ".dart_tool/app_review/shutdown-delivery-front-selected.xml",
+          "bytes": 9360,
+          "sha256": "ccccf2083ca0c8438d4a4b3b5588cfec6ff10e28789eee89ae460b2c993b9786"
+        },
+        {
+          "path": ".dart_tool/app_review/shutdown-final-ready-home.xml",
+          "bytes": 9439,
+          "sha256": "8563bc601a35ade9279f125dd64a16e8f930d83fa15f2b4882f724508b5195d5"
+        }
+      ],
+      "dimWithoutLocking": {
+        "passed": true,
+        "recordedAtUtc": "2026-10-21T22:50:34.753261+00:00",
+        "brightnessOverride": 0.01,
+        "wakefulness": "Awake",
+        "keyguardShowing": false,
+        "decodedFramesBefore": 4037,
+        "decodedFramesAfter": 4157,
+        "intervalFromUtc": "2026-10-21T22:50:34.687Z",
+        "intervalToUtc": "2026-10-21T22:50:39.788Z",
+        "scope": "Observed after more than one minute of inactivity while the independent receiver continued decoding. Exact timer threshold is covered by controlled tests.",
+        "evidence": [
+          {
+            "path": ".dart_tool/camera_audit/physical-final/delivery-dim-recorded.json",
+            "bytes": 417,
+            "sha256": "d369bd87b2cbfde822bff2b46df773004b5c8c70368e89512e5d8b1ba7772e67"
+          },
+          {
+            "path": ".dart_tool/camera_audit/physical-final/delivery-dim-window.txt",
+            "bytes": 315800,
+            "sha256": "902efcda76ead8e5845abceb43ba5877e6c78f79271102e4271c9f4c3270034d"
+          },
+          {
+            "path": ".dart_tool/camera_audit/physical-final/delivery-dim-power.txt",
+            "bytes": 228703,
+            "sha256": "b42bf06587dc4837b2c90b65c0891a70bf720fe21b195b4186181f7ece33dd18"
+          },
+          {
+            "path": ".dart_tool/camera_audit/physical-final/delivery-dim-keyguard.txt",
+            "bytes": 4867,
+            "sha256": "bb6844bc07a8d15689c500ce9a226ebda21f8b7cc6326667985c6ffd792a6c14"
+          },
+          {
+            "path": ".dart_tool/app_review/shutdown-delivery-dim.xml",
+            "bytes": 9457,
+            "sha256": "90cf438cd53c040f223e60a4fcfe1284693c081f1cac6d31a4719780a3c88f48"
+          }
+        ]
+      }
+    }
+  },
+  "transferBenchmark": {
+    "label": "production HTTP sender/receiver over IPv4 loopback",
+    "recordedAtUtc": "2026-10-21T22:30:42.334329Z",
+    "fileMiB": 32,
+    "rounds": 3,
+    "completedSessions": 20,
+    "medianAggregateMiBPerSecond": {
+      "1": 59.113009295520705,
+      "3": 135.82631210339778
+    },
+    "sessionResourcesBefore": {
+      "rssBytes": 307519488,
+      "fileDescriptors": 10,
+      "socketDescriptors": 0
+    },
+    "sessionResourcesAfter": {
+      "rssBytes": 313356288,
+      "fileDescriptors": 10,
+      "socketDescriptors": 0
+    },
+    "sessionRssChangeMiB": 5.5664,
+    "checks": {
+      "noDescriptorGrowthAcrossSessions": true,
+      "cancelWhileWaitingClosesStream": true,
+      "cancelPausedCleansUp": true,
+      "stopAwaitsCleanup": true
+    },
+    "errors": [],
+    "finalResources": {
+      "rssBytes": 316575744,
+      "fileDescriptors": 10,
+      "socketDescriptors": 0
+    },
+    "cancelWhileWaitingForResponse": {
+      "streamClosedWithin2s": true,
+      "observedMs": 7.826,
+      "terminalBeforeReceiverRelease": [
+        "cancelled"
+      ]
+    },
+    "pauseThenCancel": {
+      "terminal": [
+        "cancelled"
+      ],
+      "cancelToStreamClosedMs": 1.771,
+      "remainingFiles": [],
+      "receiverActive": 0
+    },
+    "stopDuringReceive": {
+      "stopMs": 2.338,
+      "activeAtStopReturn": 0,
+      "filesAtStopReturn": [],
+      "remainingFiles": [],
+      "receiverActive": 0,
+      "receiverTerminal": [
+        "failed"
+      ],
+      "serverIsRunning": false
+    },
+    "scope": "Production file-transfer services over Linux IPv4 loopback under current PC workload; not phone/Wi-Fi throughput and not a controlled comparison with earlier runs.",
+    "evidence": {
+      "path": "docs/performance/camera-review-transfer.json",
+      "bytes": 6428,
+      "sha256": "a10acce6e01ceb9b736880c1f19d8e75f526b4fed512c65c8623d594750039c8"
+    }
+  },
+  "desktopUi": {
+    "staticNavigation": {
+      "status": "reviewed; presentation behavior covered by the final automated suite",
+      "profile": "Isolated data/config/cache profile under .dart_tool/camera_audit.",
+      "recordedScreenshots": [
+        {
+          "path": ".dart_tool/camera_audit/final-desktop-home.png",
+          "bytes": 89355,
+          "sha256": "4758b30e8610be0844a54e4b1aa666767623fa2520963a8b0a8286282e8075d9"
+        },
+        {
+          "path": ".dart_tool/camera_audit/final-desktop-camera.png",
+          "bytes": 38445,
+          "sha256": "d12f550e6fa91da66299275e0187370c4cd29d5de7ea3ee6c94566e850828a5e"
+        },
+        {
+          "path": ".dart_tool/camera_audit/final-desktop-usb-no-fallback.png",
+          "bytes": 47761,
+          "sha256": "1dd4f164400209785d876341ee6a9b46d17f4c05a8df5727528f43f4aa3aac35"
+        }
+      ],
+      "note": "Home, camera and missing-USB views were manually inspected in preceding native builds; corresponding presentation code is unchanged. Final Android Home and final Linux camera/close paths were checked again."
+    },
+    "liveVideoReceived": true,
+    "nativeCloseRetest": "passed_two_active_window_closes_and_three_stop_reconnect_cycles_on_final_linux_build",
+    "evidenceSourceNote": "Earlier static screenshots retain their own hashes. Final delivery evidence is distinguished by APK and native artifact hashes."
+  },
+  "preliminaryReview": {
+    "path": "docs/performance/s22-camera-review-preliminary.json",
+    "evidence": {
+      "path": "docs/performance/s22-camera-review-preliminary.json",
+      "bytes": 18216,
+      "sha256": "fc54a78c7ba4ee328ffe462d875d0a54913cf7803399d297fb93e8bf61e5f32f"
+    },
+    "scope": "Pre-fix APK35113; not the final Android artifact."
+  },
+  "cleanup": {
+    "status": "passed",
+    "passed": true,
+    "recordedAtUtc": "2026-10-21T22:54:54.580353+00:00",
+    "androidResourceChecks": {
+      "noForegroundServices": true,
+      "noActiveCameraClients": true,
+      "noMediaProjection": true,
+      "ownedHttpListenerClosed": true,
+      "keepScreenOnCleared": true,
+      "brightnessOverrideRestored": true,
+      "cameraWakeLockReleased": true
+    },
+    "desktopApplicationProcessesClosed": true,
+    "isolatedBrowserAndProbeProcessesClosed": true,
+    "testCompilerAndGradleProcessesClosed": true,
+    "testPortsClosed": [
+      53317,
+      53318,
+      9227
+    ],
+    "adbForwardMappingsAdded": 0,
+    "adbReverseMappingsAdded": 0,
+    "deviceRotationRestored": {
+      "accelerometer_rotation": "1",
+      "user_rotation": "0"
+    },
+    "remoteUiDumpRemoved": true,
+    "deviceLeftOnHome": true,
+    "scope": "No active transmission or test helpers remain. The installed mobile app can stay as an ordinary idle/cached Android process. Existing editor/ADB services were preserved.",
+    "evidence": [
+      {
+        "path": ".dart_tool/camera_audit/physical-final/delivery-final-stop-recorded.json",
+        "bytes": 91,
+        "sha256": "b19d1d3e756d2861b5e4db8e885a4bde4071b257130128a6b7ab97e03495d958"
+      },
+      {
+        "path": ".dart_tool/camera_audit/active-close-results.json",
+        "bytes": 571,
+        "sha256": "bf0c364b7e0e8e06f62f1623d792ae0a0d2cd4bdd05139fe678b357a79a4c6e2"
+      },
+      {
+        "path": ".dart_tool/app_review/shutdown-final-ready-home.xml",
+        "bytes": 9439,
+        "sha256": "8563bc601a35ade9279f125dd64a16e8f930d83fa15f2b4882f724508b5195d5"
+      }
+    ]
+  },
+  "sourceSha256": {
+    "android/.gitignore": "a87983166f2ae1b7b155092a5607083c692148e689c767adab542bea730bd66b",
+    "android/app/build.gradle.kts": "740e708a68d8f7b4c5ffebddeeb887424406f2d7a307776f46321f1fb869fe83",
+    "android/app/proguard-rules.pro": "3ca2247b3abe59ebfd7f4fe0f4ac304c41b80b62883c206f3ee4264d33892a8d",
+    "android/app/src/main/AndroidManifest.xml": "616705a173d113a3d4add54fc67fa815de522fee4bde0aa85d8ae0c71b434396",
+    "android/app/src/main/kotlin/com/bshare/bshare/CameraShareForegroundService.kt": "44ce9d04853972314a24c96a6b5afec612b4519c7f6250b02710f12138044292",
+    "android/app/src/main/kotlin/com/bshare/bshare/MainActivity.kt": "0453b691d35d41d05cd3c278c21cf33aa2b6cd77c4578c6494a34b80a6fd51ca",
+    "ios/Runner/AppDelegate.swift": "2de010c2f80a6c287b9b970889f538c76570626c7aae17e9626f0b7731cae141",
+    "ios/Runner/Info.plist": "1cb7ecf492327c23f3a123a0f70140c1f382eb2f1328b9a9f136aa1c1eab20e4",
+    "lib/src/application/camera_session_controller.dart": "77be7d5930e690dc4fd8504b0273faac4606299441ac4321ce820ee00552f366",
+    "lib/src/application/providers.dart": "d3562212833ee563ad465994a3024f90a3a3e01ca1c9bd2a5ecd2ea3de4677a5",
+    "lib/src/application/receive_controller.dart": "6696843e55fd81fe138ff9080cdb97ddf92d95753287d52f428db1239572a5a7",
+    "lib/src/application/send_controller.dart": "bedd843b5844873a90e156b74a4558c91a79ff6eb2942603e9c9ea90621c2968",
+    "lib/src/domain/entities/app_settings.dart": "93ed6edef24cd6b033e3f9712109bb3c8cb9e5f00226aa2cd924bdc24e064a62",
+    "lib/src/domain/entities/camera_capture_settings.dart": "12f0021b97cd6977e658133dce201c33bbc16c30363dc4be9922814146e95192",
+    "lib/src/domain/entities/camera_connection_mode.dart": "e0ebb590f5482d2e729c9be83b8e76f719deeb6b9fd767e6646478ac314ed43e",
+    "lib/src/domain/entities/camera_device.dart": "7aa68f566921a6c219b485e0f89756bfcac5e7e42ebe5c48e3772721e6ed3daf",
+    "lib/src/domain/entities/direct_share_invite.dart": "55a22f194a317b1f7610bc021f0c305b3a5993f86d1578abe4a10d12fa9a9936",
+    "lib/src/domain/entities/screen_capture_settings.dart": "17fb65d6ea062d5d1db1d62f8c0f32f12652aa83b527af1e11a7abca3f4c81de",
+    "lib/src/domain/entities/transfer_control.dart": "be29a93e85dd82c71a53f096172e1c6a0048028857f34bc7fb7dae26ba06d285",
+    "lib/src/infrastructure/repositories/settings_repository.dart": "263bf8956513fb7805ecf946674739e186bc8eeca6ff582f61f43fa13bf1cdd7",
+    "lib/src/infrastructure/services/android_camera_execution_service.dart": "1b03f6be1f2861712b87d184eb05eb3bac35a896bdc2a928b84416e406b4aaf3",
+    "lib/src/infrastructure/services/camera_capture_lifecycle_gate.dart": "d716077a0cf29aa4530735bfd29e7c0d1800b0cbbb489c0d593db6032db6deb2",
+    "lib/src/infrastructure/services/camera_display_service.dart": "7a69793ba12395f7f0e12db56889e29f0ba24bf6d8ac5298543acb9504e5373b",
+    "lib/src/infrastructure/services/direct_network_service.dart": "6cef0a24a43ba07ca19e7ce11b654b3f49f0d2627825468a7c41737de68f2836",
+    "lib/src/infrastructure/services/file_server.dart": "fd47ee4cf543177d238057e83bac22b3087fc10204b02c45df002a6b5e84754c",
+    "lib/src/infrastructure/services/file_transfer_client.dart": "9a4015099e65fd028e40562579219b73d06c2974cc02949b9d3efa44109cc565",
+    "lib/src/infrastructure/services/lan_discovery_service.dart": "d22209003642e16b48882e25d70decfa91cdacebaf8c2eff12c6c46084178584",
+    "lib/src/infrastructure/services/network_service.dart": "2d11fae4813e60764f2f3ed798ec04990ab0b049b241882fdcf5622552ca3588",
+    "lib/src/infrastructure/services/permission_request_coordinator.dart": "39de966ad0827f3c092e02d739b252d21a75d97314bd66161365efaa5c54a119",
+    "lib/src/infrastructure/services/process_runner.dart": "06ea84c2667ae3787b2cd863d15b58d55b7067b0a355f5ea25642b28ee29e5be",
+    "lib/src/infrastructure/services/screen_share_service.dart": "184066fd9dcd161685a48339a570176807c02139a58f2e52dc50341ec380aedc",
+    "lib/src/infrastructure/services/usb_camera_network_service.dart": "591966af0e87a4fd1830609bf894640027925a50114dce637e2d276f71d620e9",
+    "lib/src/presentation/app.dart": "d4bf3ea70863bef0e5b0682a0acf15273b76622567c0cd6e34c7beb29a049613",
+    "lib/src/presentation/localization/app_localizations.dart": "b22382142fc1aa542e0fd9aac4ca2aabd7b292657b19a833d39476deb602afe3",
+    "lib/src/presentation/localization/camera_localizations.dart": "5c44c0cfae0e99203b6ee57c07cdc783d32ce4dd0b267b333f81420d66930350",
+    "lib/src/presentation/localization/camera_ui_localizations.dart": "dec4025c1ae5defa8465becc11610c9306d26aa10fd6e1c145d426167e0c004c",
+    "lib/src/presentation/navigation/app_navigation.dart": "1717f55abdef1e33c3d7ea01123d93de71e203478efb711c07eb2cd41bf98e5b",
+    "lib/src/presentation/screens/android_app_picker_screen.dart": "625b68318be25ac95baac02d7dd16868a985a5a441e61d13be90bece08303615",
+    "lib/src/presentation/screens/android_storage_picker_screen.dart": "20286266e405f01bb5350727e3236e7205c70f13da02e68f4b9251f0dd508ccb",
+    "lib/src/presentation/screens/camera_share_screen.dart": "6c335517a971022d46cbf9568e36f2a823461edb6add2c9a8e0e2746c64e5ea9",
+    "lib/src/presentation/screens/device_discovery_screen.dart": "92e7e45f9460ca62c81ea5f6157ede11dd5636814d670f6e1ac891da98daf001",
+    "lib/src/presentation/screens/direct_qr_scanner_screen.dart": "75525b40a6b7d55886d59afed2f3c76d7361bc350e7d7bef4cd8d4e34d90c627",
+    "lib/src/presentation/screens/home_screen.dart": "bc6dd1dcbd2ab230b17ec16bd11af517a90b1b386ea93e6a3048142cc9e1c335",
+    "lib/src/presentation/screens/media_picker_screen.dart": "0ab90f9808850e2525f03a5157fd1d3c28209756100b283ffdf8e2e4906945da",
+    "lib/src/presentation/screens/receive_screen.dart": "0519bce7633498e5029609cb6270bbd913bf5cb532b7e5096ccd3d157349bc28",
+    "lib/src/presentation/screens/screen_share_screen.dart": "41ea9dec512ed525d150f133a0060d2342817aea88db24cd470a2256910c26e3",
+    "lib/src/presentation/screens/screen_viewer_screen.dart": "57f9da774ccb52df53abd8d3346cf0a0c2ee21ade29317ed937d1f3f33a31ac7",
+    "lib/src/presentation/screens/send_files_screen.dart": "b6a261b80afd6fd492cd88cedd709303a3cdbbfea1bf2eea4f9106b1593dceed",
+    "lib/src/presentation/screens/settings_screen.dart": "6095fa08ec64fc4cb0164f31fdbad3038a2539a84ca1e094e3a6e20fb5448317",
+    "lib/src/presentation/widgets/app_shell.dart": "294eee15a965ff7652241cab52d9c0c484038fcbd0c8d31c32448bd7c8501b4c",
+    "lib/src/presentation/widgets/camera_display_overlay.dart": "2130d07b13347b2cc973803600c07c8c051ab982a6b493c4efaeff428af25fff",
+    "lib/src/presentation/widgets/discovery_status_card.dart": "02975441c70db26997ce6c5103058073a60a71c3cc0de5ea5434799e5a0ecf1c",
+    "lib/src/presentation/widgets/orientation_aware_video_view.dart": "872e740f4032800ca7067c604aa986adea2e52300f927632413acdc46e73fe2b",
+    "linux/runner/my_application.cc": "9ba1a10de0bca465dc81c7383365878e5393e8f4bb4777dcce423c93b75fa677",
+    "pubspec.lock": "42986f924c7564c943986666e0f0f741af2051c5505d65184b5e731f445bb4f1",
+    "pubspec.yaml": "2d116eee6ec21ce0f14eadfc89cc2ded49c11635ec67d943ce961fbc50ecc58d",
+    "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/GetUserMediaImpl.java": "b19d0dd613517b27cc2a7e06dac44595d99aaae3d7636c72f7ba6ceb15fc3d6c",
+    "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/OrientationAwareScreenCapturer.java": "19bf12675a39f8e1117bf2dfeac51c6367dc92f3d18895ab4f643b9cbf676d61",
+    "third_party/flutter_webrtc/common/cpp/include/flutter_video_renderer.h": "b0b7ef1a19fdcf6942d0b46c332c3bf510ea8a4e258e59e4147ca172cf58e88b",
+    "third_party/flutter_webrtc/common/cpp/src/flutter_common.cc": "b4c731ced298014a6e9e08e98eed3d9c15d7db90abf5dd0c415c67d9d1508c1b",
+    "third_party/flutter_webrtc/common/cpp/src/flutter_peerconnection.cc": "8f07d55ea23e564f894db7722dc6a3007b880bd5646e70a14e47bcbcefddb218",
+    "third_party/flutter_webrtc/common/cpp/src/flutter_video_renderer.cc": "36b79966339c503943a573b19d3fa419c7f467f8c79c6e09b8633d2ad2b9dcba",
+    "third_party/flutter_webrtc/lib/src/native/media_stream_track_impl.dart": "e5f7a06759d1baf58d60b928c3342ddea2f111a1fea09fffaf051abf50d208e5",
+    "third_party/flutter_webrtc/lib/src/native/rtc_video_renderer_impl.dart": "70b2f549b228afb925467a8005d5b4f52a12d8912597f9422d73425f5aab5ecc",
+    "third_party/flutter_webrtc/linux/flutter/core_implementations.cc": "b1557ec95f2333f34936c38f4aa6afb8d9db8d82aae1f09faf96471db7293497",
+    "third_party/flutter_webrtc/third_party/libwebrtc/include/rtc_types.h": "f99b6229f23dab955eb0dc1cf81317d0d0709270e5e410e8c055974ebae39f63"
+  }
+}

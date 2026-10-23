@@ -1,0 +1,1 @@
+enum CameraConnectionMode { wifi, usb }

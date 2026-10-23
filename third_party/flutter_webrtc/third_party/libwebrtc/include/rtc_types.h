@@ -1,6 +1,8 @@
 #ifndef LIB_WEBRTC_RTC_TYPES_HXX
 #define LIB_WEBRTC_RTC_TYPES_HXX
 
+#include <cstdint>
+
 #ifdef LIB_WEBRTC_API_EXPORTS
 #define LIB_WEBRTC_API __declspec(dllexport)
 #elif defined(LIB_WEBRTC_API_DLL)

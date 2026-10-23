@@ -6,11 +6,11 @@ import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/infrastructure/services/android_screen_awake_service.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
+import 'package:bshare/src/presentation/navigation/app_navigation.dart';
 import 'package:bshare/src/presentation/widgets/orientation_aware_video_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 class ScreenViewerScreen extends ConsumerWidget {
   const ScreenViewerScreen({super.key, this.device});
@@ -22,11 +22,7 @@ class ScreenViewerScreen extends ConsumerWidget {
     return FocusedScreenViewer(
       device: device,
       onClose: () async {
-        if (Navigator.of(context).canPop()) {
-          context.pop();
-        } else {
-          context.go('/screen');
-        }
+        AppNavigationScope.back(context, fallback: '/screen');
       },
     );
   }
@@ -52,6 +48,9 @@ class _FocusedScreenViewerState extends ConsumerState<FocusedScreenViewer> {
 
   String _status = 'Opening viewer...';
   ScreenShareService? _service;
+  late final Future<void> _enteringViewer;
+  Future<void>? _exitingViewer;
+  Future<void>? _closing;
 
   @override
   void initState() {
@@ -59,7 +58,9 @@ class _FocusedScreenViewerState extends ConsumerState<FocusedScreenViewer> {
     final service = ref.read(screenShareServiceProvider);
     _service = service;
     service.setFocusedViewerActive(true);
-    unawaited(_enterViewerMode());
+    _enteringViewer = _enterViewerMode().catchError((Object error) {
+      if (mounted) ref.read(loggerProvider).warn('Viewer setup failed: $error');
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_connectIfNeeded());
     });
@@ -69,7 +70,7 @@ class _FocusedScreenViewerState extends ConsumerState<FocusedScreenViewer> {
   void dispose() {
     final service = _service;
     service?.setFocusedViewerActive(false);
-    if (service != null) unawaited(service.stopWatching());
+    if (service != null && _closing == null) unawaited(service.stopWatching());
     unawaited(_exitViewerMode());
     super.dispose();
   }
@@ -81,7 +82,10 @@ class _FocusedScreenViewerState extends ConsumerState<FocusedScreenViewer> {
     ]);
   }
 
-  Future<void> _exitViewerMode() async {
+  Future<void> _exitViewerMode() => _exitingViewer ??= _restoreViewerMode();
+
+  Future<void> _restoreViewerMode() async {
+    await _enteringViewer;
     await Future.wait<void>([
       _restoreSystemUi(),
       _screenAwake.setViewerActive(false),
@@ -123,7 +127,9 @@ class _FocusedScreenViewerState extends ConsumerState<FocusedScreenViewer> {
     }
   }
 
-  Future<void> _close() async {
+  Future<void> _close() => _closing ??= _closeViewer();
+
+  Future<void> _closeViewer() async {
     await _service!.stopWatching();
     await _exitViewerMode();
     if (mounted) await widget.onClose();
@@ -135,94 +141,100 @@ class _FocusedScreenViewerState extends ConsumerState<FocusedScreenViewer> {
     final l10n = context.l10n;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: OrientationAwareVideoView(
-                renderer: service.remoteRenderer,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) unawaited(_close());
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: OrientationAwareVideoView(
+                  renderer: service.remoteRenderer,
+                ),
               ),
-            ),
-            Positioned(
-              left: 12,
-              right: 12,
-              top: MediaQuery.paddingOf(context).top + 12,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ValueListenableBuilder(
-                      valueListenable: service.state,
-                      builder: (context, state, _) {
-                        final status = state.mode == ScreenShareMode.idle
-                            ? l10n.screenStatus(_status)
-                            : l10n.screenStatus(state.status);
-                        final error = state.error;
-                        return Text(
-                          error == null ? status : '$status: $error',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white),
-                        );
-                      },
+              Positioned(
+                left: 12,
+                right: 12,
+                top: MediaQuery.paddingOf(context).top + 12,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ValueListenableBuilder(
+                        valueListenable: service.state,
+                        builder: (context, state, _) {
+                          final status = state.mode == ScreenShareMode.idle
+                              ? l10n.screenStatus(_status)
+                              : l10n.screenStatus(state.status);
+                          final error = state.error;
+                          return Text(
+                            error == null ? status : '$status: $error',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  IconButton.filledTonal(
-                    tooltip: context.l10n.t('closeViewer'),
-                    onPressed: _close,
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
+                    IconButton.filledTonal(
+                      tooltip: context.l10n.t('closeViewer'),
+                      onPressed: _close,
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Positioned.fill(
-              child: ValueListenableBuilder<ScreenShareState>(
-                valueListenable: service.state,
-                builder: (context, state, _) {
-                  final senderDisconnected =
-                      state.mode == ScreenShareMode.idle &&
-                      state.status == 'Screen share ended';
-                  if (!senderDisconnected) return const SizedBox.shrink();
+              Positioned.fill(
+                child: ValueListenableBuilder<ScreenShareState>(
+                  valueListenable: service.state,
+                  builder: (context, state, _) {
+                    final senderDisconnected =
+                        state.mode == ScreenShareMode.idle &&
+                        state.status == 'Screen share ended';
+                    if (!senderDisconnected) return const SizedBox.shrink();
 
-                  return Center(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.72),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 20,
+                    return Center(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.72),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white24),
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.portable_wifi_off_rounded,
-                              color: Colors.white,
-                              size: 32,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              l10n.t('senderDisconnected'),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 20,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.portable_wifi_off_rounded,
                                 color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
+                                size: 32,
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 12),
+                              Text(
+                                l10n.t('senderDisconnected'),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

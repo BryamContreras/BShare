@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show AppExitResponse;
 
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/device_info.dart';
@@ -6,8 +7,13 @@ import 'package:bshare/src/domain/entities/receive_progress.dart';
 import 'package:bshare/src/domain/entities/selected_transfer_file.dart';
 import 'package:bshare/src/domain/entities/transfer_progress_status.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
+import 'package:bshare/src/presentation/navigation/app_navigation.dart';
+import 'package:bshare/src/presentation/navigation/subtle_page_transitions.dart';
 import 'package:bshare/src/presentation/screens/android_app_picker_screen.dart';
 import 'package:bshare/src/presentation/screens/android_storage_picker_screen.dart';
+import 'package:bshare/src/presentation/screens/camera_share_screen.dart';
+import 'package:bshare/src/presentation/screens/camera_broadcast_screen.dart';
+import 'package:bshare/src/presentation/screens/camera_viewer_screen.dart';
 import 'package:bshare/src/presentation/screens/device_discovery_screen.dart';
 import 'package:bshare/src/presentation/screens/direct_qr_scanner_screen.dart';
 import 'package:bshare/src/presentation/screens/history_screen.dart';
@@ -19,6 +25,7 @@ import 'package:bshare/src/presentation/screens/screen_viewer_screen.dart';
 import 'package:bshare/src/presentation/screens/send_files_screen.dart';
 import 'package:bshare/src/presentation/screens/settings_screen.dart';
 import 'package:bshare/src/presentation/screens/transfers_screen.dart';
+import 'package:bshare/src/presentation/widgets/camera_display_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -74,6 +81,20 @@ GoRouter _createRouter(DeviceInfo? initialViewerDevice) => GoRouter(
       builder: (context, state) => const ScreenShareScreen(),
     ),
     GoRoute(
+      path: '/camera',
+      builder: (context, state) => const CameraShareScreen(),
+    ),
+    GoRoute(
+      path: '/camera/live',
+      builder: (context, state) => const CameraBroadcastScreen(),
+    ),
+    GoRoute(
+      path: '/camera/viewer',
+      builder: (context, state) => CameraViewerScreen(
+        device: state.extra is DeviceInfo ? state.extra as DeviceInfo : null,
+      ),
+    ),
+    GoRoute(
       path: '/screen/viewer',
       builder: (context, state) => ScreenViewerScreen(
         device: state.extra is DeviceInfo ? state.extra as DeviceInfo : null,
@@ -101,15 +122,17 @@ class BShareApp extends ConsumerStatefulWidget {
 
 class _BShareAppState extends ConsumerState<BShareApp> {
   late final GoRouter _router;
+  late final AppNavigation _navigation;
   StreamSubscription<List<SelectedTransferFile>>? _sharedFilesSubscription;
 
   @override
   void initState() {
     super.initState();
     _router = _createRouter(widget.initialViewerDevice);
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _listenForSharedFiles(),
-    );
+    _navigation = AppNavigation(_router);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_listenForSharedFiles());
+    });
     ref.listenManual(incomingTransfersProvider, (_, incoming) {
       if (incoming.isNotEmpty) _openTransfersForIncomingFile();
     });
@@ -122,15 +145,23 @@ class _BShareAppState extends ConsumerState<BShareApp> {
     if (sharedFilesSubscription != null) {
       unawaited(sharedFilesSubscription.cancel());
     }
+    _navigation.dispose();
     _router.dispose();
     super.dispose();
   }
 
   Future<void> _listenForSharedFiles() async {
+    if (!mounted || _sharedFilesSubscription != null) return;
     final service = ref.read(androidShareServiceProvider);
     _sharedFilesSubscription = service.sharedFiles.listen(_openSharedFiles);
-    final initialFiles = await service.takeInitialSharedFiles();
-    if (initialFiles.isNotEmpty) _openSharedFiles(initialFiles);
+    try {
+      final initialFiles = await service.takeInitialSharedFiles();
+      if (initialFiles.isNotEmpty) _openSharedFiles(initialFiles);
+    } catch (error) {
+      if (mounted) {
+        ref.read(loggerProvider).warn('Could not read shared files: $error');
+      }
+    }
   }
 
   void _openSharedFiles(List<SelectedTransferFile> files) {
@@ -158,6 +189,8 @@ class _BShareAppState extends ConsumerState<BShareApp> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider).value;
+    final disableAnimations =
+        MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final mode = switch (settings?.themeMode) {
       'light' => ThemeMode.light,
       'dark' => ThemeMode.dark,
@@ -174,6 +207,10 @@ class _BShareAppState extends ConsumerState<BShareApp> {
     return MaterialApp.router(
       title: 'BShare',
       debugShowCheckedModeBanner: false,
+      themeAnimationDuration: disableAnimations
+          ? Duration.zero
+          : const Duration(milliseconds: 140),
+      themeAnimationCurve: Curves.easeOut,
       locale: Locale(settings?.languageCode ?? 'en'),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
@@ -183,6 +220,7 @@ class _BShareAppState extends ConsumerState<BShareApp> {
         GlobalWidgetsLocalizations.delegate,
       ],
       theme: ThemeData(
+        pageTransitionsTheme: subtlePageTransitions,
         colorScheme: scheme.copyWith(
           surface: const Color(0xFFDCE7ED),
           surfaceContainerHighest: const Color(0xFFC9D8E0),
@@ -239,6 +277,7 @@ class _BShareAppState extends ConsumerState<BShareApp> {
         ),
       ),
       darkTheme: ThemeData(
+        pageTransitionsTheme: subtlePageTransitions,
         colorScheme: darkScheme.copyWith(
           surface: const Color(0xFF111A21),
           surfaceContainer: const Color(0xFF17222B),
@@ -306,8 +345,13 @@ class _BShareAppState extends ConsumerState<BShareApp> {
               maxScaleFactor: 1.18,
             ),
           ),
-          child: _RuntimeCleanupObserver(
-            child: child ?? const SizedBox.shrink(),
+          child: AppNavigationScope(
+            navigation: _navigation,
+            child: CameraDisplayOverlay(
+              child: _RuntimeCleanupObserver(
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
           ),
         );
       },
@@ -329,7 +373,7 @@ class _RuntimeCleanupObserver extends ConsumerStatefulWidget {
 class _RuntimeCleanupObserverState
     extends ConsumerState<_RuntimeCleanupObserver>
     with WidgetsBindingObserver {
-  var _cleaning = false;
+  Future<void>? _cleanupFuture;
 
   @override
   void initState() {
@@ -346,19 +390,34 @@ class _RuntimeCleanupObserverState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
-      _cleanup();
+      unawaited(_cleanup());
     }
   }
 
-  void _cleanup() {
-    if (_cleaning) return;
-    _cleaning = true;
-    unawaited(
-      ref
-          .read(runtimeCleanupProvider)
-          .cleanupNetworking(cleanupSelectedFiles: true)
-          .whenComplete(() => _cleaning = false),
-    );
+  @override
+  Future<AppExitResponse> didRequestAppExit() async {
+    // Desktop engines request exit before destroying the window. A detached
+    // notification comes too late to await peer, texture and transfer cleanup.
+    await _cleanup();
+    return AppExitResponse.exit;
+  }
+
+  Future<void> _cleanup() {
+    // Keep the completed future as well: repeated close requests and the final
+    // detached event belong to the same shutdown and must not start new work.
+    return _cleanupFuture ??= _cleanupResources();
+  }
+
+  Future<void> _cleanupResources() async {
+    final cleanup = ref.read(runtimeCleanupProvider);
+    final logger = ref.read(loggerProvider);
+    try {
+      // RuntimeCleanup attempts every resource even if an individual stop fails.
+      await cleanup.cleanupNetworking(cleanupSelectedFiles: true);
+    } catch (error) {
+      // Also handle an unexpected coordinator failure in the detached fallback.
+      logger.warn('Could not finish application cleanup: $error');
+    }
   }
 
   @override

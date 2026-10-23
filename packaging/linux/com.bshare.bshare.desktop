@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=BShare
+Comment=Share files, screens and device cameras on your local network
+Exec=bshare
+TryExec=bshare
+Icon=com.bshare.bshare
+Terminal=false
+Categories=Network;FileTransfer;
+StartupWMClass=com.bshare.bshare
+StartupNotify=true

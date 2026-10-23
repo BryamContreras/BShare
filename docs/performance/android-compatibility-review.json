@@ -1,0 +1,921 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-10-22T23:07:36.108349+00:00",
+  "status": "passed_scoped_emulator_and_physical_validation",
+  "scope": "Android permission boundaries, file receiver lifecycle and native package compatibility; final artifact is shared with the desktop and mobile UI polish revision.",
+  "configuredAndroidSupport": {
+    "minSdk": 24,
+    "minimumAndroid": "7.0",
+    "targetSdk": 36,
+    "targetAndroid": "16",
+    "releaseAbis": [
+      "armeabi-v7a",
+      "arm64-v8a",
+      "x86_64"
+    ],
+    "note": "Configuration and compilation do not establish runtime support for every Android release, vendor or device."
+  },
+  "implementedChanges": {
+    "sdkDetection": "A single cached SDK query is shared by Android permission decisions. Failed queries remain retryable.",
+    "storage": {
+      "appPrivateDirectories": "No shared-storage permission request; canonical app-owned directories are resolved before classification.",
+      "sharedDirectoriesApi24To29": "Legacy storage permission is checked before browsing, mkdir or file reception; WRITE_EXTERNAL_STORAGE applies through API 29 and requestLegacyExternalStorage is enabled for Android 10.",
+      "sharedDirectoriesApi30AndLater": "Current all-files access is checked before raw shared-directory operations. Permission grants are not cached.",
+      "picker": "Denied access clears stale selection and blocks listing/confirmation; returning from Settings rechecks access without automatically displaying another permission request.",
+      "settings": "Changing the receive destination checks access before creating or saving the directory. Unrelated settings do not request storage access.",
+      "videoOnlyReceiver": "Camera/screen transport can start without storage access or Downloads creation. Enabling file reception promotes the existing listener instead of creating another server.",
+      "revokedAccess": "New queued or incoming file work is rejected and pending decisions are terminalized. Permission checks on old destinations do not disable a newly selected valid destination; an active duplicate ID does not terminalize the original transfer."
+    },
+    "wifi": {
+      "homeDiscovery": "LAN discovery does not require an initial location/SSID permission request.",
+      "localHotspotApiBelow26": "Explicitly unsupported by the native local-only hotspot API.",
+      "localHotspotApi26To32": "Requires location access.",
+      "localHotspotApi33AndLater": "Requires nearby Wi-Fi device access.",
+      "connectApi29AndLater": "Location permission is still required for the scan/network-specifier operation; nearby-device permission does not substitute for that requirement.",
+      "settingsAndReadiness": "Opening network settings, checking readiness and binding an existing network do not request unrelated dangerous permissions.",
+      "denial": "Current OS permission state is re-read before starting native operations; approximate-only location is not treated as a precise grant."
+    },
+    "notifications": "Runtime notification permission is requested only on API 33 and later.",
+    "nativeForegroundService": {
+      "fileTransferType": "connectedDevice, with its manifest permission and network prerequisites; camera/microphone and media-projection service types remain separate.",
+      "restartPolicy": "The vendored flutter_background service returns START_NOT_STICKY and handles null/unknown start actions by cleanup and stop.",
+      "resourceOwnership": "Explicit starts are idempotent. Cleanup releases acquired wake and Wi-Fi locks even if configuration changed.",
+      "vendorReconciliation": "On engine attachment, stopOrphanedService stops an old OS service record only when this process has no live service instance. This preserves a real service when another engine attaches.",
+      "boundary": "An OS-owned notification may remain while the UID is dead on Samsung. The final fix is intended to reconcile it when the app opens; immediate notification removal during a dead process is not promised."
+    }
+  },
+  "finalValidation": {
+    "artifact": {
+      "recordedAtUtc": "2026-10-22T23:18:10.635674+00:00",
+      "path": ".dart_tool/app_review/desktop-polish-final.apk",
+      "retainedPath": ".dart_tool/app_review/desktop-polish-final.apk",
+      "bytes": 110881379,
+      "sha256": "5ff3674cb5d76bd8b16f9fe47b1030956356d155244defbf778a6b9137260e7c",
+      "aotLibraries": [
+        "lib/arm64-v8a/libapp.so",
+        "lib/armeabi-v7a/libapp.so",
+        "lib/x86_64/libapp.so"
+      ],
+      "debugKernelPresent": false,
+      "status": "passed",
+      "originalBuildPath": "build/app/outputs/apk/release/app-release.apk",
+      "deliveryPathAtValidation": "build/app/outputs/flutter-apk/bshare-optimized-release.apk"
+    },
+    "sourceFreeze": {
+      "evidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-source-freeze.json",
+        "bytes": 30859,
+        "sha256": "964e845603568dfd97d8b147f3bc6439c940f89746aa15d636a70c40fb8abf69"
+      },
+      "fileCount": 212,
+      "changedSinceFreeze": [],
+      "androidKernelProof": {
+        "path": ".dart_tool/app_review/desktop-polish-final-android-kernel-source-proof.json",
+        "bytes": 1569,
+        "sha256": "9bc0b5db6d040d0c9052b7da25860cf2bb1138d692396309ae026091363c0a79"
+      }
+    },
+    "automated": {
+      "analyze": {
+        "status": "passed",
+        "command": [
+          "dart",
+          "analyze",
+          "--fatal-infos"
+        ],
+        "exitCode": 0,
+        "durationSeconds": 34.99,
+        "reason": "Recheck exact final source independently of Flutter CLI shutdown warning; previous Flutter analysis also reported no issues.",
+        "evidence": {
+          "path": ".dart_tool/app_review/desktop-polish-final-analyze.json",
+          "bytes": 255,
+          "sha256": "e1ab8ed6f8685d80d412e37c2534529425f0e95a8b8c1b8ea7a724ae4e435ce6"
+        },
+        "log": {
+          "path": ".dart_tool/app_review/desktop-polish-final-analyze.log",
+          "bytes": 37,
+          "sha256": "c18777986d05f51d2fecf76558229199ff41d836c155419293c81229e05096bd"
+        }
+      },
+      "fullFlutterTests": {
+        "status": "passed",
+        "command": [
+          "flutter",
+          "--suppress-analytics",
+          "test",
+          "--no-pub"
+        ],
+        "exitCode": 0,
+        "durationSeconds": 252.85,
+        "evidence": {
+          "path": ".dart_tool/app_review/desktop-polish-final-tests.json",
+          "bytes": 139,
+          "sha256": "3c8eb081a31aa6c086f269ec26cf78d8f49c69bb6a433730e633ccbfb2d9f8e4"
+        },
+        "log": {
+          "path": ".dart_tool/app_review/desktop-polish-final-tests.log",
+          "bytes": 76653,
+          "sha256": "7b8f938cb55f889d1746f21c2e4fe081860ef850f84dbf37ee9e10bc8a6b16d5"
+        },
+        "count": 383
+      },
+      "androidReleaseBuild": {
+        "status": "passed",
+        "command": [
+          "./gradlew",
+          "--no-daemon",
+          "--max-workers=3",
+          "-I",
+          "../.dart_tool/bshare-compat.init.gradle",
+          "-Ptarget-platform=android-arm,android-arm64,android-x64",
+          "-Ptarget=lib/main.dart",
+          "-Pdart-obfuscation=false",
+          "-Ptrack-widget-creation=false",
+          "-Ptree-shake-icons=true",
+          "assembleRelease"
+        ],
+        "exitCode": 0,
+        "durationSeconds": 837.88,
+        "evidence": {
+          "path": ".dart_tool/app_review/desktop-polish-final-build.json",
+          "bytes": 400,
+          "sha256": "02f01570ca11790ae727e304a62cb0427e0cc608bc80e697303cd03139e712cc"
+        }
+      },
+      "nativeApkInspection": {
+        "status": "passed",
+        "sdk": {
+          "minSdk": 24,
+          "targetSdk": 36
+        },
+        "packagedAbis": [
+          "arm64-v8a",
+          "armeabi-v7a",
+          "x86_64"
+        ],
+        "nativeLibraryCount": 24,
+        "checks": {
+          "nativeLibrariesPresent": true,
+          "requiredAbisPresent": true,
+          "eachPackagedAbiHasCompleteLibrarySet": true,
+          "allElfMachinesMatchAbi": true,
+          "all64BitLibraries16kPackaged": true
+        },
+        "runtime16kValidated": false,
+        "evidence": {
+          "path": ".dart_tool/app_review/desktop-polish-final-apk-native.json",
+          "bytes": 21701,
+          "sha256": "6e0687871189343a1fbc9036662e78d7a88a7a39ba6df927246a32616ff896ff"
+        }
+      },
+      "releaseQrRegistrarInspection": {
+        "status": "passed",
+        "checks": [
+          {
+            "class": "com.google.mlkit.common.internal.CommonComponentRegistrar",
+            "classPresent": true,
+            "publicNoArgConstructor": true,
+            "dex": "classes.dex"
+          },
+          {
+            "class": "com.google.mlkit.vision.barcode.internal.BarcodeRegistrar",
+            "classPresent": true,
+            "publicNoArgConstructor": true,
+            "dex": "classes.dex"
+          },
+          {
+            "class": "com.google.mlkit.vision.common.internal.VisionCommonRegistrar",
+            "classPresent": true,
+            "publicNoArgConstructor": true,
+            "dex": "classes.dex"
+          }
+        ],
+        "cameraRuntimeVerified": false,
+        "evidence": {
+          "path": ".dart_tool/app_review/desktop-polish-final-qr.json",
+          "bytes": 754,
+          "sha256": "19e51a89ebf8910bc9d90169673d98d721e6a28fe0c9133f0296aeac031f9564"
+        }
+      }
+    },
+    "androidRuntime": {
+      "status": "passed_emulators_and_physical_s22",
+      "emulators": [
+        {
+          "api": 29,
+          "android": "10",
+          "serial": "emulator-5580",
+          "abi": "x86_64",
+          "runtimePageSize": 4096,
+          "installedApk": {
+            "path": ".dart_tool/app_review/desktop-polish-final.apk",
+            "bytes": 110881379,
+            "sha256": "5ff3674cb5d76bd8b16f9fe47b1030956356d155244defbf778a6b9137260e7c"
+          },
+          "installedSha256": "5ff3674cb5d76bd8b16f9fe47b1030956356d155244defbf778a6b9137260e7c",
+          "cases": [
+            {
+              "stage": "install",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api29-install.json",
+                "bytes": 7378,
+                "sha256": "af90f33dc5ca0bed5aceb1cabf99da102c274832530fab622ab527baef50f851"
+              },
+              "forceStopUsed": false
+            },
+            {
+              "stage": "start-first",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api29-start-first.json",
+                "bytes": 4570,
+                "sha256": "1da17543ef632d79a9a5cce335a838523d6e0b4332d970e37aabe302e66b3c8e"
+              },
+              "forceStopUsed": false,
+              "transfer": {
+                "status": 200,
+                "sentBytes": 41,
+                "sentSha256": "2abd9aa1fcdcafc9ac2c167c4cacab21d0afd42580a9e75ef896689153aa4090",
+                "savedSha256": "2abd9aa1fcdcafc9ac2c167c4cacab21d0afd42580a9e75ef896689153aa4090",
+                "savedFileMatches": true,
+                "fileName": "bshare_desktop_polish_final_api29_first-granted.txt"
+              }
+            },
+            {
+              "stage": "revoke",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api29-revoke.json",
+                "bytes": 4651,
+                "sha256": "230cfc7248f725f9fcc6ebb2e1ac9ec9c4eaf14b89c4f5ba9ab0bb1ef0f0e4ba"
+              },
+              "forceStopUsed": false,
+              "afterRevocation2s": {
+                "elapsedSecondsFromOrigin": 2.0,
+                "pid": "",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              },
+              "afterRevocation15s": {
+                "elapsedSecondsFromOrigin": 15.0,
+                "pid": "",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              }
+            },
+            {
+              "stage": "reopen",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api29-reopen.json",
+                "bytes": 9043,
+                "sha256": "6d465f1001dd9bfb12c8ca57b495ed374f5fa1652d66ea4e4e309fa446258430"
+              },
+              "forceStopUsed": false,
+              "reopenHome": {
+                "elapsedSecondsFromOrigin": null,
+                "pid": "3520",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              }
+            },
+            {
+              "stage": "regrant-stop",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api29-regrant-stop.json",
+                "bytes": 4890,
+                "sha256": "e10040d0fb17baf9cba2c6130bae11f2429ee6e44c4ca457a4ffa41940d01e91"
+              },
+              "forceStopUsed": false,
+              "transfer": {
+                "status": 200,
+                "sentBytes": 41,
+                "sentSha256": "3a68a9fc219c09fdf26e6d5e9480096ddc6d0482bf31cb4705cea0b83663e988",
+                "savedSha256": "3a68a9fc219c09fdf26e6d5e9480096ddc6d0482bf31cb4705cea0b83663e988",
+                "savedFileMatches": true,
+                "fileName": "bshare_desktop_polish_final_api29_after-regrant.txt"
+              },
+              "uiStop": {
+                "elapsedSecondsFromOrigin": null,
+                "pid": "3520",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              }
+            }
+          ],
+          "status": "PASS"
+        },
+        {
+          "api": 31,
+          "android": "12",
+          "serial": "emulator-5582",
+          "abi": "x86_64",
+          "runtimePageSize": 4096,
+          "installedApk": {
+            "path": ".dart_tool/app_review/desktop-polish-final.apk",
+            "bytes": 110881379,
+            "sha256": "5ff3674cb5d76bd8b16f9fe47b1030956356d155244defbf778a6b9137260e7c"
+          },
+          "installedSha256": "5ff3674cb5d76bd8b16f9fe47b1030956356d155244defbf778a6b9137260e7c",
+          "cases": [
+            {
+              "stage": "install",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api31-install.json",
+                "bytes": 7395,
+                "sha256": "79d1d9f345e94e384fa496ee64b4df1d89e8efdce39438bbc9bf27d4b893c6ef"
+              },
+              "forceStopUsed": false
+            },
+            {
+              "stage": "start-first",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api31-start-first.json",
+                "bytes": 4557,
+                "sha256": "afd7e0f007934fc66a22026febe0b141a2d730b2f4b33eebc67b83d0b5e8dc43"
+              },
+              "forceStopUsed": false,
+              "transfer": {
+                "status": 200,
+                "sentBytes": 41,
+                "sentSha256": "4ebf9046f6bc7372079e2f90ecfbc7e03a92e968aabd7bdce55f4c3485f5aa8a",
+                "savedSha256": "4ebf9046f6bc7372079e2f90ecfbc7e03a92e968aabd7bdce55f4c3485f5aa8a",
+                "savedFileMatches": true,
+                "fileName": "bshare_desktop_polish_final_api31_first-granted.txt"
+              }
+            },
+            {
+              "stage": "revoke",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api31-revoke.json",
+                "bytes": 4645,
+                "sha256": "851a7ba82be789b9e4f5183d22272bb2f1db0c5bc74322801a3b1ced5031181a"
+              },
+              "forceStopUsed": false,
+              "afterRevocation2s": {
+                "elapsedSecondsFromOrigin": 2.0,
+                "pid": "",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              },
+              "afterRevocation15s": {
+                "elapsedSecondsFromOrigin": 15.0,
+                "pid": "",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              }
+            },
+            {
+              "stage": "reopen",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api31-reopen.json",
+                "bytes": 9045,
+                "sha256": "aeb1573c3c1224830d9ee7ea81b5fc350069d7b7160e581a78fd8ebece654dd8"
+              },
+              "forceStopUsed": false,
+              "reopenHome": {
+                "elapsedSecondsFromOrigin": null,
+                "pid": "2206",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              }
+            },
+            {
+              "stage": "regrant-stop",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api31-regrant-stop.json",
+                "bytes": 4882,
+                "sha256": "181f3bb743d466ffb41483676f956a95b42b972e8918b3ab97656861b4d595d4"
+              },
+              "forceStopUsed": false,
+              "transfer": {
+                "status": 200,
+                "sentBytes": 41,
+                "sentSha256": "f2770fbd8d2c8c38bf3202ede9f4748c868ca8504398675689f4e3061488020d",
+                "savedSha256": "f2770fbd8d2c8c38bf3202ede9f4748c868ca8504398675689f4e3061488020d",
+                "savedFileMatches": true,
+                "fileName": "bshare_desktop_polish_final_api31_after-regrant.txt"
+              },
+              "uiStop": {
+                "elapsedSecondsFromOrigin": null,
+                "pid": "2206",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              }
+            }
+          ],
+          "status": "PASS"
+        },
+        {
+          "api": 36,
+          "android": "16",
+          "serial": "emulator-5584",
+          "abi": "x86_64",
+          "runtimePageSize": 4096,
+          "installedApk": {
+            "path": ".dart_tool/app_review/desktop-polish-final.apk",
+            "bytes": 110881379,
+            "sha256": "5ff3674cb5d76bd8b16f9fe47b1030956356d155244defbf778a6b9137260e7c"
+          },
+          "installedSha256": "5ff3674cb5d76bd8b16f9fe47b1030956356d155244defbf778a6b9137260e7c",
+          "cases": [
+            {
+              "stage": "install",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api36-install.json",
+                "bytes": 7947,
+                "sha256": "827319fe766eb071d1a70ea6740d5e963a0d406b3e89303935a9350459fba00c"
+              },
+              "forceStopUsed": false
+            },
+            {
+              "stage": "start-first",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api36-start-first.json",
+                "bytes": 4650,
+                "sha256": "6795a3bc88ba9d9aeb9ec852a61eb8c10c639f03d2f0f5a2a807ca4c75ccca16"
+              },
+              "forceStopUsed": false,
+              "transfer": {
+                "status": 200,
+                "sentBytes": 41,
+                "sentSha256": "f7dbc0e053095d95e6227b9c4140fb8dca014d5dfba0ca8bd934f1b866cce12b",
+                "savedSha256": "f7dbc0e053095d95e6227b9c4140fb8dca014d5dfba0ca8bd934f1b866cce12b",
+                "savedFileMatches": true,
+                "fileName": "bshare_desktop_polish_final_api36_first-granted.txt"
+              }
+            },
+            {
+              "stage": "revoke",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api36-revoke.json",
+                "bytes": 4645,
+                "sha256": "7ca34cf6a046f4df947b64883bd4c6754b30d3102e01da0ac9d36a1c2bc04b0b"
+              },
+              "forceStopUsed": false,
+              "afterRevocation2s": {
+                "elapsedSecondsFromOrigin": 2.0,
+                "pid": "",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              },
+              "afterRevocation15s": {
+                "elapsedSecondsFromOrigin": 15.0,
+                "pid": "",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              }
+            },
+            {
+              "stage": "reopen",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api36-reopen.json",
+                "bytes": 9597,
+                "sha256": "a4d084a51b91359bd5316d0a3918555a1a2fad4314f38e93e706ae878f799e7e"
+              },
+              "forceStopUsed": false,
+              "reopenHome": {
+                "elapsedSecondsFromOrigin": null,
+                "pid": "2384",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              }
+            },
+            {
+              "stage": "regrant-stop",
+              "status": "PASS",
+              "receipt": {
+                "path": ".dart_tool/app_review/desktop-polish-final-emulator-api36-regrant-stop.json",
+                "bytes": 4974,
+                "sha256": "063fc5ebc82e561852a9a63f0ab75ecb346893789aa957c5563e026d21a38489"
+              },
+              "forceStopUsed": false,
+              "transfer": {
+                "status": 200,
+                "sentBytes": 41,
+                "sentSha256": "95fb0d694ae40134a9d5814349d4edd3f6d095a8747a392293fd18250078e9d6",
+                "savedSha256": "95fb0d694ae40134a9d5814349d4edd3f6d095a8747a392293fd18250078e9d6",
+                "savedFileMatches": true,
+                "fileName": "bshare_desktop_polish_final_api36_after-regrant.txt"
+              },
+              "uiStop": {
+                "elapsedSecondsFromOrigin": null,
+                "pid": "2384",
+                "serviceRecordCount": 0,
+                "foregroundServiceCount": 0,
+                "ownNotificationId1Lines": [],
+                "wakeLockLines": [],
+                "wifiHeldLockLines": [],
+                "receiverListenerLines": [],
+                "httpReachable": false,
+                "noReceiverResources": true
+              }
+            }
+          ],
+          "status": "PASS"
+        }
+      ],
+      "physical": {
+        "device": "Samsung Galaxy S22 Ultra",
+        "android": "14",
+        "api": 34,
+        "abi": "arm64-v8a",
+        "status": "passed_final_apk_home_permission_reception_and_cleanup",
+        "installedSha256": "5ff3674cb5d76bd8b16f9fe47b1030956356d155244defbf778a6b9137260e7c",
+        "installEvidence": {
+          "path": ".dart_tool/app_review/desktop-polish-final-s22-install.json",
+          "bytes": 615,
+          "sha256": "15f47ccfb895dfa88bf2aad0aad1ea9366b71e27e0ff83e8557e1ca9276966b4"
+        },
+        "homeSemanticsEvidence": {
+          "path": ".dart_tool/app_review/desktop-polish-final-s22-unlocked-home.xml",
+          "bytes": 9100,
+          "sha256": "0b25ad049a64bdc78ae986164559bf49ced67fad3a6f7da2b923820328eb8613"
+        },
+        "finalResourceState": {
+          "tag": "desktop-polish-final-s22-complete",
+          "recordedAtUtc": "2026-10-22T23:48:37.271322+00:00",
+          "httpUnavailable": "URLError",
+          "ownRecordingEntries": [],
+          "ownRecordingActive": false,
+          "foregroundServices": [],
+          "activeCameraClients": "[]",
+          "activeCameraClientEmpty": true,
+          "flashModeFirstValues": [
+            "OFF ",
+            "OFF "
+          ],
+          "flashStateFirstValues": [
+            "READY "
+          ],
+          "wakefulness": [
+            "Awake"
+          ],
+          "brightnessOverride": [
+            "NaN"
+          ],
+          "ownCameraWakeLockActive": false,
+          "windowBrightness": [],
+          "keyguardShowing": [
+            "false"
+          ],
+          "projection": "MEDIA PROJECTION MANAGER (dumpsys media_projection)\nMedia Projection: \nnull"
+        },
+        "homeVisualEvidence": {
+          "path": ".dart_tool/app_review/desktop-polish-final-s22-home-complete.png",
+          "bytes": 333492,
+          "sha256": "e174edf4c591e86a9d1179b386f3c63fc960523a4f8eb86a592dc666f9a1a844"
+        },
+        "permissionRevocationRegression": {
+          "status": "passed",
+          "trigger": "appops set --uid com.bshare.bshare.audit MANAGE_EXTERNAL_STORAGE deny",
+          "baselineUidMode": "allow",
+          "restoredUidMode": "allow",
+          "noForceStopBeforeAssertions": true,
+          "noForceStopUsedDuringPhysicalRun": true,
+          "expectedPermissionChangeUidKillConfirmed": true,
+          "samples": {
+            "before": {
+              "recordedAtUtc": "2026-10-22T23:46:12.165013+00:00",
+              "ownServiceRecordCount": 1,
+              "runningForegroundServiceCount": 1,
+              "retainedRecordWithoutProcessCount": 0,
+              "startCommandResult": [
+                "2"
+              ],
+              "ownActiveNotificationCount": 1,
+              "httpStatus": 200,
+              "processPresent": true,
+              "ownActiveWakeLockCount": 1,
+              "ownHeldWifiLockCount": 1
+            },
+            "2s": {
+              "recordedAtUtc": "2026-10-22T23:46:17.517624+00:00",
+              "ownServiceRecordCount": 0,
+              "runningForegroundServiceCount": 0,
+              "retainedRecordWithoutProcessCount": 0,
+              "startCommandResult": [],
+              "ownActiveNotificationCount": 0,
+              "httpUnavailable": "URLError",
+              "sampleStartedSeconds": 2.0,
+              "sampleCompletedSeconds": 4.878,
+              "processPresent": false,
+              "ownActiveWakeLockCount": 0,
+              "ownHeldWifiLockCount": 0
+            },
+            "15s": {
+              "recordedAtUtc": "2026-10-22T23:46:30.517604+00:00",
+              "ownServiceRecordCount": 0,
+              "runningForegroundServiceCount": 0,
+              "retainedRecordWithoutProcessCount": 0,
+              "startCommandResult": [],
+              "ownActiveNotificationCount": 0,
+              "httpUnavailable": "URLError",
+              "sampleStartedSeconds": 15.0,
+              "sampleCompletedSeconds": 18.158,
+              "processPresent": false,
+              "ownActiveWakeLockCount": 0,
+              "ownHeldWifiLockCount": 0
+            },
+            "relaunchWithoutStart": {
+              "recordedAtUtc": "2026-10-22T23:46:35.787528+00:00",
+              "ownServiceRecordCount": 0,
+              "runningForegroundServiceCount": 0,
+              "retainedRecordWithoutProcessCount": 0,
+              "startCommandResult": [],
+              "ownActiveNotificationCount": 0,
+              "httpUnavailable": "URLError",
+              "processPresent": true,
+              "ownActiveWakeLockCount": 0,
+              "ownHeldWifiLockCount": 0
+            }
+          },
+          "finding": "The final S22 run retained no service record or notification in either post-revocation sample or after reopening Home without Start. Unlike the historical candidate, this run did not reproduce an app=null retained record; it does not separately demonstrate removal of such a retained record by the engine-attachment hook.",
+          "evidence": {
+            "path": ".dart_tool/app_review/desktop-polish-final-s22-revocation.json",
+            "bytes": 2441,
+            "sha256": "046922ada09d457121339053140fee05cb07449e82ce5faabba0d1a21403ab29"
+          },
+          "validationHelper": {
+            "path": ".dart_tool/app_review/desktop_polish_s22_revocation.py",
+            "bytes": 4378,
+            "sha256": "2b0c1d7354c18c2833249ad0ab47f98477ddfb0967d43c9ad5b6c4a6108e01e7"
+          }
+        },
+        "postRestorationFileReception": {
+          "status": "passed",
+          "bytes": 262199,
+          "httpStatus": 200,
+          "transport": "Direct Wi-Fi LAN HTTP from this PC to S22, not ADB forward",
+          "sentSha256": "96bf1922b526b79f0abc9e873f05529dc306a1521d3bd0a93ed5d7d4d10e8347",
+          "savedSha256": "96bf1922b526b79f0abc9e873f05529dc306a1521d3bd0a93ed5d7d4d10e8347",
+          "matchesPayload": true,
+          "testFileRemoved": true,
+          "evidence": {
+            "path": ".dart_tool/app_review/desktop-polish-final-s22-transfer.json",
+            "bytes": 630,
+            "sha256": "16c5d641ead2cc3524222ffd0c31d859c4d361333953e4541cf19367fb61c35d"
+          }
+        },
+        "explicitUiStop": {
+          "status": "passed",
+          "method": "Receive screen Stop button tap, no force-stop",
+          "sameAppProcessBeforeAndAfter": true,
+          "ownServiceRecordCount": 0,
+          "httpUnavailable": "URLError",
+          "evidence": {
+            "path": ".dart_tool/app_review/desktop-polish-final-s22-ui-stop.json",
+            "bytes": 249,
+            "sha256": "0e4873ed99f49449ecccceed560e58af52ea3a2d180872f88f448829d1a0ee47"
+          }
+        },
+        "finalCleanupEvidence": {
+          "path": ".dart_tool/app_review/desktop-polish-final-s22-cleanup.json",
+          "bytes": 630,
+          "sha256": "25776ff1298f976e8154326c9504d3582a648b3e7d3b0e630717ddf4e6430e1f"
+        },
+        "scopeNote": "Final physical checks cover Home presentation, the storage-revocation/reopen regression, real Wi-Fi LAN file reception and cleanup on one S22 Ultra running Android 14. Camera/audio transmission was not exercised in this final physical run.",
+        "aggregateEvidence": {
+          "path": ".dart_tool/app_review/desktop-polish-final-s22-results.json",
+          "bytes": 6949,
+          "sha256": "7c690dc58efd93290be4008bf5c11d884ef3d34a608ec8f4bca2c1f6d79eb646"
+        }
+      },
+      "requiredRegression": "Revoke shared-storage access while file receiver is active, inspect process/service/locks/listener before force-stop, reopen without Start, then restore access and prove explicit Start/real file transfer/hash/Stop.",
+      "emulatorTransport": "Host HTTP through emulator-specific ADB TCP forwards to app port53317; not Wi-Fi radio throughput measurement",
+      "emulatorEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-emulator-results.json",
+        "bytes": 21027,
+        "sha256": "a781a28aeaa2398db09f36f2c2740fc37aefb06eb66f9e4cabf8f716bb8948c2"
+      },
+      "emulatorStatus": "passed"
+    },
+    "cleanup": {
+      "status": "passed",
+      "ownedBuildAndTestProcessesFinished": true,
+      "ownedEmulatorsStoppedAndTemporaryAvdsRemoved": true,
+      "testMappingsAndFixturesRemoved": true,
+      "physicalPermissionBaselineRestored": true,
+      "physicalPermissionBaselineNote": "The physical test revoked shared-storage access while reception was active, then restored the original all-files UID mode allow. The final grant matches the baseline; the test fixture and device UI dumps were removed.",
+      "physicalSourceAndCaptureResourcesReleased": true,
+      "userAdbServerPreserved": true,
+      "rootEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-s22-cleanup.json",
+        "bytes": 630,
+        "sha256": "25776ff1298f976e8154326c9504d3582a648b3e7d3b0e630717ddf4e6430e1f"
+      },
+      "emulatorEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-emulator-cleanup.json",
+        "bytes": 5580,
+        "sha256": "33e2227405d7400e5c61f3c7c63b585f2d07fb0952b2b13e683356d3d1a8d741"
+      },
+      "emulatorAuxiliaryEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-emulator-auxiliary-cleanup.json",
+        "bytes": 1537,
+        "sha256": "54f5b759d7c5beef73146a3ad6550ac242514aa4c12616601ad145b576770529"
+      },
+      "linuxEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-linux-cleanup.json",
+        "bytes": 1747,
+        "sha256": "0d3105ee9cbffb1207882f1653a4415a9bb25d47254a22584e8cf6b7c174981b"
+      },
+      "physicalIdleEvidence": {
+        "path": ".dart_tool/camera_audit/physical-av/desktop-polish-final-s22-complete-summary.json",
+        "bytes": 670,
+        "sha256": "d9287265c350a7b865cf3b12a66794788d5c9afea7144646db2d243786e5d4cc"
+      },
+      "physicalPermissionChangeAttemptedInFinalRun": true,
+      "physicalNoForceStopUsed": true,
+      "physicalAppProcess": "Application remains idle on Home after normal Stop; absence of capture, transfer services and locks is verified without terminating the app."
+    }
+  },
+  "historicalValidation": [
+    {
+      "revision": "V1, before nonsticky service fix",
+      "apkSha256": "9580effbb764294acc926cfdf2666a312c355ab3458dc956539e2d7080fe9824",
+      "status": "failed",
+      "androidApis": [
+        29,
+        31,
+        36
+      ],
+      "finding": "Revoking storage killed the UID and closed Dart HTTP reception, but START_STICKY restarted an orphan native foreground service.",
+      "evidence": {
+        "path": ".dart_tool/app_review/android-compat-emulator-v1-results.json",
+        "bytes": 4211,
+        "sha256": "770487e13dc5d477f5fc14102f69885dd99c230e090187a308ec3085754738cf"
+      }
+    },
+    {
+      "revision": "V2, nonsticky service",
+      "apkSha256": "bc2371c2f24ea20b3300ef50467d4c0e2a04cec7ad89458d12e8358987daca84",
+      "status": "passed_aosp_emulator_scope_only",
+      "androidApis": [
+        29,
+        31,
+        36
+      ],
+      "finding": "The exact permission-revocation scenario passed on AOSP x86_64 emulators. Source and installed APK hashes matched on all three APIs.",
+      "evidence": {
+        "path": ".dart_tool/app_review/android-compat-emulator-v2-results.json",
+        "bytes": 2626,
+        "sha256": "e088b32a5baa49fb2e20822a37ba1f0f9ee8dbf2ba1dd5c08c6eee1e0cc9d9ae"
+      }
+    },
+    {
+      "revision": "V2, physical Samsung",
+      "apkSha256": "bc2371c2f24ea20b3300ef50467d4c0e2a04cec7ad89458d12e8358987daca84",
+      "status": "failed_reconciliation",
+      "androidApi": 34,
+      "finding": "No process, CPU/Wi-Fi lock or HTTP listener restarted after revocation, but Samsung retained an app=null ServiceRecord and notification after relaunch. This led to the engine-attachment reconciliation in the final revision.",
+      "permissionBaselineRestored": true,
+      "noForceStopBeforeAssertions": true,
+      "evidence": {
+        "path": ".dart_tool/app_review/android-compat-nonsticky-s22-revocation.json",
+        "bytes": 2909,
+        "sha256": "a02865f9be0c60b35d0b0e46c4eefde04915d19dbdda2ab1f3bfc3724cb2def3"
+      }
+    }
+  ],
+  "transferBenchmark": {
+    "status": "passed_scoped_loopback_checks",
+    "scope": "production HTTP sender/receiver over IPv4 loopback",
+    "fileMiB": 32,
+    "rounds": 3,
+    "startStopCycles": 20,
+    "medianMiBPerSecond": {
+      "1": 117.61,
+      "3": 155.39
+    },
+    "checks": {
+      "noDescriptorGrowthAcrossSessions": true,
+      "cancelWhileWaitingClosesStream": true,
+      "cancelPausedCleansUp": true,
+      "stopAwaitsCleanup": true
+    },
+    "descriptorsBeforeAndAfter": [
+      10,
+      10
+    ],
+    "socketsBeforeAndAfter": [
+      0,
+      0
+    ],
+    "currentProductionSourceComparison": {
+      "lib/src/infrastructure/services/file_server.dart": {
+        "sha256": "c87b492511864d471b847da7c361345f2881f442339a10e4e1ba249064d539b0",
+        "matchesBenchmarkRevisionFreeze": true
+      },
+      "lib/src/infrastructure/services/file_transfer_client.dart": {
+        "sha256": "9a4015099e65fd028e40562579219b73d06c2974cc02949b9d3efa44109cc565",
+        "matchesBenchmarkRevisionFreeze": true
+      }
+    },
+    "evidence": {
+      "path": ".dart_tool/app_review/android-compat-nonsticky-transfer-benchmark.json",
+      "bytes": 6446,
+      "sha256": "ea52b74f1cad66ff0cde810e49800268a5c92a09195c696ce5605db1d43da4e3"
+    },
+    "limits": "This exercises the production Dart HTTP sender/receiver on Linux loopback. It does not measure phone Wi-Fi, APK performance, capture codecs or a before/after speed improvement. Stable descriptors over 20 cycles are scoped evidence, not proof of zero possible leaks."
+  },
+  "sourceReferences": [
+    "lib/src/infrastructure/services/android_platform_info_service.dart",
+    "lib/src/infrastructure/services/android_storage_access_service.dart",
+    "lib/src/application/receive_controller.dart",
+    "lib/src/infrastructure/services/file_server.dart",
+    "lib/src/infrastructure/services/direct_network_service.dart",
+    "lib/src/presentation/screens/android_storage_picker_screen.dart",
+    "android/app/src/main/AndroidManifest.xml",
+    "android/app/build.gradle.kts",
+    "third_party/flutter_background/android/src/main/kotlin/de/julianassmann/flutter_background/IsolateHolderService.kt",
+    "third_party/flutter_background/android/src/main/kotlin/de/julianassmann/flutter_background/FlutterBackgroundPlugin.kt"
+  ],
+  "limits": [
+    "Configured minimum Android 7/API 24 is distinct from actual runtime coverage; API 24 was not executed in this review.",
+    "ARM32 is compiled and statically inspected, with no ARM32 physical-device runtime validation.",
+    "Emulators use x86_64 and 4096-byte pages with cameras and audio disabled. They do not establish physical camera, microphone, Wi-Fi Direct or codec compatibility.",
+    "64-bit native ELF/ZIP alignment checks are static packaging evidence, not a 16 KB-kernel runtime test.",
+    "Physical validation is limited to one Samsung S22 Ultra on Android 14; no claim is made that every Android vendor and resolution has been tested.",
+    "No USB or iOS runtime validation in this compatibility revision.",
+    "Raw device dumps remain in ignored local evidence; this report retains summaries and receipt hashes instead of user device data."
+  ],
+  "updatedAtUtc": "2026-10-22T23:50:34.586349+00:00",
+  "artifactPathNotice": "Historical revision: original build/delivery paths are mutable. Use the retained APK path for this report and its recorded hash; the current delivery APK belongs to settings-sidebar-review.json."
+}

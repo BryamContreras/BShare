@@ -1,0 +1,151 @@
+{
+  "recordedAt": "2026-10-21T19:26:28.046638+00:00",
+  "baseRevision": "b223666",
+  "sourceState": "uncommitted working tree",
+  "device": {
+    "model": "Samsung Galaxy S22 Ultra SM-S908U",
+    "android": 14,
+    "apiLevel": 34
+  },
+  "auditApk": {
+    "applicationId": "com.bshare.bshare.audit",
+    "buildType": "release",
+    "minifiedWithR8": true,
+    "sha256": "f463a005df5cc0ef73fad93d8e4c86e8b1254f6d1c6f6c96768e1099c8e5c923",
+    "registrarConstructorsRetained": 3
+  },
+  "originalInstalledRelease": {
+    "registrarClassesPresent": 3,
+    "registrarConstructorsRetained": 0,
+    "failure": "NoSuchMethodException during component registrar initialization, followed by BarcodeScanning.getClient NPE",
+    "originalAppReplaced": false
+  },
+  "automated": {
+    "flutterTestsPassed": 117,
+    "dexVerifierTestsPassed": 8,
+    "flutterAnalyze": "No issues found",
+    "diffCheck": "passed"
+  },
+  "discovery": {
+    "automaticStartObserved": true,
+    "initialSearchingUiObserved": true,
+    "finiteSearchCompletedObserved": true,
+    "searchWindowSeconds": 4,
+    "receiverAnnouncementIntervalSeconds": 3,
+    "realLanMulticastReceivedAfterInitialWindow": true,
+    "refreshKeptVisiblePeer": true,
+    "availableCountObserved": 1,
+    "silentExpiryObserved": true,
+    "expiryTimeoutSeconds": 20,
+    "expiryTimeoutValidatedBy": "controller fake-clock regression tests; physical check observed eventual removal",
+    "expiredSelectionRetainedWithNotDetectedLabel": true
+  },
+  "qr": {
+    "scannerDependency": "mobile_scanner 7.4.2",
+    "nativeCameraOpened": true,
+    "mlKitBarhopperInitialized": true,
+    "registrarErrorsObserved": 0,
+    "nativeNullPointerErrorsObserved": 0,
+    "backgroundResumeCycles": [
+      {
+        "cycle": 1,
+        "backgroundReleased": true,
+        "resumeOpened": true,
+        "closeObservedMs": 2456,
+        "reopenObservedMs": 1206
+      },
+      {
+        "cycle": 2,
+        "backgroundReleased": true,
+        "resumeOpened": true,
+        "closeObservedMs": 1951,
+        "reopenObservedMs": 1473
+      },
+      {
+        "cycle": 3,
+        "backgroundReleased": true,
+        "resumeOpened": true,
+        "closeObservedMs": 2136,
+        "reopenObservedMs": 864
+      },
+      {
+        "exitToSendReleased": true,
+        "closeObservedMs": 2582
+      }
+    ],
+    "disposeRecreateCycles": [
+      {
+        "cycle": 1,
+        "newScannerOpened": true,
+        "exitReleased": true,
+        "openObservedMs": 742,
+        "closeObservedMs": 2268
+      },
+      {
+        "cycle": 2,
+        "newScannerOpened": true,
+        "exitReleased": true,
+        "openObservedMs": 787,
+        "closeObservedMs": 2434
+      },
+      {
+        "cycle": 3,
+        "newScannerOpened": true,
+        "exitReleased": true,
+        "openObservedMs": 685,
+        "closeObservedMs": 2481
+      }
+    ],
+    "timingNote": "Observed durations include adb/dumpsys polling and Android transitions; not frame-rendering benchmarks.",
+    "physicalQrDecodeVerified": false,
+    "physicalQrDecodeNotVerifiedReason": "User could not aim camera at the displayed QR fixture. Camera initialization and lifecycle were tested on-device; decoding/invitation workflows have controlled-platform tests.",
+    "realHotspotConnectionVerified": false
+  },
+  "sourceSha256": {
+    "lib/src/application/providers.dart": "83d45d3bb29ff4697911b199590d895a5955fd12d49794937c1e2b4dadc2137c",
+    "lib/src/presentation/screens/direct_qr_scanner_screen.dart": "945bf1be6b73785522ffa8c3d20747372667d299771ecaa8ccee0cbd6378b5c5",
+    "lib/src/presentation/screens/send_files_screen.dart": "b6a261b80afd6fd492cd88cedd709303a3cdbbfea1bf2eea4f9106b1593dceed",
+    "lib/src/presentation/widgets/discovery_status_card.dart": "02975441c70db26997ce6c5103058073a60a71c3cc0de5ea5434799e5a0ecf1c",
+    "lib/src/presentation/localization/app_localizations.dart": "181a62a944e411875648b11c4eaf0812831085337266748409527dd5fea4557e",
+    "android/app/build.gradle.kts": "3b3eb6d2affb2225006478d6c60df95a675fb45fc0ebd1b01d485062076ca912",
+    "android/app/proguard-rules.pro": "3ca2247b3abe59ebfd7f4fe0f4ac304c41b80b62883c206f3ee4264d33892a8d",
+    "pubspec.lock": "42986f924c7564c943986666e0f0f741af2051c5505d65184b5e731f445bb4f1"
+  },
+  "limits": [
+    "One physical Android 14 device; other Android models and versions were not physically validated.",
+    "No iOS device test. Direct QR networking is implemented for Android."
+  ],
+  "normalReleaseApk": {
+    "path": "build/app/outputs/flutter-apk/app-release.apk",
+    "applicationId": "com.bshare.bshare",
+    "minifiedWithR8": true,
+    "abi": [
+      "arm64-v8a",
+      "x86_64"
+    ],
+    "minSdk": 24,
+    "sha256": "c8c5f7e37fe738d113ac38208f066b629da27a46f9d83c7c102eaaaf53158cfe",
+    "bytes": 82649597,
+    "registrarConstructorsRetained": 3,
+    "signing": "local debug key (release keystore not configured)"
+  },
+  "cleanup": {
+    "auditUninstalled": true,
+    "activeCameraClients": 0,
+    "originalAppPidBeforeAndAfter": 20736,
+    "originalAppReplaced": false,
+    "originalRotationSettingsUnchanged": true,
+    "testAnnouncerStopped": true,
+    "auditLogcatStopped": true,
+    "temporaryPhoneFilesRemoved": true
+  },
+  "userRequestedInstall": {
+    "status": "installed successfully",
+    "applicationId": "com.bshare.bshare.audit",
+    "releaseApkSha256": "f463a005df5cc0ef73fad93d8e4c86e8b1254f6d1c6f6c96768e1099c8e5c923",
+    "installationMode": "side by side; the original app uses a different signing certificate",
+    "originalApplicationId": "com.bshare.bshare",
+    "originalProcessPidAfterInstall": 20736,
+    "cameraActiveClientsAfterInstall": 0
+  }
+}

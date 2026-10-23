@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>BShare · prueba de giro</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #0b1220; color: white; font-family: system-ui, sans-serif; }
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  header, footer { position: absolute; left: 0; right: 0; padding: 8px 12px; text-align: center; background: #0b1220dd; pointer-events: none; }
+  header { top: 0; } footer { bottom: 0; font-size: 12px; }
+  #clock { font: bold clamp(16px, 4vw, 30px) ui-monospace, monospace; }
+  #dimensions { font: 12px ui-monospace, monospace; }
+</style>
+<svg id="fixture" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cuadrícula y cuatro círculos para detectar deformación">
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#334155" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#grid)"/>
+  <path id="axes" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <circle id="magenta" fill="#ff00ff" stroke="white" stroke-width="2"/>
+  <circle id="cyan" fill="#00e5ff" stroke="white" stroke-width="2"/>
+  <circle id="lime" fill="#4cff28" stroke="white" stroke-width="2"/>
+  <circle id="orange" fill="#ff9a00" stroke="white" stroke-width="2"/>
+  <g id="labels" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="bold" fill="#0b1220">
+    <text id="label-magenta">A</text><text id="label-cyan">B</text>
+    <text id="label-lime">C</text><text id="label-orange">D</text>
+  </g>
+  <rect id="moving" width="12" height="12" fill="white"/>
+</svg>
+<header><div id="clock"></div><div id="dimensions"></div></header>
+<footer>Los cuatro círculos deben seguir redondos al girar · A/B arriba · C/D abajo</footer>
+<script>
+  const fixture = document.getElementById('fixture');
+  let width = 0, height = 0;
+  function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    fixture.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    document.getElementById('dimensions').textContent = `${width} × ${height} CSS px · DPR ${window.devicePixelRatio} · ${screen.orientation?.type ?? 'orientation unavailable'}`;
+    const top = document.querySelector('header').offsetHeight + 10;
+    const bottom = height - document.querySelector('footer').offsetHeight - 10;
+    const availableHeight = Math.max(20, bottom - top);
+    const radius = Math.max(3, Math.min(width * .145, availableHeight * .20));
+    for (const [id, x, row] of [
+      ['magenta', .25, .25], ['cyan', .75, .25],
+      ['lime', .25, .75], ['orange', .75, .75],
+    ]) {
+      const y = top + availableHeight * row;
+      const circle = document.getElementById(id);
+      circle.setAttribute('cx', width * x);
+      circle.setAttribute('cy', y);
+      circle.setAttribute('r', radius);
+      const label = document.getElementById(`label-${id}`);
+      label.setAttribute('x', width * x);
+      label.setAttribute('y', y);
+    }
+    document.getElementById('axes').setAttribute('d', `M${width/2} 0V${height}M0 ${height/2}H${width}`);
+  }
+  function tick() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toISOString().slice(11, 23);
+    document.getElementById('moving').setAttribute('x', width / 2 - 6);
+    document.getElementById('moving').setAttribute('y', 65 + ((now.getTime() % 2000) / 2000) * Math.max(10, height - 115));
+  }
+  window.addEventListener('resize', resize);
+  function animate() {
+    tick();
+    requestAnimationFrame(animate);
+  }
+  tick(); resize(); animate();
+</script>
+</html>

@@ -48,8 +48,12 @@ class _OrientationAwareVideoViewState extends State<OrientationAwareVideoView> {
     if (oldWidget.renderer != widget.renderer) {
       oldWidget.renderer.removeListener(_handleRendererValueChanged);
       widget.renderer.addListener(_handleRendererValueChanged);
+      _cancelSettling();
       _lastAspectRatio = _aspectRatio(widget.renderer.value);
       return;
+    }
+    if (!widget.settleOnAspectChange) {
+      _cancelSettling();
     }
     if (oldWidget.preferredAspectRatio != widget.preferredAspectRatio) {
       _handleAspectRatio(_aspectRatio(widget.renderer.value));
@@ -91,10 +95,17 @@ class _OrientationAwareVideoViewState extends State<OrientationAwareVideoView> {
       setState(() => _settling = true);
     }
     _settleTimer = Timer(widget.settleDuration, () {
+      _settleTimer = null;
       if (mounted) {
         setState(() => _settling = false);
       }
     });
+  }
+
+  void _cancelSettling() {
+    _settleTimer?.cancel();
+    _settleTimer = null;
+    _settling = false;
   }
 
   @override
@@ -142,21 +153,19 @@ class _OrientationAwareVideoViewState extends State<OrientationAwareVideoView> {
   }
 
   double _aspectRatio(RTCVideoValue value) {
-    final preferred = widget.preferredAspectRatio;
-    if (_isHealthyAspectRatio(preferred)) return preferred!;
     if (value.width > 0 && value.height > 0) {
       final aspect = value.aspectRatio;
       if (_isHealthyAspectRatio(aspect)) return aspect;
     }
+    // Signaling metadata can arrive before or after the actual rotated frame.
+    // Stretching a decoded frame to that metadata deforms it during each turn.
+    final preferred = widget.preferredAspectRatio;
+    if (_isHealthyAspectRatio(preferred)) return preferred!;
     return 16 / 9;
   }
 
   bool _isHealthyAspectRatio(double? aspect) {
-    return aspect != null &&
-        !aspect.isNaN &&
-        !aspect.isInfinite &&
-        aspect >= 0.42 &&
-        aspect <= 2.45;
+    return aspect != null && aspect.isFinite && aspect > 0;
   }
 }
 
@@ -189,7 +198,7 @@ class _TextureVideoView extends StatelessWidget {
           child: hasVideo
               ? Texture(
                   textureId: textureId,
-                  filterQuality: FilterQuality.medium,
+                  filterQuality: FilterQuality.low,
                 )
               : const SizedBox.shrink(),
         ),

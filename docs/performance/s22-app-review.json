@@ -1,0 +1,2288 @@
+{
+  "recordedAtUtc": "2026-10-21T20:40:01.668479+00:00",
+  "device": {
+    "model": "Samsung Galaxy S22 Ultra SM-S908U",
+    "android": "14",
+    "api": 34
+  },
+  "build": {
+    "package": "com.bshare.bshare.audit",
+    "label": "BShare Optimizada",
+    "version": "1.0.2",
+    "mode": "release",
+    "abi": "arm64-v8a",
+    "apk": "build/app/outputs/flutter-apk/bshare-optimized-release.apk",
+    "bytes": 40100095,
+    "sha256": "fc8db7527c3056b39844d48fe778dd32ea3c26a6c9ba55f22586abd3001b1113",
+    "signature": "existing local Android debug key; release AOT and R8 enabled"
+  },
+  "sourceSha256": {
+    "android/.gitignore": "a87983166f2ae1b7b155092a5607083c692148e689c767adab542bea730bd66b",
+    "android/app/build.gradle.kts": "740e708a68d8f7b4c5ffebddeeb887424406f2d7a307776f46321f1fb869fe83",
+    "android/app/proguard-rules.pro": "3ca2247b3abe59ebfd7f4fe0f4ac304c41b80b62883c206f3ee4264d33892a8d",
+    "android/app/src/main/AndroidManifest.xml": "90dcc4282b369daa356a9508e45b04f35706a1560c33729140401078abf0fbf4",
+    "lib/src/application/providers.dart": "1f7ef9c26ed7de94c680bf9975fcbf3f2cd6900ef77ac696fa1946db1338e57a",
+    "lib/src/application/receive_controller.dart": "04b44a7f1c558d32fc5c0d7989016b3f5178366ccb01835ee525f542eac433b5",
+    "lib/src/application/send_controller.dart": "bedd843b5844873a90e156b74a4558c91a79ff6eb2942603e9c9ea90621c2968",
+    "lib/src/domain/entities/app_settings.dart": "292caa7d5236fec83731f7cf7b0e73732c88c9cd78ca01081925b5d67aba990e",
+    "lib/src/domain/entities/direct_share_invite.dart": "55a22f194a317b1f7610bc021f0c305b3a5993f86d1578abe4a10d12fa9a9936",
+    "lib/src/domain/entities/screen_capture_settings.dart": "17fb65d6ea062d5d1db1d62f8c0f32f12652aa83b527af1e11a7abca3f4c81de",
+    "lib/src/domain/entities/transfer_control.dart": "be29a93e85dd82c71a53f096172e1c6a0048028857f34bc7fb7dae26ba06d285",
+    "lib/src/infrastructure/repositories/settings_repository.dart": "3dbaaa8128c63f9774c912e066ac620d4e5717fbf1bbb019146df9e5f91735c7",
+    "lib/src/infrastructure/services/direct_network_service.dart": "6cef0a24a43ba07ca19e7ce11b654b3f49f0d2627825468a7c41737de68f2836",
+    "lib/src/infrastructure/services/file_server.dart": "ce49ae3d720f6c531d80b3c0b7218dafcc2791b5488980966b37a6b43ba06ed7",
+    "lib/src/infrastructure/services/file_transfer_client.dart": "9a4015099e65fd028e40562579219b73d06c2974cc02949b9d3efa44109cc565",
+    "lib/src/infrastructure/services/lan_discovery_service.dart": "d22209003642e16b48882e25d70decfa91cdacebaf8c2eff12c6c46084178584",
+    "lib/src/infrastructure/services/network_service.dart": "2d11fae4813e60764f2f3ed798ec04990ab0b049b241882fdcf5622552ca3588",
+    "lib/src/infrastructure/services/permission_request_coordinator.dart": "39de966ad0827f3c092e02d739b252d21a75d97314bd66161365efaa5c54a119",
+    "lib/src/infrastructure/services/process_runner.dart": "06ea84c2667ae3787b2cd863d15b58d55b7067b0a355f5ea25642b28ee29e5be",
+    "lib/src/infrastructure/services/screen_share_service.dart": "c1e2f424d5a10348e0f34b0063e83b047c47ed8166862884ccd2a1295d3d6388",
+    "lib/src/presentation/app.dart": "29a9c2ada9cab21fee10ecd83618cb45ce687a8e2bfef5fcbd2d33105faef431",
+    "lib/src/presentation/localization/app_localizations.dart": "b22382142fc1aa542e0fd9aac4ca2aabd7b292657b19a833d39476deb602afe3",
+    "lib/src/presentation/navigation/app_navigation.dart": "1717f55abdef1e33c3d7ea01123d93de71e203478efb711c07eb2cd41bf98e5b",
+    "lib/src/presentation/screens/android_app_picker_screen.dart": "625b68318be25ac95baac02d7dd16868a985a5a441e61d13be90bece08303615",
+    "lib/src/presentation/screens/android_storage_picker_screen.dart": "20286266e405f01bb5350727e3236e7205c70f13da02e68f4b9251f0dd508ccb",
+    "lib/src/presentation/screens/device_discovery_screen.dart": "92e7e45f9460ca62c81ea5f6157ede11dd5636814d670f6e1ac891da98daf001",
+    "lib/src/presentation/screens/direct_qr_scanner_screen.dart": "df49670281194f0d0eda891a5ac574cf091f260d17b22ae7c9b52cd41731adc1",
+    "lib/src/presentation/screens/home_screen.dart": "d3c30236c657099717ace979bcb7776653977a3c12b43a7babcff92842fa6d56",
+    "lib/src/presentation/screens/media_picker_screen.dart": "0ab90f9808850e2525f03a5157fd1d3c28209756100b283ffdf8e2e4906945da",
+    "lib/src/presentation/screens/receive_screen.dart": "0519bce7633498e5029609cb6270bbd913bf5cb532b7e5096ccd3d157349bc28",
+    "lib/src/presentation/screens/screen_share_screen.dart": "a62e5d94e8e84c4810f8b5ff16e3a746a823358a8870ee9f044dcd09a45db79b",
+    "lib/src/presentation/screens/screen_viewer_screen.dart": "57f9da774ccb52df53abd8d3346cf0a0c2ee21ade29317ed937d1f3f33a31ac7",
+    "lib/src/presentation/screens/send_files_screen.dart": "b6a261b80afd6fd492cd88cedd709303a3cdbbfea1bf2eea4f9106b1593dceed",
+    "lib/src/presentation/screens/settings_screen.dart": "2d9bbbbe10f48686f62d943f08cd2481111fb9fc30df140cca864a39a76a2de4",
+    "lib/src/presentation/widgets/app_shell.dart": "1f687d29473093b5c736a910fb07aee8098872a94431bfc010d0ce7d856bea00",
+    "lib/src/presentation/widgets/discovery_status_card.dart": "02975441c70db26997ce6c5103058073a60a71c3cc0de5ea5434799e5a0ecf1c",
+    "lib/src/presentation/widgets/orientation_aware_video_view.dart": "872e740f4032800ca7067c604aa986adea2e52300f927632413acdc46e73fe2b",
+    "pubspec.lock": "42986f924c7564c943986666e0f0f741af2051c5505d65184b5e731f445bb4f1",
+    "pubspec.yaml": "2d116eee6ec21ce0f14eadfc89cc2ded49c11635ec67d943ce961fbc50ecc58d",
+    "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/GetUserMediaImpl.java": "b19d0dd613517b27cc2a7e06dac44595d99aaae3d7636c72f7ba6ceb15fc3d6c",
+    "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/OrientationAwareScreenCapturer.java": "19bf12675a39f8e1117bf2dfeac51c6367dc92f3d18895ab4f643b9cbf676d61",
+    "third_party/flutter_webrtc/common/cpp/include/flutter_video_renderer.h": "b0b7ef1a19fdcf6942d0b46c332c3bf510ea8a4e258e59e4147ca172cf58e88b",
+    "third_party/flutter_webrtc/common/cpp/src/flutter_video_renderer.cc": "36b79966339c503943a573b19d3fa419c7f467f8c79c6e09b8633d2ad2b9dcba",
+    "third_party/flutter_webrtc/lib/src/native/media_stream_track_impl.dart": "e5f7a06759d1baf58d60b928c3342ddea2f111a1fea09fffaf051abf50d208e5",
+    "third_party/flutter_webrtc/lib/src/native/rtc_video_renderer_impl.dart": "70b2f549b228afb925467a8005d5b4f52a12d8912597f9422d73425f5aab5ecc",
+    "third_party/flutter_webrtc/test/native/flutter_video_renderer_test.cc": "e180e709ded434879b34ca22564c89f295059355b3a5bc3c143ff01d06ff5fce",
+    "third_party/flutter_webrtc/test/native/run_video_renderer_test.sh": "84cb2b269384509e7b025d4ffc949d47b737eb9036e5001abe4cdb8812fd761a",
+    "third_party/flutter_webrtc/test/native/test_screen_capturer.py": "aa021efe4200555416060e69445a18872355e83e7a0f158f23ff006336896250",
+    "third_party/flutter_webrtc/test/native/test_video_capturer_disposal.py": "69ba2a42dd65c9cdb489fa786c607b751615c7a8390dd6d1e5752ff896ba47bb",
+    "third_party/flutter_webrtc/third_party/libwebrtc/include/rtc_types.h": "f99b6229f23dab955eb0dc1cf81317d0d0709270e5e410e8c055974ebae39f63",
+    "tool/analyze_screen_geometry.py": "c55978142fa5c8210ad3bd41022079eca5027a5b0f300a45ac506b6bf26bcbd7",
+    "tool/screen_share_fixture.html": "af133f2a8c43c20e301b40933257fc755f4eef9ace46143290e0c234f7b0f196"
+  },
+  "captureProfiles": [
+    {
+      "requestedShortEdge": 1080,
+      "requestedFps": 30,
+      "decodedFps": 29.14420620640944,
+      "statsBefore": [
+        {
+          "framesDecoded": 69,
+          "framesReceived": 70,
+          "framesDropped": 0,
+          "framesPerSecond": 30,
+          "frameWidth": 270,
+          "frameHeight": 578,
+          "bytesReceived": 234480,
+          "codecId": "CIT01_108_level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+          "timestamp": 1792614838527.758
+        }
+      ],
+      "statsAfter": [
+        {
+          "framesDecoded": 215,
+          "framesReceived": 216,
+          "framesDropped": 0,
+          "framesPerSecond": 31,
+          "frameWidth": 360,
+          "frameHeight": 772,
+          "bytesReceived": 818574,
+          "codecId": "CIT01_108_level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+          "timestamp": 1792614843537.33
+        }
+      ],
+      "samples": [
+        {
+          "rotation": 0,
+          "dimensions": {
+            "width": 360,
+            "height": 772
+          },
+          "shortEdgeWithinLimit": true,
+          "geometryPassed": true,
+          "verifiedCircles": 4,
+          "metadata": {
+            "aspectRatio": 0.46632124352331605,
+            "width": 540,
+            "height": 1158,
+            "generation": 1,
+            "trackId": "8f810834-60a7-4d13-beaa-5a189d14cca4",
+            "updatedAt": "2026-10-21T14:34:06.914006"
+          }
+        },
+        {
+          "rotation": 1,
+          "dimensions": {
+            "width": 1158,
+            "height": 540
+          },
+          "shortEdgeWithinLimit": true,
+          "geometryPassed": true,
+          "verifiedCircles": 4,
+          "metadata": {
+            "aspectRatio": 2.1444444444444444,
+            "width": 1544,
+            "height": 720,
+            "generation": 1,
+            "trackId": "8f810834-60a7-4d13-beaa-5a189d14cca4",
+            "updatedAt": "2026-10-21T14:34:10.801901"
+          }
+        },
+        {
+          "rotation": 0,
+          "dimensions": {
+            "width": 720,
+            "height": 1544
+          },
+          "shortEdgeWithinLimit": true,
+          "geometryPassed": true,
+          "verifiedCircles": 4,
+          "metadata": {
+            "aspectRatio": 0.46632124352331605,
+            "width": 1080,
+            "height": 2316,
+            "generation": 1,
+            "trackId": "8f810834-60a7-4d13-beaa-5a189d14cca4",
+            "updatedAt": "2026-10-21T14:34:15.206332"
+          }
+        },
+        {
+          "rotation": 3,
+          "dimensions": {
+            "width": 2316,
+            "height": 1080
+          },
+          "shortEdgeWithinLimit": true,
+          "geometryPassed": true,
+          "verifiedCircles": 4,
+          "metadata": {
+            "aspectRatio": 2.1444444444444444,
+            "width": 2316,
+            "height": 1080,
+            "generation": 1,
+            "trackId": "8f810834-60a7-4d13-beaa-5a189d14cca4",
+            "updatedAt": "2026-10-21T14:34:19.560876"
+          }
+        }
+      ],
+      "passed": true,
+      "sourceAnimation": "requestAnimationFrame in foreground Android Chrome",
+      "geometry": [
+        {
+          "image": ".dart_tool/app_review/final-1080-30/0-r0-video.png",
+          "originalSize": [
+            360,
+            772
+          ],
+          "analyzedSize": [
+            360,
+            772
+          ],
+          "circles": {
+            "magenta": {
+              "pixels": 8144,
+              "bounds": [
+                40,
+                218,
+                141,
+                320
+              ],
+              "width": 101,
+              "height": 102,
+              "ratio": 0.9901960784313726,
+              "center": [
+                90,
+                268.5
+              ],
+              "fillFraction": 0.7905261114346729,
+              "touchesImageEdge": false,
+              "relativeRatio": 0.9901960784313726,
+              "stretchFraction": 0.00990099009900991,
+              "passed": true
+            },
+            "cyan": {
+              "pixels": 8190,
+              "bounds": [
+                220,
+                218,
+                322,
+                320
+              ],
+              "width": 102,
+              "height": 102,
+              "ratio": 1,
+              "center": [
+                270.5,
+                268.5
+              ],
+              "fillFraction": 0.78719723183391,
+              "touchesImageEdge": false,
+              "relativeRatio": 1,
+              "stretchFraction": 0,
+              "passed": true
+            },
+            "lime": {
+              "pixels": 8141,
+              "bounds": [
+                40,
+                490,
+                141,
+                592
+              ],
+              "width": 101,
+              "height": 102,
+              "ratio": 0.9901960784313726,
+              "center": [
+                90,
+                540.5
+              ],
+              "fillFraction": 0.7902349058435255,
+              "touchesImageEdge": false,
+              "relativeRatio": 0.9901960784313726,
+              "stretchFraction": 0.00990099009900991,
+              "passed": true
+            },
+            "orange": {
+              "pixels": 8104,
+              "bounds": [
+                220,
+                490,
+                321,
+                592
+              ],
+              "width": 101,
+              "height": 102,
+              "ratio": 0.9901960784313726,
+              "center": [
+                270,
+                540.5
+              ],
+              "fillFraction": 0.7866433702193749,
+              "touchesImageEdge": false,
+              "relativeRatio": 0.9901960784313726,
+              "stretchFraction": 0.00990099009900991,
+              "passed": true
+            }
+          },
+          "reference": {
+            "image": ".dart_tool/app_review/final-1080-30/0-r0-phone.png",
+            "originalSize": [
+              1080,
+              2316
+            ],
+            "analyzedSize": [
+              746,
+              1600
+            ],
+            "circles": {
+              "magenta": {
+                "pixels": 35252,
+                "bounds": [
+                  80,
+                  451,
+                  293,
+                  664
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  186,
+                  557
+                ],
+                "fillFraction": 0.7770063259053539,
+                "touchesImageEdge": false
+              },
+              "cyan": {
+                "pixels": 35167,
+                "bounds": [
+                  453,
+                  451,
+                  666,
+                  664
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  559,
+                  557
+                ],
+                "fillFraction": 0.7751327999294673,
+                "touchesImageEdge": false
+              },
+              "lime": {
+                "pixels": 35269,
+                "bounds": [
+                  80,
+                  1013,
+                  293,
+                  1226
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  186,
+                  1119
+                ],
+                "fillFraction": 0.7773810311005313,
+                "touchesImageEdge": false
+              },
+              "orange": {
+                "pixels": 35173,
+                "bounds": [
+                  453,
+                  1013,
+                  666,
+                  1226
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  559,
+                  1119
+                ],
+                "fillFraction": 0.7752650488218827,
+                "touchesImageEdge": false
+              }
+            }
+          },
+          "tolerance": 0.04,
+          "verifiedCircles": 4,
+          "shapesPassed": true,
+          "referenceLayout": {
+            "axisPairs": {
+              "x": [
+                {
+                  "colors": [
+                    "magenta",
+                    "cyan"
+                  ],
+                  "referenceDistance": 373,
+                  "imageDistance": 180.5,
+                  "scale": 0.4839142091152815
+                },
+                {
+                  "colors": [
+                    "lime",
+                    "orange"
+                  ],
+                  "referenceDistance": 373,
+                  "imageDistance": 180,
+                  "scale": 0.48257372654155495
+                }
+              ],
+              "y": [
+                {
+                  "colors": [
+                    "magenta",
+                    "lime"
+                  ],
+                  "referenceDistance": 562,
+                  "imageDistance": 272,
+                  "scale": 0.48398576512455516
+                },
+                {
+                  "colors": [
+                    "cyan",
+                    "orange"
+                  ],
+                  "referenceDistance": 562,
+                  "imageDistance": 272,
+                  "scale": 0.48398576512455516
+                }
+              ]
+            },
+            "passed": true,
+            "temporalFreshnessVerified": false,
+            "scaleX": 0.4832439678284182,
+            "scaleY": 0.48398576512455516,
+            "scaleMismatchFraction": 0.0015350368458200148,
+            "axisConsistencyErrorFraction": 0.001388888888888884,
+            "crossAxisErrorFraction": 0.001838235294117647,
+            "reason": "matching-layout"
+          },
+          "passed": true,
+          "videoSha256": "8fb92edbc1fd9a6fd0eaff9b82732385684e5632b98f1c9ea546b61341a8062d",
+          "phoneReferenceSha256": "3383e201594585818bf37cb0a2898cf490359aaae37cfadef0b72c13bc889d82"
+        },
+        {
+          "image": ".dart_tool/app_review/final-1080-30/1-r1-video.png",
+          "originalSize": [
+            1158,
+            540
+          ],
+          "analyzedSize": [
+            1158,
+            540
+          ],
+          "circles": {
+            "magenta": {
+              "pixels": 8188,
+              "bounds": [
+                250,
+                234,
+                352,
+                336
+              ],
+              "width": 102,
+              "height": 102,
+              "ratio": 1,
+              "center": [
+                300.5,
+                284.5
+              ],
+              "fillFraction": 0.7870049980776624,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0070921985815602,
+              "stretchFraction": 0.007092198581560183,
+              "passed": true
+            },
+            "cyan": {
+              "pixels": 8182,
+              "bounds": [
+                776,
+                234,
+                879,
+                336
+              ],
+              "width": 103,
+              "height": 102,
+              "ratio": 1.0098039215686274,
+              "center": [
+                827,
+                284.5
+              ],
+              "fillFraction": 0.7787930706263088,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0098039215686274,
+              "stretchFraction": 0.009803921568627416,
+              "passed": true
+            },
+            "lime": {
+              "pixels": 8195,
+              "bounds": [
+                250,
+                366,
+                352,
+                469
+              ],
+              "width": 102,
+              "height": 103,
+              "ratio": 0.9902912621359223,
+              "center": [
+                300.5,
+                417
+              ],
+              "fillFraction": 0.780030458785456,
+              "touchesImageEdge": false,
+              "relativeRatio": 0.9973146044205743,
+              "stretchFraction": 0.002692626346313176,
+              "passed": true
+            },
+            "orange": {
+              "pixels": 8138,
+              "bounds": [
+                776,
+                366,
+                879,
+                469
+              ],
+              "width": 103,
+              "height": 103,
+              "ratio": 1,
+              "center": [
+                827,
+                417
+              ],
+              "fillFraction": 0.7670845508530493,
+              "touchesImageEdge": false,
+              "relativeRatio": 0.9929577464788734,
+              "stretchFraction": 0.007092198581560183,
+              "passed": true
+            }
+          },
+          "reference": {
+            "image": ".dart_tool/app_review/final-1080-30/1-r1-phone.png",
+            "originalSize": [
+              2316,
+              1080
+            ],
+            "analyzedSize": [
+              1600,
+              746
+            ],
+            "circles": {
+              "magenta": {
+                "pixels": 15728,
+                "bounds": [
+                  345,
+                  323,
+                  486,
+                  465
+                ],
+                "width": 141,
+                "height": 142,
+                "ratio": 0.9929577464788732,
+                "center": [
+                  415,
+                  393.5
+                ],
+                "fillFraction": 0.7855359104984517,
+                "touchesImageEdge": false
+              },
+              "cyan": {
+                "pixels": 15647,
+                "bounds": [
+                  1072,
+                  323,
+                  1214,
+                  465
+                ],
+                "width": 142,
+                "height": 142,
+                "ratio": 1,
+                "center": [
+                  1142.5,
+                  393.5
+                ],
+                "fillFraction": 0.7759869073596508,
+                "touchesImageEdge": false
+              },
+              "lime": {
+                "pixels": 15734,
+                "bounds": [
+                  345,
+                  506,
+                  486,
+                  648
+                ],
+                "width": 141,
+                "height": 142,
+                "ratio": 0.9929577464788732,
+                "center": [
+                  415,
+                  576.5
+                ],
+                "fillFraction": 0.7858355808610529,
+                "touchesImageEdge": false
+              },
+              "orange": {
+                "pixels": 15645,
+                "bounds": [
+                  1072,
+                  506,
+                  1214,
+                  647
+                ],
+                "width": 142,
+                "height": 141,
+                "ratio": 1.0070921985815602,
+                "center": [
+                  1142.5,
+                  576
+                ],
+                "fillFraction": 0.7813904704824692,
+                "touchesImageEdge": false
+              }
+            }
+          },
+          "tolerance": 0.04,
+          "verifiedCircles": 4,
+          "shapesPassed": true,
+          "referenceLayout": {
+            "axisPairs": {
+              "x": [
+                {
+                  "colors": [
+                    "magenta",
+                    "cyan"
+                  ],
+                  "referenceDistance": 727.5,
+                  "imageDistance": 526.5,
+                  "scale": 0.7237113402061855
+                },
+                {
+                  "colors": [
+                    "lime",
+                    "orange"
+                  ],
+                  "referenceDistance": 727.5,
+                  "imageDistance": 526.5,
+                  "scale": 0.7237113402061855
+                }
+              ],
+              "y": [
+                {
+                  "colors": [
+                    "magenta",
+                    "lime"
+                  ],
+                  "referenceDistance": 183,
+                  "imageDistance": 132.5,
+                  "scale": 0.7240437158469946
+                },
+                {
+                  "colors": [
+                    "cyan",
+                    "orange"
+                  ],
+                  "referenceDistance": 182.5,
+                  "imageDistance": 132.5,
+                  "scale": 0.726027397260274
+                }
+              ]
+            },
+            "passed": true,
+            "temporalFreshnessVerified": false,
+            "scaleX": 0.7237113402061855,
+            "scaleY": 0.7250355565536343,
+            "scaleMismatchFraction": 0.0018297576310901675,
+            "axisConsistencyErrorFraction": 0.00136986301369868,
+            "crossAxisErrorFraction": 0.00068854278874989,
+            "reason": "matching-layout"
+          },
+          "passed": true,
+          "videoSha256": "8b9563e340f5c81e9435f5003a761d35a06e6675345bd96bc993d87b5f3523dd",
+          "phoneReferenceSha256": "5894765ed487db973431b0f1271e0ef1c452fc2fa5821fa637a043fe114d1ac4"
+        },
+        {
+          "image": ".dart_tool/app_review/final-1080-30/2-r0-video.png",
+          "originalSize": [
+            720,
+            1544
+          ],
+          "analyzedSize": [
+            720,
+            1544
+          ],
+          "circles": {
+            "magenta": {
+              "pixels": 32715,
+              "bounds": [
+                78,
+                436,
+                283,
+                640
+              ],
+              "width": 205,
+              "height": 204,
+              "ratio": 1.0049019607843137,
+              "center": [
+                180,
+                537.5
+              ],
+              "fillFraction": 0.7822812051649928,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0049019607843137,
+              "stretchFraction": 0.004901960784313708,
+              "passed": true
+            },
+            "cyan": {
+              "pixels": 32737,
+              "bounds": [
+                438,
+                436,
+                643,
+                640
+              ],
+              "width": 205,
+              "height": 204,
+              "ratio": 1.0049019607843137,
+              "center": [
+                540,
+                537.5
+              ],
+              "fillFraction": 0.7828072692491631,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0049019607843137,
+              "stretchFraction": 0.004901960784313708,
+              "passed": true
+            },
+            "lime": {
+              "pixels": 32730,
+              "bounds": [
+                78,
+                978,
+                282,
+                1184
+              ],
+              "width": 204,
+              "height": 206,
+              "ratio": 0.9902912621359223,
+              "center": [
+                179.5,
+                1080.5
+              ],
+              "fillFraction": 0.7788406624785836,
+              "touchesImageEdge": false,
+              "relativeRatio": 0.9902912621359223,
+              "stretchFraction": 0.009803921568627416,
+              "passed": true
+            },
+            "orange": {
+              "pixels": 32597,
+              "bounds": [
+                438,
+                978,
+                642,
+                1183
+              ],
+              "width": 204,
+              "height": 205,
+              "ratio": 0.9951219512195122,
+              "center": [
+                539.5,
+                1080
+              ],
+              "fillFraction": 0.7794595887135342,
+              "touchesImageEdge": false,
+              "relativeRatio": 0.9951219512195122,
+              "stretchFraction": 0.004901960784313708,
+              "passed": true
+            }
+          },
+          "reference": {
+            "image": ".dart_tool/app_review/final-1080-30/2-r0-phone.png",
+            "originalSize": [
+              1080,
+              2316
+            ],
+            "analyzedSize": [
+              746,
+              1600
+            ],
+            "circles": {
+              "magenta": {
+                "pixels": 35252,
+                "bounds": [
+                  80,
+                  451,
+                  293,
+                  664
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  186,
+                  557
+                ],
+                "fillFraction": 0.7770063259053539,
+                "touchesImageEdge": false
+              },
+              "cyan": {
+                "pixels": 35167,
+                "bounds": [
+                  453,
+                  451,
+                  666,
+                  664
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  559,
+                  557
+                ],
+                "fillFraction": 0.7751327999294673,
+                "touchesImageEdge": false
+              },
+              "lime": {
+                "pixels": 35269,
+                "bounds": [
+                  80,
+                  1013,
+                  293,
+                  1226
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  186,
+                  1119
+                ],
+                "fillFraction": 0.7773810311005313,
+                "touchesImageEdge": false
+              },
+              "orange": {
+                "pixels": 35173,
+                "bounds": [
+                  453,
+                  1013,
+                  666,
+                  1226
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  559,
+                  1119
+                ],
+                "fillFraction": 0.7752650488218827,
+                "touchesImageEdge": false
+              }
+            }
+          },
+          "tolerance": 0.04,
+          "verifiedCircles": 4,
+          "shapesPassed": true,
+          "referenceLayout": {
+            "axisPairs": {
+              "x": [
+                {
+                  "colors": [
+                    "magenta",
+                    "cyan"
+                  ],
+                  "referenceDistance": 373,
+                  "imageDistance": 360,
+                  "scale": 0.9651474530831099
+                },
+                {
+                  "colors": [
+                    "lime",
+                    "orange"
+                  ],
+                  "referenceDistance": 373,
+                  "imageDistance": 360,
+                  "scale": 0.9651474530831099
+                }
+              ],
+              "y": [
+                {
+                  "colors": [
+                    "magenta",
+                    "lime"
+                  ],
+                  "referenceDistance": 562,
+                  "imageDistance": 543,
+                  "scale": 0.9661921708185054
+                },
+                {
+                  "colors": [
+                    "cyan",
+                    "orange"
+                  ],
+                  "referenceDistance": 562,
+                  "imageDistance": 542.5,
+                  "scale": 0.9653024911032029
+                }
+              ]
+            },
+            "passed": true,
+            "temporalFreshnessVerified": false,
+            "scaleX": 0.9651474530831099,
+            "scaleY": 0.9657473309608542,
+            "scaleMismatchFraction": 0.0006215401344407123,
+            "axisConsistencyErrorFraction": 0.00046082949308767773,
+            "crossAxisErrorFraction": 0.001388888888888889,
+            "reason": "matching-layout"
+          },
+          "passed": true,
+          "videoSha256": "f179de755a9898087beca0d2e620da416fea51fa83b54382a8d0fc17e0efd4dd",
+          "phoneReferenceSha256": "11500f8d37efdc2fa86b6be750fbfb4bb142966ebaacc0c9925ccfa17657bc92"
+        },
+        {
+          "image": ".dart_tool/app_review/final-1080-30/3-r3-video.png",
+          "originalSize": [
+            2316,
+            1080
+          ],
+          "analyzedSize": [
+            1600,
+            746
+          ],
+          "circles": {
+            "magenta": {
+              "pixels": 15702,
+              "bounds": [
+                386,
+                323,
+                528,
+                465
+              ],
+              "width": 142,
+              "height": 142,
+              "ratio": 1,
+              "center": [
+                456.5,
+                393.5
+              ],
+              "fillFraction": 0.7787145407657211,
+              "touchesImageEdge": false,
+              "relativeRatio": 1,
+              "stretchFraction": 0,
+              "passed": true
+            },
+            "cyan": {
+              "pixels": 15681,
+              "bounds": [
+                1114,
+                323,
+                1256,
+                466
+              ],
+              "width": 142,
+              "height": 143,
+              "ratio": 0.993006993006993,
+              "center": [
+                1184.5,
+                394
+              ],
+              "fillFraction": 0.7722348074460751,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0000495957942765,
+              "stretchFraction": 4.959579427654681e-05,
+              "passed": true
+            },
+            "lime": {
+              "pixels": 15720,
+              "bounds": [
+                386,
+                506,
+                528,
+                648
+              ],
+              "width": 142,
+              "height": 142,
+              "ratio": 1,
+              "center": [
+                456.5,
+                576.5
+              ],
+              "fillFraction": 0.7796072207895259,
+              "touchesImageEdge": false,
+              "relativeRatio": 1,
+              "stretchFraction": 0,
+              "passed": true
+            },
+            "orange": {
+              "pixels": 15614,
+              "bounds": [
+                1114,
+                506,
+                1256,
+                648
+              ],
+              "width": 142,
+              "height": 142,
+              "ratio": 1,
+              "center": [
+                1184.5,
+                576.5
+              ],
+              "fillFraction": 0.7743503273160087,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0070921985815602,
+              "stretchFraction": 0.007092198581560183,
+              "passed": true
+            }
+          },
+          "reference": {
+            "image": ".dart_tool/app_review/final-1080-30/3-r3-phone.png",
+            "originalSize": [
+              2316,
+              1080
+            ],
+            "analyzedSize": [
+              1600,
+              746
+            ],
+            "circles": {
+              "magenta": {
+                "pixels": 15738,
+                "bounds": [
+                  386,
+                  323,
+                  528,
+                  465
+                ],
+                "width": 142,
+                "height": 142,
+                "ratio": 1,
+                "center": [
+                  456.5,
+                  393.5
+                ],
+                "fillFraction": 0.7804999008133306,
+                "touchesImageEdge": false
+              },
+              "cyan": {
+                "pixels": 15651,
+                "bounds": [
+                  1114,
+                  323,
+                  1255,
+                  465
+                ],
+                "width": 141,
+                "height": 142,
+                "ratio": 0.9929577464788732,
+                "center": [
+                  1184,
+                  393.5
+                ],
+                "fillFraction": 0.7816901408450704,
+                "touchesImageEdge": false
+              },
+              "lime": {
+                "pixels": 15754,
+                "bounds": [
+                  386,
+                  506,
+                  528,
+                  648
+                ],
+                "width": 142,
+                "height": 142,
+                "ratio": 1,
+                "center": [
+                  456.5,
+                  576.5
+                ],
+                "fillFraction": 0.7812933941678238,
+                "touchesImageEdge": false
+              },
+              "orange": {
+                "pixels": 15638,
+                "bounds": [
+                  1114,
+                  506,
+                  1255,
+                  648
+                ],
+                "width": 141,
+                "height": 142,
+                "ratio": 0.9929577464788732,
+                "center": [
+                  1184,
+                  576.5
+                ],
+                "fillFraction": 0.7810408550594347,
+                "touchesImageEdge": false
+              }
+            }
+          },
+          "tolerance": 0.04,
+          "verifiedCircles": 4,
+          "shapesPassed": true,
+          "referenceLayout": {
+            "axisPairs": {
+              "x": [
+                {
+                  "colors": [
+                    "magenta",
+                    "cyan"
+                  ],
+                  "referenceDistance": 727.5,
+                  "imageDistance": 728,
+                  "scale": 1.0006872852233677
+                },
+                {
+                  "colors": [
+                    "lime",
+                    "orange"
+                  ],
+                  "referenceDistance": 727.5,
+                  "imageDistance": 728,
+                  "scale": 1.0006872852233677
+                }
+              ],
+              "y": [
+                {
+                  "colors": [
+                    "magenta",
+                    "lime"
+                  ],
+                  "referenceDistance": 183,
+                  "imageDistance": 183,
+                  "scale": 1
+                },
+                {
+                  "colors": [
+                    "cyan",
+                    "orange"
+                  ],
+                  "referenceDistance": 183,
+                  "imageDistance": 182.5,
+                  "scale": 0.9972677595628415
+                }
+              ]
+            },
+            "passed": true,
+            "temporalFreshnessVerified": false,
+            "scaleX": 1.0006872852233677,
+            "scaleY": 0.9986338797814207,
+            "scaleMismatchFraction": 0.0020562144781193226,
+            "axisConsistencyErrorFraction": 0.00136986301369868,
+            "crossAxisErrorFraction": 0.0006868131868131869,
+            "reason": "matching-layout"
+          },
+          "passed": true,
+          "videoSha256": "46db5841fff90f004737c2ac55d34e60f634de71a503da82eb22a357cf92e9b2",
+          "phoneReferenceSha256": "d3ad90bf908fa46075b9b6cc2d45783ba4c7e5f910a2ceeb3469af6d312271a5"
+        }
+      ]
+    },
+    {
+      "requestedShortEdge": 720,
+      "requestedFps": 15,
+      "decodedFps": 14.763183590063704,
+      "statsBefore": [
+        {
+          "framesDecoded": 34,
+          "framesReceived": 34,
+          "framesDropped": 0,
+          "framesPerSecond": 15,
+          "frameWidth": 360,
+          "frameHeight": 772,
+          "bytesReceived": 128818,
+          "codecId": "CIT01_108_level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+          "timestamp": 1792614931256.64
+        }
+      ],
+      "statsAfter": [
+        {
+          "framesDecoded": 108,
+          "framesReceived": 109,
+          "framesDropped": 0,
+          "framesPerSecond": 15,
+          "frameWidth": 540,
+          "frameHeight": 1158,
+          "bytesReceived": 530154,
+          "codecId": "CIT01_108_level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+          "timestamp": 1792614936269.109
+        }
+      ],
+      "samples": [
+        {
+          "rotation": 0,
+          "dimensions": {
+            "width": 540,
+            "height": 1158
+          },
+          "shortEdgeWithinLimit": true,
+          "geometryPassed": true,
+          "verifiedCircles": 4,
+          "metadata": {
+            "aspectRatio": 0.46632124352331605,
+            "width": 540,
+            "height": 1158,
+            "generation": 2,
+            "trackId": "32a60c01-9750-4889-b075-56fada845e90",
+            "updatedAt": "2026-10-21T14:35:39.990284"
+          }
+        },
+        {
+          "rotation": 1,
+          "dimensions": {
+            "width": 1544,
+            "height": 720
+          },
+          "shortEdgeWithinLimit": true,
+          "geometryPassed": true,
+          "verifiedCircles": 4,
+          "metadata": {
+            "aspectRatio": 2.1444444444444444,
+            "width": 1544,
+            "height": 720,
+            "generation": 2,
+            "trackId": "32a60c01-9750-4889-b075-56fada845e90",
+            "updatedAt": "2026-10-21T14:35:44.851525"
+          }
+        },
+        {
+          "rotation": 0,
+          "dimensions": {
+            "width": 720,
+            "height": 1544
+          },
+          "shortEdgeWithinLimit": true,
+          "geometryPassed": true,
+          "verifiedCircles": 4,
+          "metadata": {
+            "aspectRatio": 0.46632124352331605,
+            "width": 720,
+            "height": 1544,
+            "generation": 2,
+            "trackId": "32a60c01-9750-4889-b075-56fada845e90",
+            "updatedAt": "2026-10-21T14:35:49.299869"
+          }
+        },
+        {
+          "rotation": 3,
+          "dimensions": {
+            "width": 1544,
+            "height": 720
+          },
+          "shortEdgeWithinLimit": true,
+          "geometryPassed": true,
+          "verifiedCircles": 4,
+          "metadata": {
+            "aspectRatio": 2.1444444444444444,
+            "width": 1544,
+            "height": 720,
+            "generation": 2,
+            "trackId": "32a60c01-9750-4889-b075-56fada845e90",
+            "updatedAt": "2026-10-21T14:35:53.571686"
+          }
+        }
+      ],
+      "passed": true,
+      "sourceAnimation": "requestAnimationFrame in foreground Android Chrome",
+      "geometry": [
+        {
+          "image": ".dart_tool/app_review/final-720-15/0-r0-video.png",
+          "originalSize": [
+            540,
+            1158
+          ],
+          "analyzedSize": [
+            540,
+            1158
+          ],
+          "circles": {
+            "magenta": {
+              "pixels": 18374,
+              "bounds": [
+                58,
+                327,
+                212,
+                480
+              ],
+              "width": 154,
+              "height": 153,
+              "ratio": 1.0065359477124183,
+              "center": [
+                134.5,
+                403
+              ],
+              "fillFraction": 0.7798149562855445,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0065359477124183,
+              "stretchFraction": 0.006535947712418277,
+              "passed": true
+            },
+            "cyan": {
+              "pixels": 18390,
+              "bounds": [
+                328,
+                327,
+                482,
+                480
+              ],
+              "width": 154,
+              "height": 153,
+              "ratio": 1.0065359477124183,
+              "center": [
+                404.5,
+                403
+              ],
+              "fillFraction": 0.7804940157881335,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0065359477124183,
+              "stretchFraction": 0.006535947712418277,
+              "passed": true
+            },
+            "lime": {
+              "pixels": 18414,
+              "bounds": [
+                58,
+                734,
+                212,
+                888
+              ],
+              "width": 154,
+              "height": 154,
+              "ratio": 1,
+              "center": [
+                134.5,
+                810.5
+              ],
+              "fillFraction": 0.7764378478664193,
+              "touchesImageEdge": false,
+              "relativeRatio": 1,
+              "stretchFraction": 0,
+              "passed": true
+            },
+            "orange": {
+              "pixels": 18322,
+              "bounds": [
+                328,
+                734,
+                482,
+                887
+              ],
+              "width": 154,
+              "height": 153,
+              "ratio": 1.0065359477124183,
+              "center": [
+                404.5,
+                810
+              ],
+              "fillFraction": 0.7776080129021306,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0065359477124183,
+              "stretchFraction": 0.006535947712418277,
+              "passed": true
+            }
+          },
+          "reference": {
+            "image": ".dart_tool/app_review/final-720-15/0-r0-phone.png",
+            "originalSize": [
+              1080,
+              2316
+            ],
+            "analyzedSize": [
+              746,
+              1600
+            ],
+            "circles": {
+              "magenta": {
+                "pixels": 35252,
+                "bounds": [
+                  80,
+                  451,
+                  293,
+                  664
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  186,
+                  557
+                ],
+                "fillFraction": 0.7770063259053539,
+                "touchesImageEdge": false
+              },
+              "cyan": {
+                "pixels": 35167,
+                "bounds": [
+                  453,
+                  451,
+                  666,
+                  664
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  559,
+                  557
+                ],
+                "fillFraction": 0.7751327999294673,
+                "touchesImageEdge": false
+              },
+              "lime": {
+                "pixels": 35269,
+                "bounds": [
+                  80,
+                  1013,
+                  293,
+                  1226
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  186,
+                  1119
+                ],
+                "fillFraction": 0.7773810311005313,
+                "touchesImageEdge": false
+              },
+              "orange": {
+                "pixels": 35173,
+                "bounds": [
+                  453,
+                  1013,
+                  666,
+                  1226
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  559,
+                  1119
+                ],
+                "fillFraction": 0.7752650488218827,
+                "touchesImageEdge": false
+              }
+            }
+          },
+          "tolerance": 0.04,
+          "verifiedCircles": 4,
+          "shapesPassed": true,
+          "referenceLayout": {
+            "axisPairs": {
+              "x": [
+                {
+                  "colors": [
+                    "magenta",
+                    "cyan"
+                  ],
+                  "referenceDistance": 373,
+                  "imageDistance": 270,
+                  "scale": 0.7238605898123325
+                },
+                {
+                  "colors": [
+                    "lime",
+                    "orange"
+                  ],
+                  "referenceDistance": 373,
+                  "imageDistance": 270,
+                  "scale": 0.7238605898123325
+                }
+              ],
+              "y": [
+                {
+                  "colors": [
+                    "magenta",
+                    "lime"
+                  ],
+                  "referenceDistance": 562,
+                  "imageDistance": 407.5,
+                  "scale": 0.7250889679715302
+                },
+                {
+                  "colors": [
+                    "cyan",
+                    "orange"
+                  ],
+                  "referenceDistance": 562,
+                  "imageDistance": 407,
+                  "scale": 0.7241992882562278
+                }
+              ]
+            },
+            "passed": true,
+            "temporalFreshnessVerified": false,
+            "scaleX": 0.7238605898123325,
+            "scaleY": 0.724644128113879,
+            "scaleMismatchFraction": 0.0010824436536180926,
+            "axisConsistencyErrorFraction": 0.0006142506142505777,
+            "crossAxisErrorFraction": 0.001851851851851852,
+            "reason": "matching-layout"
+          },
+          "passed": true,
+          "videoSha256": "344514317d227236ff4ea0ee03a2469a57f35547e458b8d5b6a245f3cb90a003",
+          "phoneReferenceSha256": "0eb96572cb1e394b76ecfc075ec9c7042d576c426e816875f1923364da8f1879"
+        },
+        {
+          "image": ".dart_tool/app_review/final-720-15/1-r1-video.png",
+          "originalSize": [
+            1544,
+            720
+          ],
+          "analyzedSize": [
+            1544,
+            720
+          ],
+          "circles": {
+            "magenta": {
+              "pixels": 14559,
+              "bounds": [
+                332,
+                312,
+                470,
+                449
+              ],
+              "width": 138,
+              "height": 137,
+              "ratio": 1.0072992700729928,
+              "center": [
+                400.5,
+                380
+              ],
+              "fillFraction": 0.7700729927007299,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0144432365274112,
+              "stretchFraction": 0.014443236527411196,
+              "passed": true
+            },
+            "cyan": {
+              "pixels": 14539,
+              "bounds": [
+                1035,
+                312,
+                1172,
+                449
+              ],
+              "width": 137,
+              "height": 137,
+              "ratio": 1,
+              "center": [
+                1103,
+                380
+              ],
+              "fillFraction": 0.7746283765784006,
+              "touchesImageEdge": false,
+              "relativeRatio": 1,
+              "stretchFraction": 0,
+              "passed": true
+            },
+            "lime": {
+              "pixels": 14561,
+              "bounds": [
+                334,
+                488,
+                470,
+                625
+              ],
+              "width": 136,
+              "height": 137,
+              "ratio": 0.9927007299270073,
+              "center": [
+                401.5,
+                556
+              ],
+              "fillFraction": 0.78150493774152,
+              "touchesImageEdge": false,
+              "relativeRatio": 0.9997411606357095,
+              "stretchFraction": 0.00025890637945313877,
+              "passed": true
+            },
+            "orange": {
+              "pixels": 14451,
+              "bounds": [
+                1035,
+                488,
+                1172,
+                625
+              ],
+              "width": 137,
+              "height": 137,
+              "ratio": 1,
+              "center": [
+                1103,
+                556
+              ],
+              "fillFraction": 0.7699397943417338,
+              "touchesImageEdge": false,
+              "relativeRatio": 0.9929577464788734,
+              "stretchFraction": 0.007092198581560183,
+              "passed": true
+            }
+          },
+          "reference": {
+            "image": ".dart_tool/app_review/final-720-15/1-r1-phone.png",
+            "originalSize": [
+              2316,
+              1080
+            ],
+            "analyzedSize": [
+              1600,
+              746
+            ],
+            "circles": {
+              "magenta": {
+                "pixels": 15728,
+                "bounds": [
+                  345,
+                  323,
+                  486,
+                  465
+                ],
+                "width": 141,
+                "height": 142,
+                "ratio": 0.9929577464788732,
+                "center": [
+                  415,
+                  393.5
+                ],
+                "fillFraction": 0.7855359104984517,
+                "touchesImageEdge": false
+              },
+              "cyan": {
+                "pixels": 15647,
+                "bounds": [
+                  1072,
+                  323,
+                  1214,
+                  465
+                ],
+                "width": 142,
+                "height": 142,
+                "ratio": 1,
+                "center": [
+                  1142.5,
+                  393.5
+                ],
+                "fillFraction": 0.7759869073596508,
+                "touchesImageEdge": false
+              },
+              "lime": {
+                "pixels": 15734,
+                "bounds": [
+                  345,
+                  506,
+                  486,
+                  648
+                ],
+                "width": 141,
+                "height": 142,
+                "ratio": 0.9929577464788732,
+                "center": [
+                  415,
+                  576.5
+                ],
+                "fillFraction": 0.7858355808610529,
+                "touchesImageEdge": false
+              },
+              "orange": {
+                "pixels": 15645,
+                "bounds": [
+                  1072,
+                  506,
+                  1214,
+                  647
+                ],
+                "width": 142,
+                "height": 141,
+                "ratio": 1.0070921985815602,
+                "center": [
+                  1142.5,
+                  576
+                ],
+                "fillFraction": 0.7813904704824692,
+                "touchesImageEdge": false
+              }
+            }
+          },
+          "tolerance": 0.04,
+          "verifiedCircles": 4,
+          "shapesPassed": true,
+          "referenceLayout": {
+            "axisPairs": {
+              "x": [
+                {
+                  "colors": [
+                    "magenta",
+                    "cyan"
+                  ],
+                  "referenceDistance": 727.5,
+                  "imageDistance": 702.5,
+                  "scale": 0.9656357388316151
+                },
+                {
+                  "colors": [
+                    "lime",
+                    "orange"
+                  ],
+                  "referenceDistance": 727.5,
+                  "imageDistance": 701.5,
+                  "scale": 0.9642611683848797
+                }
+              ],
+              "y": [
+                {
+                  "colors": [
+                    "magenta",
+                    "lime"
+                  ],
+                  "referenceDistance": 183,
+                  "imageDistance": 176,
+                  "scale": 0.9617486338797814
+                },
+                {
+                  "colors": [
+                    "cyan",
+                    "orange"
+                  ],
+                  "referenceDistance": 182.5,
+                  "imageDistance": 176,
+                  "scale": 0.9643835616438357
+                }
+              ]
+            },
+            "passed": true,
+            "temporalFreshnessVerified": false,
+            "scaleX": 0.9649484536082474,
+            "scaleY": 0.9630660977618085,
+            "scaleMismatchFraction": 0.0019545448135009913,
+            "axisConsistencyErrorFraction": 0.00136986301369868,
+            "crossAxisErrorFraction": 0.005681818181818182,
+            "reason": "matching-layout"
+          },
+          "passed": true,
+          "videoSha256": "66570a775f80f7d938681736aa418aa2360b9b142aaa641adc25d0b9b345f94a",
+          "phoneReferenceSha256": "2b8bc9355ed474fb9f7436860b7a99cf81a9b6f9fa8a53f4d7ab2e3059877ba8"
+        },
+        {
+          "image": ".dart_tool/app_review/final-720-15/2-r0-video.png",
+          "originalSize": [
+            720,
+            1544
+          ],
+          "analyzedSize": [
+            720,
+            1544
+          ],
+          "circles": {
+            "magenta": {
+              "pixels": 32710,
+              "bounds": [
+                78,
+                436,
+                282,
+                640
+              ],
+              "width": 204,
+              "height": 204,
+              "ratio": 1,
+              "center": [
+                179.5,
+                537.5
+              ],
+              "fillFraction": 0.7859957708573626,
+              "touchesImageEdge": false,
+              "relativeRatio": 1,
+              "stretchFraction": 0,
+              "passed": true
+            },
+            "cyan": {
+              "pixels": 32736,
+              "bounds": [
+                438,
+                436,
+                643,
+                640
+              ],
+              "width": 205,
+              "height": 204,
+              "ratio": 1.0049019607843137,
+              "center": [
+                540,
+                537.5
+              ],
+              "fillFraction": 0.7827833572453372,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0049019607843137,
+              "stretchFraction": 0.004901960784313708,
+              "passed": true
+            },
+            "lime": {
+              "pixels": 32683,
+              "bounds": [
+                78,
+                978,
+                282,
+                1184
+              ],
+              "width": 204,
+              "height": 206,
+              "ratio": 0.9902912621359223,
+              "center": [
+                179.5,
+                1080.5
+              ],
+              "fillFraction": 0.7777222539501237,
+              "touchesImageEdge": false,
+              "relativeRatio": 0.9902912621359223,
+              "stretchFraction": 0.009803921568627416,
+              "passed": true
+            },
+            "orange": {
+              "pixels": 32585,
+              "bounds": [
+                438,
+                978,
+                642,
+                1183
+              ],
+              "width": 204,
+              "height": 205,
+              "ratio": 0.9951219512195122,
+              "center": [
+                539.5,
+                1080
+              ],
+              "fillFraction": 0.7791726446676231,
+              "touchesImageEdge": false,
+              "relativeRatio": 0.9951219512195122,
+              "stretchFraction": 0.004901960784313708,
+              "passed": true
+            }
+          },
+          "reference": {
+            "image": ".dart_tool/app_review/final-720-15/2-r0-phone.png",
+            "originalSize": [
+              1080,
+              2316
+            ],
+            "analyzedSize": [
+              746,
+              1600
+            ],
+            "circles": {
+              "magenta": {
+                "pixels": 35252,
+                "bounds": [
+                  80,
+                  451,
+                  293,
+                  664
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  186,
+                  557
+                ],
+                "fillFraction": 0.7770063259053539,
+                "touchesImageEdge": false
+              },
+              "cyan": {
+                "pixels": 35167,
+                "bounds": [
+                  453,
+                  451,
+                  666,
+                  664
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  559,
+                  557
+                ],
+                "fillFraction": 0.7751327999294673,
+                "touchesImageEdge": false
+              },
+              "lime": {
+                "pixels": 35269,
+                "bounds": [
+                  80,
+                  1013,
+                  293,
+                  1226
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  186,
+                  1119
+                ],
+                "fillFraction": 0.7773810311005313,
+                "touchesImageEdge": false
+              },
+              "orange": {
+                "pixels": 35173,
+                "bounds": [
+                  453,
+                  1013,
+                  666,
+                  1226
+                ],
+                "width": 213,
+                "height": 213,
+                "ratio": 1,
+                "center": [
+                  559,
+                  1119
+                ],
+                "fillFraction": 0.7752650488218827,
+                "touchesImageEdge": false
+              }
+            }
+          },
+          "tolerance": 0.04,
+          "verifiedCircles": 4,
+          "shapesPassed": true,
+          "referenceLayout": {
+            "axisPairs": {
+              "x": [
+                {
+                  "colors": [
+                    "magenta",
+                    "cyan"
+                  ],
+                  "referenceDistance": 373,
+                  "imageDistance": 360.5,
+                  "scale": 0.9664879356568364
+                },
+                {
+                  "colors": [
+                    "lime",
+                    "orange"
+                  ],
+                  "referenceDistance": 373,
+                  "imageDistance": 360,
+                  "scale": 0.9651474530831099
+                }
+              ],
+              "y": [
+                {
+                  "colors": [
+                    "magenta",
+                    "lime"
+                  ],
+                  "referenceDistance": 562,
+                  "imageDistance": 543,
+                  "scale": 0.9661921708185054
+                },
+                {
+                  "colors": [
+                    "cyan",
+                    "orange"
+                  ],
+                  "referenceDistance": 562,
+                  "imageDistance": 542.5,
+                  "scale": 0.9653024911032029
+                }
+              ]
+            },
+            "passed": true,
+            "temporalFreshnessVerified": false,
+            "scaleX": 0.9658176943699732,
+            "scaleY": 0.9657473309608542,
+            "scaleMismatchFraction": 7.285902519549303e-05,
+            "axisConsistencyErrorFraction": 0.000694444444444553,
+            "crossAxisErrorFraction": 0.001388888888888889,
+            "reason": "matching-layout"
+          },
+          "passed": true,
+          "videoSha256": "90065bfee001261214f62168561f8fa26b72b5118e9378529ae0565497e6cc13",
+          "phoneReferenceSha256": "235e63ea1d3dbda1fb20981b1be6e541259af7072416f0b589f432706d5d9ecc"
+        },
+        {
+          "image": ".dart_tool/app_review/final-720-15/3-r3-video.png",
+          "originalSize": [
+            1544,
+            720
+          ],
+          "analyzedSize": [
+            1544,
+            720
+          ],
+          "circles": {
+            "magenta": {
+              "pixels": 14560,
+              "bounds": [
+                372,
+                312,
+                510,
+                449
+              ],
+              "width": 138,
+              "height": 137,
+              "ratio": 1.0072992700729928,
+              "center": [
+                440.5,
+                380
+              ],
+              "fillFraction": 0.7701258859621284,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0072992700729928,
+              "stretchFraction": 0.007299270072992803,
+              "passed": true
+            },
+            "cyan": {
+              "pixels": 14563,
+              "bounds": [
+                1074,
+                312,
+                1212,
+                449
+              ],
+              "width": 138,
+              "height": 137,
+              "ratio": 1.0072992700729928,
+              "center": [
+                1142.5,
+                380
+              ],
+              "fillFraction": 0.7702845657463239,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0144432365274112,
+              "stretchFraction": 0.014443236527411196,
+              "passed": true
+            },
+            "lime": {
+              "pixels": 14573,
+              "bounds": [
+                373,
+                488,
+                510,
+                625
+              ],
+              "width": 137,
+              "height": 137,
+              "ratio": 1,
+              "center": [
+                441,
+                556
+              ],
+              "fillFraction": 0.7764398742607491,
+              "touchesImageEdge": false,
+              "relativeRatio": 1,
+              "stretchFraction": 0,
+              "passed": true
+            },
+            "orange": {
+              "pixels": 14458,
+              "bounds": [
+                1075,
+                488,
+                1212,
+                625
+              ],
+              "width": 137,
+              "height": 137,
+              "ratio": 1,
+              "center": [
+                1143,
+                556
+              ],
+              "fillFraction": 0.7703127497469231,
+              "touchesImageEdge": false,
+              "relativeRatio": 1.0070921985815602,
+              "stretchFraction": 0.007092198581560183,
+              "passed": true
+            }
+          },
+          "reference": {
+            "image": ".dart_tool/app_review/final-720-15/3-r3-phone.png",
+            "originalSize": [
+              2316,
+              1080
+            ],
+            "analyzedSize": [
+              1600,
+              746
+            ],
+            "circles": {
+              "magenta": {
+                "pixels": 15738,
+                "bounds": [
+                  386,
+                  323,
+                  528,
+                  465
+                ],
+                "width": 142,
+                "height": 142,
+                "ratio": 1,
+                "center": [
+                  456.5,
+                  393.5
+                ],
+                "fillFraction": 0.7804999008133306,
+                "touchesImageEdge": false
+              },
+              "cyan": {
+                "pixels": 15651,
+                "bounds": [
+                  1114,
+                  323,
+                  1255,
+                  465
+                ],
+                "width": 141,
+                "height": 142,
+                "ratio": 0.9929577464788732,
+                "center": [
+                  1184,
+                  393.5
+                ],
+                "fillFraction": 0.7816901408450704,
+                "touchesImageEdge": false
+              },
+              "lime": {
+                "pixels": 15754,
+                "bounds": [
+                  386,
+                  506,
+                  528,
+                  648
+                ],
+                "width": 142,
+                "height": 142,
+                "ratio": 1,
+                "center": [
+                  456.5,
+                  576.5
+                ],
+                "fillFraction": 0.7812933941678238,
+                "touchesImageEdge": false
+              },
+              "orange": {
+                "pixels": 15638,
+                "bounds": [
+                  1114,
+                  506,
+                  1255,
+                  648
+                ],
+                "width": 141,
+                "height": 142,
+                "ratio": 0.9929577464788732,
+                "center": [
+                  1184,
+                  576.5
+                ],
+                "fillFraction": 0.7810408550594347,
+                "touchesImageEdge": false
+              }
+            }
+          },
+          "tolerance": 0.04,
+          "verifiedCircles": 4,
+          "shapesPassed": true,
+          "referenceLayout": {
+            "axisPairs": {
+              "x": [
+                {
+                  "colors": [
+                    "magenta",
+                    "cyan"
+                  ],
+                  "referenceDistance": 727.5,
+                  "imageDistance": 702,
+                  "scale": 0.9649484536082474
+                },
+                {
+                  "colors": [
+                    "lime",
+                    "orange"
+                  ],
+                  "referenceDistance": 727.5,
+                  "imageDistance": 702,
+                  "scale": 0.9649484536082474
+                }
+              ],
+              "y": [
+                {
+                  "colors": [
+                    "magenta",
+                    "lime"
+                  ],
+                  "referenceDistance": 183,
+                  "imageDistance": 176,
+                  "scale": 0.9617486338797814
+                },
+                {
+                  "colors": [
+                    "cyan",
+                    "orange"
+                  ],
+                  "referenceDistance": 183,
+                  "imageDistance": 176,
+                  "scale": 0.9617486338797814
+                }
+              ]
+            },
+            "passed": true,
+            "temporalFreshnessVerified": false,
+            "scaleX": 0.9649484536082474,
+            "scaleY": 0.9617486338797814,
+            "scaleMismatchFraction": 0.0033270852858482414,
+            "axisConsistencyErrorFraction": 0,
+            "crossAxisErrorFraction": 0.002840909090909091,
+            "reason": "matching-layout"
+          },
+          "passed": true,
+          "videoSha256": "649bfea3ab5885c5a967a549b6a357dafe2df15f692ede96f42c5740fa04fed9",
+          "phoneReferenceSha256": "d49d9ab18c410c4f4cf41f15604034bd627a9936e094ceeb5814f60ed9e4d42b"
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "allCaptureProfilesPassed": true,
+    "sameTrackAcrossEachProfilesRotations": true,
+    "allSamplesHaveFourCircles": true,
+    "noActiveProjection": true,
+    "noAppForegroundService": true,
+    "noCaptureHelperThreads": true,
+    "installedArtifactMatches": true,
+    "releaseRetainsMlKitRegistrars": true,
+    "flutterSuite133Passed": true,
+    "analyzerNoIssues": true,
+    "noRuntimeDartErrorsInObservedProcess": true
+  },
+  "uiChecks": {
+    "searchResumesAfterNormalStop": true,
+    "searchStillActiveAfterFourSeconds": true,
+    "searchCompletesAfterTwelveSecondWindow": true,
+    "automaticIntervalTextRemoved": true,
+    "toolbarBackReturnsToScreen": true,
+    "systemBackReturnsToScreen": true,
+    "backTraversesVisitedTabs": true,
+    "settingsPersistAfterProcessRestart": true,
+    "readyOnHome": true,
+    "screenOnlyReceiverPortClosed": true
+  },
+  "discoveryUiTimeline": [
+    {
+      "name": "final-after-stop-720",
+      "requestedAtSeconds": 0,
+      "dumpStartedAtSeconds": 2.3000999135547318e-05,
+      "dumpFinishedAtSeconds": 2.2861129799985065,
+      "searching": true,
+      "listening": false,
+      "oldIntervalTextPresent": false
+    },
+    {
+      "name": "final-search-active",
+      "requestedAtSeconds": 5,
+      "dumpStartedAtSeconds": 5.000141116999657,
+      "dumpFinishedAtSeconds": 7.7157939659991825,
+      "searching": true,
+      "listening": false,
+      "oldIntervalTextPresent": false
+    },
+    {
+      "name": "final-search-finished",
+      "requestedAtSeconds": 13,
+      "dumpStartedAtSeconds": 13.000095738998425,
+      "dumpFinishedAtSeconds": 15.397282288999122,
+      "searching": false,
+      "listening": true,
+      "oldIntervalTextPresent": false
+    }
+  ],
+  "testToolCleanup": {
+    "ownProcessesClosed": true,
+    "diagnosticPortsClosed": true,
+    "ownReverseRemoved": true,
+    "ownForwardRemoved": true
+  },
+  "phoneCleanup": {
+    "mediaProjection": "MEDIA PROJECTION MANAGER (dumpsys media_projection)\nMedia Projection: \nnull\n",
+    "services": "ACTIVITY MANAGER SERVICES (dumpsys activity services)\n  (nothing)\n",
+    "captureHelperThreads": [],
+    "rotationRestored": 0,
+    "accelerometerRotationRestored": 0
+  },
+  "transferBenchmark": "app-review-transfer.json",
+  "limitations": [
+    "Physical checks cover one S22 Ultra on Android 14. Other APIs use controlled harnesses.",
+    "Resolution and FPS are ceilings, subject to WebRTC adaptation and source cadence.",
+    "Five-second inbound frame counts are receiver observations, not end-to-end latency.",
+    "A browser receives the physical WebRTC stream; earlier separate reports cover the Flutter desktop viewer.",
+    "This revision checks ML Kit constructors in DEX; optical QR decoding was not repeated."
+  ]
+}

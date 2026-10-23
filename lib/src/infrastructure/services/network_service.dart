@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:network_info_plus/network_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class NetworkSnapshot {
   const NetworkSnapshot({this.ip, this.wifiName});
@@ -21,12 +20,6 @@ class NetworkService {
   Future<NetworkSnapshot> snapshot({
     bool includeLocalInterfaces = false,
   }) async {
-    if (Platform.isAndroid) {
-      final status = await Permission.locationWhenInUse.status;
-      if (!status.isGranted) {
-        await Permission.locationWhenInUse.request();
-      }
-    }
     final hasWifiNetwork = await _hasWifiNetwork();
     final wifiIp = hasWifiNetwork ? await _safeWifiIp() : null;
     final localIp = includeLocalInterfaces

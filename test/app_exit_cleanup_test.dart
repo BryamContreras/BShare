@@ -1,0 +1,140 @@
+import 'dart:async';
+import 'dart:ui' show AppExitResponse;
+
+import 'package:bshare/src/application/providers.dart';
+import 'package:bshare/src/domain/entities/app_settings.dart';
+import 'package:bshare/src/infrastructure/services/app_logger.dart';
+import 'package:bshare/src/infrastructure/services/network_service.dart';
+import 'package:bshare/src/presentation/app.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+class _Settings extends SettingsController {
+  @override
+  Future<AppSettings> build() async => const AppSettings(
+    deviceId: 'desktop',
+    deviceName: 'Desktop',
+    downloadDirectory: '/tmp',
+    autoAccept: false,
+    preferredPort: 53317,
+    themeMode: 'system',
+    languageCode: 'en',
+  );
+}
+
+class _Logger extends AppLogger {
+  final warnings = <String>[];
+  @override
+  void warn(String message) => warnings.add(message);
+}
+
+class _Cleanup extends RuntimeCleanup {
+  _Cleanup(super.ref);
+  final gate = Completer<void>();
+  int calls = 0;
+  bool? cleanupFiles;
+  bool fail = false;
+
+  @override
+  Future<void> cleanupNetworking({
+    bool cancelTransfers = true,
+    bool cleanupSelectedFiles = false,
+  }) async {
+    calls++;
+    cleanupFiles = cleanupSelectedFiles;
+    await gate.future;
+    if (fail) throw StateError('unexpected cleanup coordinator failure');
+  }
+}
+
+void main() {
+  late _Cleanup cleanup;
+  late _Logger logger;
+
+  Future<void> mount(WidgetTester tester) async {
+    logger = _Logger();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(_Settings.new),
+          networkProvider.overrideWith(
+            (_) async => const NetworkSnapshot(ip: '192.168.1.20'),
+          ),
+          loggerProvider.overrideWithValue(logger),
+          runtimeCleanupProvider.overrideWith((ref) => cleanup = _Cleanup(ref)),
+        ],
+        child: const BShareApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('window exit waits for networking and capture cleanup', (
+    tester,
+  ) async {
+    await mount(tester);
+    var exited = false;
+    final exit = tester.binding.handleRequestAppExit().then((response) {
+      exited = true;
+      return response;
+    });
+    await tester.pump();
+    expect(cleanup.calls, 1);
+    expect(cleanup.cleanupFiles, isTrue);
+    expect(exited, isFalse);
+    cleanup.gate.complete();
+    expect(await exit, AppExitResponse.exit);
+    expect(exited, isTrue);
+    expect(logger.warnings, isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('repeated exit and detached notifications share one cleanup', (
+    tester,
+  ) async {
+    await mount(tester);
+    final first = tester.binding.handleRequestAppExit();
+    final second = tester.binding.handleRequestAppExit();
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.detached);
+    await tester.pump();
+    expect(cleanup.calls, 1);
+    cleanup.gate.complete();
+    expect(await first, AppExitResponse.exit);
+    expect(await second, AppExitResponse.exit);
+    expect(await tester.binding.handleRequestAppExit(), AppExitResponse.exit);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.detached);
+    await tester.pump();
+    expect(cleanup.calls, 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  });
+
+  testWidgets('detached fallback waits once and contains unexpected errors', (
+    tester,
+  ) async {
+    await mount(tester);
+    // Read the fake before the first lifecycle notification creates it.
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(BShareApp)),
+    );
+    container.read(runtimeCleanupProvider);
+    cleanup.fail = true;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.detached);
+    await tester.pump();
+    expect(cleanup.calls, 1);
+    cleanup.gate.complete();
+    expect(await tester.binding.handleRequestAppExit(), AppExitResponse.exit);
+    await tester.pump();
+    expect(cleanup.calls, 1);
+    expect(
+      logger.warnings.single,
+      contains('Could not finish application cleanup'),
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  });
+}

@@ -83,6 +83,7 @@ class EventChannelProxyImpl : public EventChannelProxy {
          [&](const EncodableValue* arguments,
              std::unique_ptr<flutter::EventSink<EncodableValue>>&& events)
              -> std::unique_ptr<flutter::StreamHandlerError<EncodableValue>> {
+           std::lock_guard<std::mutex> lock(mutex_);
            sink_ = std::move(events);
            std::weak_ptr<EventSink> weak_sink = sink_;
            for (auto& event : event_queue_) {
@@ -94,16 +95,28 @@ class EventChannelProxyImpl : public EventChannelProxy {
          },
          [&](const EncodableValue* arguments)
              -> std::unique_ptr<flutter::StreamHandlerError<EncodableValue>> {
+           std::lock_guard<std::mutex> lock(mutex_);
            on_listen_called_ = false;
+           // Posted events hold weak references, so cancelling also invalidates
+           // events still waiting on the platform task runner.
+           sink_.reset();
+           event_queue_.clear();
            return nullptr;
          });
  
      channel_->SetStreamHandler(std::move(handler));
    }
  
-   virtual ~EventChannelProxyImpl() {}
+   virtual ~EventChannelProxyImpl() {
+     // EventChannel does not unregister its handler on destruction. Both its
+     // Linux wrapper and our stream callbacks reference their owning objects;
+     // remove the messenger's callback before either owner is destroyed.
+     channel_->SetStreamHandler(nullptr);
+   }
  
    void Success(const EncodableValue& event, bool cache_event = true) override {
+     // Frame/peer callbacks can race a platform-thread subscription cancel.
+     std::lock_guard<std::mutex> lock(mutex_);
      if (on_listen_called_) {
        PostEvent(event);
      } else {
@@ -133,6 +146,7 @@ class EventChannelProxyImpl : public EventChannelProxy {
    std::list<EncodableValue> event_queue_;
    bool on_listen_called_ = false;
    TaskRunner* task_runner_;
+   std::mutex mutex_;
  };
 
 std::unique_ptr<EventChannelProxy> EventChannelProxy::Create(

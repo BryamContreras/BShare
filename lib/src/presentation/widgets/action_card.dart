@@ -7,12 +7,14 @@ class ActionCard extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.onTap,
+    this.compactTypography = false,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
   final VoidCallback onTap;
+  final bool compactTypography;
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +26,18 @@ class ActionCard extends StatelessWidget {
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 340;
           final iconExtent = compact ? 38.0 : 44.0;
+          final textTheme = Theme.of(context).textTheme;
+          final titleStyle =
+              (compact ? textTheme.titleMedium : textTheme.titleLarge)
+                  ?.copyWith(
+                    fontSize: compactTypography ? (compact ? 15 : 20) : null,
+                    fontWeight: FontWeight.w800,
+                  );
+          final subtitleStyle =
+              (compact ? textTheme.bodySmall : textTheme.bodyMedium)?.copyWith(
+                fontSize: compactTypography ? (compact ? 12 : 13) : null,
+                color: scheme.onSurfaceVariant,
+              );
           return Ink(
             padding: EdgeInsets.all(compact ? 12 : 14),
             decoration: BoxDecoration(
@@ -64,22 +78,14 @@ class ActionCard extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            (compact
-                                    ? Theme.of(context).textTheme.titleMedium
-                                    : Theme.of(context).textTheme.titleLarge)
-                                ?.copyWith(fontWeight: FontWeight.w800),
+                        style: titleStyle,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         subtitle,
                         maxLines: compact ? 1 : 2,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            (compact
-                                    ? Theme.of(context).textTheme.bodySmall
-                                    : Theme.of(context).textTheme.bodyMedium)
-                                ?.copyWith(color: scheme.onSurfaceVariant),
+                        style: subtitleStyle,
                       ),
                     ],
                   ),

@@ -1,45 +1,47 @@
-#define MyAppName "BShare"
-#ifndef MyAppVersion
-#define MyAppVersion "1.0.0"
+; Compile through build-installer.ps1 so version and staged payload are checked.
+#ifndef AppVersion
+  #error AppVersion must be supplied by build-installer.ps1
 #endif
-#ifndef MyAppBuildNumber
-#define MyAppBuildNumber "1"
+#ifndef AppFileVersion
+  #error AppFileVersion must be supplied by build-installer.ps1
 #endif
-#define MyAppPackageVersion MyAppVersion + "-" + MyAppBuildNumber
-#define MyAppPublisher "Bryam Contreras"
-#define MyAppURL "https://github.com/BryamContreras/BShare"
-#define MyAppExeName "BShare.exe"
-#define MyAppSource "..\..\dist\releases\BShare-" + MyAppPackageVersion + "\windows\BShare-windows-x64"
-#define MyOutputDir "..\..\dist\releases\BShare-" + MyAppPackageVersion + "\windows"
+#ifndef AppFullVersion
+  #error AppFullVersion must be supplied by build-installer.ps1
+#endif
+#ifndef AppSourceDir
+  #error AppSourceDir must be supplied by build-installer.ps1
+#endif
+#ifndef AppOutputDir
+  #error AppOutputDir must be supplied by build-installer.ps1
+#endif
 
 [Setup]
 AppId={{B7BB9A02-7C54-4DD3-A239-3FA13514A93F}
-AppName={#MyAppName}
-AppVersion={#MyAppVersion}
-AppPublisher={#MyAppPublisher}
-AppPublisherURL={#MyAppURL}
-AppSupportURL={#MyAppURL}/issues
-AppUpdatesURL={#MyAppURL}/releases
-DefaultDirName={autopf}\{#MyAppName}
-DefaultGroupName={#MyAppName}
+AppName=BShare
+AppVersion={#AppVersion}
+AppVerName=BShare {#AppFullVersion}
+AppPublisher=BShare
+VersionInfoVersion={#AppFileVersion}
+VersionInfoProductName=BShare
+VersionInfoCompany=BShare
+VersionInfoDescription=BShare installer
+VersionInfoProductVersion={#AppFullVersion}
+DefaultDirName={localappdata}\Programs\BShare
+DefaultGroupName=BShare
 DisableProgramGroupPage=yes
-ShowLanguageDialog=yes
-UsePreviousLanguage=no
-OutputDir={#MyOutputDir}
-OutputBaseFilename=BShare-Setup-{#MyAppVersion}
+PrivilegesRequired=lowest
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+MinVersion=10.0
+UninstallDisplayIcon={app}\BShare.exe
 SetupIconFile=..\..\windows\runner\resources\app_icon.ico
-UninstallDisplayIcon={app}\{#MyAppExeName}
-UninstallDisplayName={#MyAppName}
+OutputDir={#AppOutputDir}
+OutputBaseFilename=BShare-{#AppFullVersion}-windows-x64-setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
-PrivilegesRequired=lowest
-VersionInfoVersion={#MyAppVersion}
-VersionInfoCompany={#MyAppPublisher}
-VersionInfoDescription={#MyAppName} installer
-VersionInfoProductName={#MyAppName}
+CloseApplications=yes
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -49,11 +51,11 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "{#MyAppSource}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#AppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{group}\BShare"; Filename: "{app}\BShare.exe"; WorkingDir: "{app}"
+Name: "{autodesktop}\BShare"; Filename: "{app}\BShare.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\BShare.exe"; Description: "{cm:LaunchProgram,BShare}"; Flags: nowait postinstall skipifsilent

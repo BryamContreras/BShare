@@ -1,0 +1,82 @@
+name: Windows installer
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: false
+        default: ''
+      build-number:
+        type: string
+        required: false
+        default: ''
+      flutter-version:
+        type: string
+        required: false
+        default: '3.44.8'
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows x64 EXE
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      CI: 'true'
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_BUILD_NUMBER: ${{ inputs.build-number }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ inputs.flutter-version }}
+          channel: stable
+          cache: true
+
+      - name: Resolve locked dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build Windows release
+        run: |
+          $arguments = @('build', 'windows', '--release', '--no-pub')
+          if ($env:RELEASE_VERSION) { $arguments += "--build-name=$env:RELEASE_VERSION" }
+          if ($env:RELEASE_BUILD_NUMBER) { $arguments += "--build-number=$env:RELEASE_BUILD_NUMBER" }
+          & flutter @arguments
+          if ($LASTEXITCODE -ne 0) { throw "Flutter exited with code $LASTEXITCODE." }
+
+      - name: Package installer and bundled C++ runtime
+        run: ./packaging/windows/build-installer.ps1 -Version $env:RELEASE_VERSION -BuildNumber $env:RELEASE_BUILD_NUMBER
+
+      - name: Verify install, launch and uninstall
+        run: ./packaging/windows/smoke-test.ps1
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: BShare-Windows-x64
+          path: |
+            dist/windows/*.exe
+            dist/windows/*.sha256
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload installer verification logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: BShare-Windows-verification
+          path: dist/windows/verification/
+          if-no-files-found: ignore
+          retention-days: 14

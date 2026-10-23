@@ -56,6 +56,7 @@ class FlutterVideoRenderer
   std::unique_ptr<flutter::TextureVariant> texture_;
   std::shared_ptr<FlutterDesktopPixelBuffer> pixel_buffer_;
   mutable std::shared_ptr<uint8_t[]> rgb_buffer_;
+  mutable bool frame_dirty_ = false;
   mutable std::mutex mutex_;
   RTCVideoFrame::VideoRotation rotation_ = RTCVideoFrame::kVideoRotation_0;
 };

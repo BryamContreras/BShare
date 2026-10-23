@@ -1,0 +1,269 @@
+name: Build Android installer
+
+on:
+  workflow_call:
+    inputs:
+      flutter-version:
+        description: Flutter SDK version shared by all installers.
+        type: string
+        default: '3.44.8'
+      artifact-name:
+        description: Name of the uploaded APK artifact.
+        type: string
+        default: BShare-Android
+      version:
+        description: Optional semantic version; defaults to pubspec.yaml.
+        type: string
+        default: ''
+      build-number:
+        description: Optional Android versionCode; defaults to pubspec.yaml.
+        type: string
+        default: ''
+      require-signing:
+        description: Fail when release signing is unavailable. Disable only for previews.
+        type: boolean
+        default: true
+    secrets:
+      ANDROID_KEYSTORE_BASE64:
+        description: Base64-encoded existing Android signing keystore.
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
+      ANDROID_KEY_ALIAS:
+        required: false
+      ANDROID_KEY_PASSWORD:
+        required: false
+    outputs:
+      artifact-name:
+        description: Artifact containing the APK, checksums and verification reports.
+        value: ${{ inputs.artifact-name }}
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android universal APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    env:
+      CI: true
+      CMAKE_BUILD_PARALLEL_LEVEL: '2'
+      BUILD_VERSION: ${{ inputs.version }}
+      BUILD_NUMBER: ${{ inputs.build-number }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ inputs.flutter-version }}
+          channel: stable
+          cache: true
+
+      - name: Install Android build tools
+        shell: bash
+        run: |
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+          flutter config --no-analytics
+          flutter pub get --enforce-lockfile
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Keep hosted-runner memory bounded without changing local developer settings.
+          config = Path('android/gradle.properties')
+          text = config.read_text()
+          values = {
+              'org.gradle.jvmargs': '-Xmx3g -XX:MaxMetaspaceSize=1g -XX:ReservedCodeCacheSize=256m -Dfile.encoding=UTF-8',
+              'org.gradle.workers.max': '2',
+              'org.gradle.daemon': 'false',
+          }
+          for key, value in values.items():
+              text = re.sub(r'^' + re.escape(key) + r'=.*\n?', '', text, flags=re.MULTILINE)
+              text += f'\n{key}={value}\n'
+          config.write_text(text)
+          PY
+
+      - name: Configure signing
+        id: signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          REQUIRE_SIGNING: ${{ inputs.require-signing }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+          import subprocess
+
+          names = (
+              'ANDROID_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD',
+              'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD',
+          )
+          present = [bool(os.environ.get(name)) for name in names]
+          if any(present) and not all(present):
+              raise SystemExit('Configure all four ANDROID signing secrets, or none of them.')
+          if all(present):
+              properties = Path('android/key.properties')
+              if properties.exists():
+                  raise SystemExit('Refusing to overwrite existing Android signing properties.')
+              keystore = Path(os.environ['RUNNER_TEMP']) / 'bshare-android-release.jks'
+              try:
+                  data = base64.b64decode(os.environ[names[0]], validate=True)
+              except ValueError:
+                  raise SystemExit('ANDROID_KEYSTORE_BASE64 is not valid base64.') from None
+              keystore.write_bytes(data)
+              keystore.chmod(0o600)
+              result = subprocess.run([
+                  'keytool', '-list', '-keystore', str(keystore),
+                  '-storepass:env', 'ANDROID_KEYSTORE_PASSWORD',
+                  '-alias', os.environ['ANDROID_KEY_ALIAS'],
+              ], capture_output=True)
+              if result.returncode:
+                  raise SystemExit('Unable to open the signing keystore or find its alias.')
+
+              def escape(value):
+                  value = value.replace('\\', '\\\\').replace('\n', '\\n')
+                  value = value.replace('\r', '\\r').replace('\t', '\\t')
+                  return ''.join('\\' + c if c in ' =:#!' else c for c in value)
+
+              values = {
+                  'storeFile': str(keystore),
+                  'storePassword': os.environ['ANDROID_KEYSTORE_PASSWORD'],
+                  'keyAlias': os.environ['ANDROID_KEY_ALIAS'],
+                  'keyPassword': os.environ['ANDROID_KEY_PASSWORD'],
+              }
+              properties.write_text(''.join(f'{key}={escape(value)}\n' for key, value in values.items()))
+              properties.chmod(0o600)
+              mode = 'release'
+          else:
+              if os.environ['REQUIRE_SIGNING'] == 'true':
+                  raise SystemExit('Android release signing is required. Configure all four ANDROID signing secrets.')
+              # Gradle's existing debug-key fallback is only for explicitly named previews.
+              # A fresh hosted runner has a different debug key, so these are not updates
+              # to production installations and must not be published as signed releases.
+              mode = 'preview'
+              print('::warning::No Android release key configured. Producing a preview APK signed with a temporary debug key.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'mode={mode}\n')
+          PY
+
+      - name: Build optimized universal APK
+        shell: bash
+        run: |
+          args=()
+          if [ -n "$BUILD_VERSION" ]; then
+            [[ "$BUILD_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo 'Invalid build version'; exit 1; }
+            args+=(--build-name "$BUILD_VERSION")
+          fi
+          if [ -n "$BUILD_NUMBER" ]; then
+            [[ "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]] && [ "$BUILD_NUMBER" -le 2100000000 ] || { echo 'Invalid Android build number'; exit 1; }
+            args+=(--build-number "$BUILD_NUMBER")
+          fi
+          flutter build apk --release --no-pub --target-platform android-arm,android-arm64,android-x64 "${args[@]}"
+
+      - name: Prepare installer and signing information
+        id: package
+        shell: bash
+        env:
+          SIGNING_MODE: ${{ steps.signing.outputs.mode }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import shutil
+
+          pubspec_version = re.search(r'^version:\s*(\S+)', Path('pubspec.yaml').read_text(), re.MULTILINE).group(1)
+          version = os.environ['BUILD_VERSION'] or pubspec_version.split('+')[0]
+          build_number = os.environ['BUILD_NUMBER'] or (pubspec_version.split('+', 1)[1] if '+' in pubspec_version else '1')
+          if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)*', version):
+              raise SystemExit('Unsupported application version for installer filename.')
+          output = Path('dist/android')
+          output.mkdir(parents=True, exist_ok=True)
+          apk = output / f'BShare-{version}-android-{os.environ["SIGNING_MODE"]}.apk'
+          shutil.copy2('build/app/outputs/flutter-apk/app-release.apk', apk)
+          (output / 'signing-info.json').write_text(json.dumps({
+              'applicationId': 'com.bshare.bshare',
+              'version': version,
+              'buildNumber': build_number,
+              'signingMode': os.environ['SIGNING_MODE'],
+              'productionKeyConfigured': os.environ['SIGNING_MODE'] == 'release',
+              'previewKeyPersistsBetweenRuns': False,
+              'sourceCommit': os.environ['GITHUB_SHA'],
+              'architectures': ['armeabi-v7a', 'arm64-v8a', 'x86_64'],
+              'minimumAndroidApi': 24,
+          }, indent=2) + '\n')
+          with open(os.environ['GITHUB_ENV'], 'a') as environment:
+              environment.write(f'APK_PATH={apk}\n')
+          PY
+
+      - name: Verify APK signatures, native libraries and QR registrar retention
+        shell: bash
+        run: |
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK_PATH" > dist/android/signature.txt
+          python3 tool/verify_android_native_compat.py "$APK_PATH" \
+            --require-abi armeabi-v7a --require-abi arm64-v8a --require-abi x86_64 \
+            --aapt2 "${ANDROID_HOME}/build-tools/36.0.0/aapt2" \
+            --output dist/android/native-compatibility.json
+          python3 tool/verify_android_qr_release.py "$APK_PATH" > dist/android/qr-release.json
+          cd dist/android
+          sha256sum ./*.apk > SHA256SUMS
+
+      - name: Remove private signing material and stop Gradle
+        if: always()
+        shell: bash
+        run: |
+          rm -f android/key.properties "${RUNNER_TEMP}/bshare-android-release.jks"
+          if [ -x android/gradlew ]; then
+            (cd android && ./gradlew --stop)
+          fi
+
+      - name: Upload APK and verification reports
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: dist/android/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Write build summary
+        if: success()
+        shell: bash
+        env:
+          SIGNING_MODE: ${{ steps.signing.outputs.mode }}
+          ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          mode = os.environ['SIGNING_MODE']
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('## Android\n\n')
+              summary.write(f'Installer: `{Path(os.environ["APK_PATH"]).name}`\n\n')
+              summary.write(f'Artifact: `{os.environ["ARTIFACT_NAME"]}`\n\n')
+              summary.write('Universal APK: ARM32, ARM64 and x86_64; Android API 24+.\n\n')
+              summary.write('Signature, native 16 KB packaging and QR registrar checks passed. These are static checks, not device tests.\n\n')
+              if mode == 'preview':
+                  summary.write('**Preview only:** signed with this runner\'s temporary debug key. Configure all four `ANDROID_*` signing secrets for a stable release certificate.\n')
+              else:
+                  summary.write('Signed with the configured Android release key.\n')
+          PY

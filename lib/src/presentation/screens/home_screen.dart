@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:bshare/src/application/providers.dart';
+import 'package:bshare/src/infrastructure/services/permission_request_coordinator.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
+import 'package:bshare/src/presentation/localization/camera_localizations.dart';
 import 'package:bshare/src/presentation/widgets/action_card.dart';
 import 'package:bshare/src/presentation/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +13,9 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.permissionCoordinator});
+
+  final PermissionRequestCoordinator? permissionCoordinator;
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -18,11 +23,16 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _scrollController = ScrollController();
+  late final _androidPlatformInfo = ref.read(androidPlatformInfoProvider);
+  late final _permissionCoordinator =
+      widget.permissionCoordinator ?? PermissionRequestCoordinator.instance;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(_requestInitialAndroidPermissions);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_requestInitialAndroidPermissions());
+    });
   }
 
   @override
@@ -32,19 +42,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _requestInitialAndroidPermissions() async {
-    if (!Platform.isAndroid) return;
-
-    final location = await Permission.locationWhenInUse.status;
-    if (location.isDenied || location.isRestricted) {
-      await Permission.locationWhenInUse.request();
+    if (!mounted || !_androidPlatformInfo.isAndroid) return;
+    try {
+      final sdkInt = await _androidPlatformInfo.sdkInt();
+      if (!mounted || sdkInt < 33) return;
+      // LAN traffic and its IP address do not require location permission.
+      // Request Wi-Fi access only from features that need it, and keep the
+      // network snapshot independent of this notification-only dialog.
+      await _permissionCoordinator.request(Permission.notification);
+    } catch (error) {
+      if (mounted) {
+        ref
+            .read(loggerProvider)
+            .warn('Initial Android permissions failed: $error');
+      }
     }
-
-    final notifications = await Permission.notification.status;
-    if (notifications.isDenied || notifications.isRestricted) {
-      await Permission.notification.request();
-    }
-
-    ref.invalidate(networkProvider);
   }
 
   @override
@@ -52,6 +64,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final network = ref.watch(networkProvider);
     final settings = ref.watch(settingsProvider);
     final l10n = context.l10n;
+    final platform = Theme.of(context).platform;
+    final mobile =
+        platform == TargetPlatform.android || platform == TargetPlatform.iOS;
     return AppShell(
       scrollController: _scrollController,
       actions: [
@@ -193,25 +208,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         title: l10n.t('send'),
                         subtitle: l10n.t('sendSubtitle'),
                         icon: Icons.upload_file_rounded,
-                        onTap: () {
-                          ref.read(discoveryProvider.notifier).start();
-                          context.go('/send');
-                        },
+                        compactTypography: mobile,
+                        onTap: () => context.go('/send'),
                       ),
                       ActionCard(
                         title: l10n.t('receive'),
                         subtitle: l10n.t('receiveSubtitle'),
                         icon: Icons.download_for_offline_rounded,
+                        compactTypography: mobile,
                         onTap: () => context.go('/receive'),
                       ),
                       ActionCard(
-                        title: l10n.t('screen'),
+                        title: l10n.t('shareScreen'),
                         subtitle: l10n.t('screenSubtitle'),
                         icon: Icons.screen_share_rounded,
-                        onTap: () {
-                          ref.read(discoveryProvider.notifier).start();
-                          context.go('/screen');
-                        },
+                        compactTypography: mobile,
+                        onTap: () => context.go('/screen'),
+                      ),
+                      ActionCard(
+                        title: l10n.cameraText('deviceCamera'),
+                        subtitle: l10n.cameraText('deviceCameraHelp'),
+                        icon: Icons.videocam_rounded,
+                        compactTypography: mobile,
+                        onTap: () => context.go('/camera'),
                       ),
                     ];
                     if (constraints.maxWidth < 720) {
@@ -234,7 +253,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ],
                       );
                     }
-                    final columns = constraints.maxWidth < 980 ? 2 : 3;
+                    const columns = 2;
                     final spacing = 16.0;
                     final cardWidth =
                         (constraints.maxWidth - spacing * (columns - 1)) /

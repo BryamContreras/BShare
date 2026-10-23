@@ -61,6 +61,7 @@ import org.webrtc.Camera2Enumerator;
 import org.webrtc.Camera2Helper;
 import org.webrtc.CameraEnumerator;
 import org.webrtc.CameraVideoCapturer;
+import org.webrtc.CapturerObserver;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
 import org.webrtc.MediaStreamTrack;
@@ -394,9 +395,8 @@ public class GetUserMediaImpl {
 
         String trackId = stateProvider.getNextTrackUUID();
         PeerConnectionFactory pcFactory = stateProvider.getPeerConnectionFactory();
-        AudioSource audioSource = pcFactory.createAudioSource(audioConstraints);
-        AudioTrack track = pcFactory.createAudioTrack(trackId, audioSource);
-        stream.addTrack(track);
+        AudioTrack track = createUserAudioTrack(pcFactory, audioConstraints, stream, trackId);
+        if (track == null) return null;
 
         stateProvider.putLocalTrack(track.id(), new LocalAudioTrack(track));
 
@@ -425,6 +425,28 @@ public class GetUserMediaImpl {
         trackParams.putMap("settings", settings.toMap());
 
         return trackParams;
+    }
+
+    private AudioTrack createUserAudioTrack(PeerConnectionFactory factory,
+            MediaConstraints constraints, MediaStream stream, String trackId) {
+        AudioSource source = factory.createAudioSource(constraints);
+        AudioTrack track;
+        try {
+            // The native track retains its own source reference. Release the
+            // temporary Java source wrapper even when track creation fails.
+            track = factory.createAudioTrack(trackId, source);
+        } finally {
+            source.dispose();
+        }
+        if (track == null) return null;
+        try {
+            if (stream.addTrack(track)) return track;
+        } catch (RuntimeException error) {
+            track.dispose();
+            throw error;
+        }
+        track.dispose();
+        return null;
     }
 
     /**
@@ -520,16 +542,34 @@ public class GetUserMediaImpl {
                                 resultError("screenRequestPermissions", "User didn't give permission to capture the screen.", result);
                                 return;
                             }
-                            getDisplayMedia(result, mediaStream, mediaProjectionData);
+                            getDisplayMedia(constraints, result, mediaStream, mediaProjectionData);
                         }
                     });
         } else {
-            getDisplayMedia(result, mediaStream, mediaProjectionData);
+            getDisplayMedia(constraints, result, mediaStream, mediaProjectionData);
         }
     }
 
-    private void getDisplayMedia(final Result result, final MediaStream mediaStream, final Intent mediaProjectionData) {
+    private void getDisplayMedia(final ConstraintsMap constraints, final Result result,
+                                final MediaStream mediaStream, final Intent mediaProjectionData) {
+        int maxShortSide = 0;
+        int frameRate = DEFAULT_FPS;
+        if (constraints.getType("video") == ObjectType.Map) {
+            final ConstraintsMap video = constraints.getMap("video");
+            if (video.getType("mandatory") == ObjectType.Map) {
+                final ConstraintsMap mandatory = video.getMap("mandatory");
+                final Object resolution = mandatory.toMap().get("maxShortSide");
+                final Object fps = mandatory.toMap().get("frameRate");
+                if (resolution instanceof Number) {
+                    maxShortSide = Math.max(0, ((Number) resolution).intValue());
+                }
+                if (fps instanceof Number) {
+                    frameRate = Math.max(1, Math.min(60, ((Number) fps).intValue()));
+                }
+            }
+        }
         /* Create ScreenCapture */
+        final String trackId = stateProvider.getNextTrackUUID();
         VideoTrack displayTrack = null;
         VideoCapturer videoCapturer = null;
         videoCapturer =
@@ -538,12 +578,14 @@ public class GetUserMediaImpl {
                         new MediaProjection.Callback() {
                             @Override
                             public void onStop() {
-                                super.onStop();
-                                // After Huawei P30 and Android 10 version test, the onstop method is called, which will not affect the next process,
-                                // and there is no need to call the resulterror method
-                                //resultError("MediaProjection.Callback()", "User revoked permission to capture the screen.", result);
+                                ConstraintsMap event = new ConstraintsMap();
+                                event.putString("event", "onScreenCaptureStopped");
+                                event.putString("trackId", trackId);
+                                if (FlutterWebRTCPlugin.sharedSingleton != null) {
+                                    FlutterWebRTCPlugin.sharedSingleton.sendEvent(event.toMap());
+                                }
                             }
-                        });
+                        }, maxShortSide);
         if (videoCapturer == null) {
             resultError("screenRequestPermissions", "GetDisplayMediaFailed, User revoked permission to capture the screen.", result);
             return;
@@ -552,33 +594,34 @@ public class GetUserMediaImpl {
         PeerConnectionFactory pcFactory = stateProvider.getPeerConnectionFactory();
         VideoSource videoSource = pcFactory.createVideoSource(true);
 
-        String threadName = Thread.currentThread().getName() + "_texture_screen_thread";
-        SurfaceTextureHelper surfaceTextureHelper =
-                SurfaceTextureHelper.create(threadName, EglUtils.getRootEglBaseContext());
-        videoCapturer.initialize(
-                surfaceTextureHelper, applicationContext, videoSource.getCapturerObserver());
-
-        WindowManager wm =
-                (WindowManager) applicationContext.getSystemService(Context.WINDOW_SERVICE);
-
-        Display display = wm.getDefaultDisplay();
-        Point size = new Point();
-        display.getRealSize(size);
-
         VideoCapturerInfoEx info = new VideoCapturerInfoEx();
-        info.width = size.x;
-        info.height = size.y;
-        info.fps = DEFAULT_FPS;
+        info.fps = frameRate;
         info.isScreenCapture = true;
         info.capturer = videoCapturer;
+        info.videoSource = videoSource;
 
-        videoCapturer.startCapture(info.width, info.height, info.fps);
+        if (!startScreenCapture(info, result)) {
+            return;
+        }
         Log.d(TAG, "OrientationAwareScreenCapturer.startCapture: " + info.width + "x" + info.height + "@" + info.fps);
 
-        String trackId = stateProvider.getNextTrackUUID();
         mVideoCapturers.put(trackId, info);
 
-        displayTrack = pcFactory.createVideoTrack(trackId, videoSource);
+        try {
+            displayTrack = pcFactory.createVideoTrack(trackId, videoSource);
+            if (displayTrack == null) {
+                throw new IllegalStateException("Cannot create screen capture track");
+            }
+        } catch (RuntimeException error) {
+            try {
+                removeVideoCapturer(trackId);
+            } catch (RuntimeException cleanupError) {
+                error.addSuppressed(cleanupError);
+            }
+            Log.e(TAG, "Failed to create screen capture track", error);
+            resultError("getDisplayMedia", "Failed to create screen capture track: " + error.getMessage(), result);
+            return;
+        }
 
         ConstraintsArray audioTracks = new ConstraintsArray();
         ConstraintsArray videoTracks = new ConstraintsArray();
@@ -614,6 +657,48 @@ public class GetUserMediaImpl {
         successResult.putArray("audioTracks", audioTracks.toArrayList());
         successResult.putArray("videoTracks", videoTracks.toArrayList());
         result.success(successResult.toMap());
+    }
+
+    private boolean startScreenCapture(final VideoCapturerInfoEx info, final Result result) {
+        try {
+            final WindowManager wm =
+                    (WindowManager) applicationContext.getSystemService(Context.WINDOW_SERVICE);
+            final Point size = new Point();
+            wm.getDefaultDisplay().getRealSize(size);
+            info.width = size.x;
+            info.height = size.y;
+            // Limit cadence without cropping. The capturer scales the virtual
+            // display proportionally and follows captured-content rotation.
+            info.videoSource.adaptOutputFormat(new VideoSource.AspectRatio(0, 0), null,
+                    new VideoSource.AspectRatio(0, 0), null, info.fps);
+            final CapturerObserver observer = info.videoSource.getCapturerObserver();
+            if (observer == null) {
+                throw new IllegalStateException("Screen capture observer is unavailable");
+            }
+            final String threadName = Thread.currentThread().getName() + "_texture_screen_thread";
+            final SurfaceTextureHelper helper =
+                    SurfaceTextureHelper.create(threadName, EglUtils.getRootEglBaseContext());
+            if (helper == null) {
+                throw new IllegalStateException("Cannot create screen capture texture");
+            }
+            // initialize takes ownership of the helper before accessing the
+            // platform managers, so dispose can roll back a partial start.
+            info.capturer.initialize(helper, applicationContext, observer);
+            info.capturer.startCapture(info.width, info.height, info.fps);
+            return true;
+        } catch (RuntimeException error) {
+            try {
+                info.capturer.dispose();
+            } catch (RuntimeException cleanupError) {
+                error.addSuppressed(cleanupError);
+            } finally {
+                info.videoSource.dispose();
+                info.videoSource = null;
+            }
+            Log.e(TAG, "Failed to start screen capture", error);
+            resultError("getDisplayMedia", "Failed to start screen capture: " + error.getMessage(), result);
+            return false;
+        }
     }
 
     /**
@@ -972,6 +1057,7 @@ public class GetUserMediaImpl {
             promoted.primaryTrackId = null;
             promoted.capturer = info.capturer;
             promoted.cameraEventsHandler = info.cameraEventsHandler;
+            promoted.videoSource = info.videoSource;
 
             SurfaceTextureHelper helper = mSurfaceTextureHelpers.remove(id);
             if (helper != null) mSurfaceTextureHelpers.put(newPrimaryId, helper);
@@ -994,15 +1080,28 @@ public class GetUserMediaImpl {
                     info.cameraEventsHandler.waitForCameraClosed();
                 }
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 Log.e(TAG, "removeVideoCapturer() Failed to stop video capturer");
             } finally {
-                info.capturer.dispose();
                 mVideoCapturers.remove(id);
-                SurfaceTextureHelper helper = mSurfaceTextureHelpers.get(id);
-                if (helper != null) {
-                    helper.stopListening();
-                    helper.dispose();
-                    mSurfaceTextureHelpers.remove(id);
+                SurfaceTextureHelper helper = mSurfaceTextureHelpers.remove(id);
+                try {
+                    info.capturer.dispose();
+                } finally {
+                    try {
+                        if (helper != null) {
+                            try {
+                                helper.stopListening();
+                            } finally {
+                                helper.dispose();
+                            }
+                        }
+                    } finally {
+                        if (info.videoSource != null) {
+                            info.videoSource.dispose();
+                            info.videoSource = null;
+                        }
+                    }
                 }
             }
         }

@@ -158,6 +158,20 @@ class Helper {
   static Future<void> setMicrophoneMute(bool mute, MediaStreamTrack track) =>
       NativeAudioManagement.setMicrophoneMute(mute, track);
 
+  /// Control Android's actual WebRTC recording device for this peer factory.
+  ///
+  /// Disable before negotiating an audio sender when microphone capture is off.
+  /// Enable only after microphone permission and foreground execution are ready.
+  /// The setting also applies to subsequently created peers and does not affect
+  /// audio playout. Other platforms do nothing.
+  static Future<void> setAndroidAudioRecording(bool enabled) async {
+    if (kIsWeb || !WebRTC.platformIsAndroid) return;
+    await WebRTC.invokeMethod(
+      'setAudioRecordingEnabled',
+      <String, dynamic>{'enabled': enabled},
+    );
+  }
+
   /// Set the audio configuration to for Android.
   /// Must be set before initiating a WebRTC session and cannot be changed
   /// mid session.

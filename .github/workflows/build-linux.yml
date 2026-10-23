@@ -1,0 +1,116 @@
+name: Linux installers
+
+on:
+  workflow_call:
+    inputs:
+      flutter-version:
+        description: Pinned Flutter SDK version
+        type: string
+        default: '3.44.8'
+      version:
+        description: Numeric release version; empty uses pubspec.yaml
+        type: string
+        default: ''
+      build-number:
+        description: Numeric build number; empty uses pubspec.yaml
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux x64 DEB and RPM
+    # Build on the oldest supported runner to avoid raising the glibc floor.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: '2'
+      FLUTTER_VERSION: ${{ inputs.flutter-version }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      BUILD_NUMBER: ${{ inputs.build-number }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Install native build and packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
+            libstdc++-12-dev libasound2-dev libpulse-dev libgbm-dev libdrm-dev \
+            libgl1-mesa-dev libegl1-mesa-dev dpkg-dev rpm patchelf desktop-file-utils
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: ${{ inputs.flutter-version }}
+          cache: true
+
+      - name: Resolve locked dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build Linux release once
+        shell: bash
+        run: |
+          options=()
+          if [[ -n "$RELEASE_VERSION" ]]; then options+=(--build-name "$RELEASE_VERSION"); fi
+          if [[ -n "$BUILD_NUMBER" ]]; then options+=(--build-number "$BUILD_NUMBER"); fi
+          flutter build linux --release --no-pub "${options[@]}"
+
+      - name: Package DEB and RPM from the same bundle
+        shell: bash
+        run: |
+          options=()
+          if [[ -n "$RELEASE_VERSION" ]]; then options+=(--version "$RELEASE_VERSION"); fi
+          if [[ -n "$BUILD_NUMBER" ]]; then options+=(--build-number "$BUILD_NUMBER"); fi
+          python3 tool/packaging_linux.py --output dist/linux "${options[@]}"
+
+      - name: Install and check DEB in an isolated Ubuntu container
+        run: |
+          docker run --rm --volume "$PWD/dist/linux:/packages:ro" ubuntu:22.04 bash -euc '
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install --no-install-recommends -y /packages/*.deb desktop-file-utils
+            test -x /usr/bin/bshare
+            test -x /opt/bshare/bshare
+            desktop-file-validate /usr/share/applications/com.bshare.bshare.desktop
+            for binary in /opt/bshare/bshare /opt/bshare/lib/*.so; do
+              dependencies="$(ldd "$binary")"
+              printf "%s\n" "$dependencies"
+              if printf "%s\n" "$dependencies" | grep -q "not found"; then exit 1; fi
+            done
+            dpkg-query --show bshare
+            apt-get remove -y bshare
+            test ! -e /usr/bin/bshare
+          '
+
+      - name: Install and check RPM in an isolated Fedora container
+        run: |
+          docker run --rm --volume "$PWD/dist/linux:/packages:ro" fedora:44 bash -euc '
+            dnf install -y /packages/*.rpm desktop-file-utils
+            test -x /usr/bin/bshare
+            test -x /opt/bshare/bshare
+            desktop-file-validate /usr/share/applications/com.bshare.bshare.desktop
+            for binary in /opt/bshare/bshare /opt/bshare/lib/*.so; do
+              dependencies="$(ldd "$binary")"
+              printf "%s\n" "$dependencies"
+              if printf "%s\n" "$dependencies" | grep -q "not found"; then exit 1; fi
+            done
+            rpm --query bshare
+            dnf remove -y bshare
+            test ! -e /usr/bin/bshare
+          '
+
+      - name: Upload Linux installers and dependency manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: bshare-linux-x64
+          path: dist/linux/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

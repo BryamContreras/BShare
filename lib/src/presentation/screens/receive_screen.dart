@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/direct_share_invite.dart';
 import 'package:bshare/src/domain/entities/transfer_progress_status.dart';
+import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
 import 'package:bshare/src/presentation/widgets/app_shell.dart';
 import 'package:bshare/src/presentation/widgets/gradient_action_button.dart';
@@ -21,6 +22,7 @@ class ReceiveScreen extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     final compact = MediaQuery.sizeOf(context).width < 420;
     final visible = receive.value?.visible == true;
+    final acceptingFiles = receive.value?.acceptingFiles == true;
     final directInvite = receive.value?.directInvite;
     final deviceName = settings.value?.deviceName.trim() ?? '';
     final receiverBusy =
@@ -47,12 +49,13 @@ class ReceiveScreen extends ConsumerWidget {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(width: 10),
-                      Text(
-                        visible
-                            ? l10n.t('deviceVisible')
-                            : l10n.t('receiverStopped'),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
+                      Expanded(
+                        child: Text(
+                          visible
+                              ? l10n.t('deviceVisible')
+                              : l10n.t('receiverStopped'),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ),
                     ],
@@ -74,10 +77,14 @@ class ReceiveScreen extends ConsumerWidget {
                   Text(
                     '${l10n.t('savingTo')}: ${settings.value?.downloadDirectory ?? '-'}',
                   ),
+                  if (visible && !acceptingFiles) ...[
+                    const SizedBox(height: 8),
+                    Text(l10n.t('videoReceiverOnly')),
+                  ],
                   if (receive.value?.error != null) ...[
                     const SizedBox(height: 10),
                     Text(
-                      receive.value!.error!,
+                      l10n.t(receive.value!.error!),
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.error,
                       ),
@@ -103,7 +110,8 @@ class ReceiveScreen extends ConsumerWidget {
                     runSpacing: 10,
                     children: [
                       GradientActionButton(
-                        onPressed: receive.isLoading || visible
+                        onPressed:
+                            receive.isLoading || (visible && acceptingFiles)
                             ? null
                             : () => ref
                                   .read(receiveControllerProvider.notifier)
@@ -114,9 +122,26 @@ class ReceiveScreen extends ConsumerWidget {
                       GradientActionButton(
                         onPressed: receive.isLoading || !visible || receiverBusy
                             ? null
-                            : () => ref
-                                  .read(receiveControllerProvider.notifier)
-                                  .stop(),
+                            : () async {
+                                final service = ref.read(
+                                  screenShareServiceProvider,
+                                );
+                                if (service.state.value.mode ==
+                                    ScreenShareMode.sharing) {
+                                  await service.stop(
+                                    ref.read(fileServerProvider),
+                                  );
+                                }
+                                if (ref
+                                        .read(receiveControllerProvider)
+                                        .value
+                                        ?.visible ==
+                                    true) {
+                                  await ref
+                                      .read(receiveControllerProvider.notifier)
+                                      .stop();
+                                }
+                              },
                         icon: Icons.stop_rounded,
                         label: l10n.t('stop'),
                       ),

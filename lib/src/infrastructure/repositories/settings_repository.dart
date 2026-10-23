@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:bshare/src/domain/entities/app_settings.dart';
+import 'package:bshare/src/domain/entities/camera_capture_settings.dart';
+import 'package:bshare/src/domain/entities/screen_capture_settings.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +24,9 @@ class SettingsRepository {
   static const _preferredPort = 'preferredPort';
   static const _themeMode = 'themeMode';
   static const _languageCode = 'languageCode';
+  static const _screenResolution = 'screenResolution';
+  static const _screenFrameRate = 'screenFrameRate';
+  static const _cameraCaptureSettings = 'cameraCaptureSettings';
   static const _androidDownloadDirectory = '/storage/emulated/0/Download';
 
   Future<AppSettings> load() async {
@@ -41,7 +47,9 @@ class SettingsRepository {
     }
 
     if (!(_prefs.getBool(_autoAcceptDefaultMigrated) ?? false)) {
-      await _prefs.setBool(_autoAccept, true);
+      if (!_prefs.containsKey(_autoAccept)) {
+        await _prefs.setBool(_autoAccept, true);
+      }
       await _prefs.setBool(_autoAcceptDefaultMigrated, true);
     }
 
@@ -61,7 +69,22 @@ class SettingsRepository {
       preferredPort: _prefs.getInt(_preferredPort) ?? 53317,
       themeMode: _prefs.getString(_themeMode) ?? 'system',
       languageCode: _prefs.getString(_languageCode) ?? 'en',
+      screenCapture: ScreenCaptureSettings(
+        resolution: _prefs.getInt(_screenResolution) ?? 1080,
+        frameRate: _prefs.getInt(_screenFrameRate) ?? 30,
+      ).validated,
+      cameraCapture: _loadCameraSettings(),
     );
+  }
+
+  CameraCaptureSettings _loadCameraSettings() {
+    final encoded = _prefs.get(_cameraCaptureSettings);
+    if (encoded is! String) return const CameraCaptureSettings();
+    try {
+      return CameraCaptureSettings.fromJson(jsonDecode(encoded));
+    } on FormatException {
+      return const CameraCaptureSettings();
+    }
   }
 
   bool _shouldReplaceDefaultDeviceName(String value) {
@@ -85,13 +108,32 @@ class SettingsRepository {
   }
 
   Future<void> save(AppSettings settings) async {
-    await _prefs.setString(_deviceId, settings.deviceId);
-    await _prefs.setString(_deviceName, settings.deviceName);
-    await _prefs.setString(_downloadDirectory, settings.downloadDirectory);
-    await _prefs.setBool(_autoAccept, settings.autoAccept);
-    await _prefs.setInt(_preferredPort, settings.preferredPort);
-    await _prefs.setString(_themeMode, settings.themeMode);
-    await _prefs.setString(_languageCode, settings.languageCode);
+    await _setString(_deviceId, settings.deviceId);
+    await _setString(_deviceName, settings.deviceName);
+    await _setString(_downloadDirectory, settings.downloadDirectory);
+    if (_prefs.getBool(_autoAccept) != settings.autoAccept) {
+      await _prefs.setBool(_autoAccept, settings.autoAccept);
+    }
+    await _setInt(_preferredPort, settings.preferredPort);
+    await _setString(_themeMode, settings.themeMode);
+    await _setString(_languageCode, settings.languageCode);
+    await _setInt(
+      _screenResolution,
+      settings.screenCapture.validated.resolution,
+    );
+    await _setInt(_screenFrameRate, settings.screenCapture.validated.frameRate);
+    await _setString(
+      _cameraCaptureSettings,
+      jsonEncode(settings.cameraCapture.toJson()),
+    );
+  }
+
+  Future<void> _setString(String key, String value) async {
+    if (_prefs.get(key) != value) await _prefs.setString(key, value);
+  }
+
+  Future<void> _setInt(String key, int value) async {
+    if (_prefs.get(key) != value) await _prefs.setInt(key, value);
   }
 
   Future<String> defaultDownloadDirectory() async {

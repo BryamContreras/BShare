@@ -84,7 +84,10 @@ void main() {
     );
     expect(sendNavigationItem, findsOneWidget);
     tester.widget<InkWell>(sendNavigationItem).onTap!();
-    await tester.pumpAndSettle();
+    // Device discovery now animates while waiting for real network IO. Finish
+    // the route transition without waiting for that independent scan to end.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     expect(container.read(pickedFilesProvider), hasLength(1));
     expect(find.text('Target device'), findsOneWidget);
 
@@ -97,7 +100,8 @@ void main() {
     );
     expect(transfersNavigationItem, findsOneWidget);
     tester.widget<InkWell>(transfersNavigationItem).onTap!();
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('active-transfer.zip'), findsOneWidget);
     expect(container.read(pickedFilesProvider), hasLength(1));

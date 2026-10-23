@@ -3,32 +3,83 @@ import 'dart:io';
 
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/direct_share_invite.dart';
+import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
+import 'package:bshare/src/presentation/localization/camera_ui_localizations.dart';
+import 'package:bshare/src/presentation/navigation/app_navigation.dart';
 import 'package:bshare/src/presentation/widgets/app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:bshare/src/infrastructure/services/permission_request_coordinator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 enum _PendingDirectAction { enableWifi, joinNetwork }
 
-class DirectQrScannerScreen extends ConsumerStatefulWidget {
-  const DirectQrScannerScreen({super.key});
+class DirectQrScannerScreen extends ConsumerWidget {
+  const DirectQrScannerScreen({
+    super.key,
+    this.permissionCoordinator,
+    this.controllerFactory,
+  });
+
+  final PermissionRequestCoordinator? permissionCoordinator;
+  final MobileScannerController Function()? controllerFactory;
 
   @override
-  ConsumerState<DirectQrScannerScreen> createState() =>
+  Widget build(BuildContext context, WidgetRef ref) {
+    final service = ref.watch(screenShareServiceProvider);
+    final cameraBusy = ref.watch(
+      cameraSessionProvider.select((session) => session.busy),
+    );
+    return ValueListenableBuilder<ScreenShareState>(
+      valueListenable: service.state,
+      builder: (context, state, _) {
+        final cameraSharing =
+            service.source == VideoShareSource.camera &&
+            state.mode == ScreenShareMode.sharing;
+        if (cameraBusy || cameraSharing) return const _SharedCameraInUseView();
+        return _DirectQrScannerContent(
+          permissionCoordinator: permissionCoordinator,
+          controllerFactory: controllerFactory,
+        );
+      },
+    );
+  }
+}
+
+class _DirectQrScannerContent extends ConsumerStatefulWidget {
+  const _DirectQrScannerContent({
+    this.permissionCoordinator,
+    this.controllerFactory,
+  });
+
+  final PermissionRequestCoordinator? permissionCoordinator;
+  final MobileScannerController Function()? controllerFactory;
+
+  @override
+  ConsumerState<_DirectQrScannerContent> createState() =>
       _DirectQrScannerScreenState();
 }
 
-class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
+class _DirectQrScannerScreenState extends ConsumerState<_DirectQrScannerContent>
     with WidgetsBindingObserver {
-  late final MobileScannerController _controller;
+  late MobileScannerController _controller;
   var _cameraAllowed = false;
   var _checkingPermission = true;
+  var _appActive = true;
+  var _closing = false;
+  Future<void> _cameraOperation = Future<void>.value();
+  Future<void>? _permissionOperation;
+  Future<void>? _connectionOperation;
   var _handlingCode = false;
   var _waitingForReceiver = false;
+  DirectShareInvite? _activeInvite;
+  HttpClient? _probeClient;
+  Timer? _retryTimer;
+  Completer<void>? _retryDelay;
   DirectShareInvite? _pendingInvite;
   _PendingDirectAction? _pendingAction;
   String? _statusKey;
@@ -37,23 +88,39 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
   @override
   void initState() {
     super.initState();
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _appActive = lifecycle == null || lifecycle == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
-    _controller = MobileScannerController(
-      formats: const [BarcodeFormat.qrCode],
-      detectionSpeed: DetectionSpeed.noDuplicates,
-    );
-    Future.microtask(_requestCameraPermission);
+    _controller = _createController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_requestCameraPermission());
+    });
   }
+
+  MobileScannerController _createController() =>
+      widget.controllerFactory?.call() ??
+      MobileScannerController(
+        autoStart: false,
+        formats: const [BarcodeFormat.qrCode],
+        // Duplicate callbacks are guarded while connecting. Allow the same QR
+        // again after a failed connection without making the user move it away.
+        detectionSpeed: DetectionSpeed.normal,
+      );
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _controller.dispose();
+    _closing = true;
+    _activeInvite = null;
+    _cancelReceiverWait();
+    unawaited(_disposeCamera());
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appActive = state == AppLifecycleState.resumed;
+    unawaited(_syncCamera());
     final invite = _pendingInvite;
     if (state == AppLifecycleState.resumed && invite != null) {
       if (_pendingAction == _PendingDirectAction.enableWifi) {
@@ -61,34 +128,140 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
       } else {
         unawaited(_waitForReceiver(invite));
       }
+    } else if (state == AppLifecycleState.resumed && !_cameraAllowed) {
+      unawaited(_requestCameraPermission());
     }
   }
 
-  Future<void> _requestCameraPermission() async {
-    final status = await Permission.camera.request();
-    if (!mounted) return;
-    setState(() {
-      _cameraAllowed = status.isGranted;
-      _checkingPermission = false;
+  Future<void> _requestCameraPermission() {
+    return _permissionOperation ??= _checkCameraPermission().whenComplete(() {
+      _permissionOperation = null;
     });
   }
 
+  Future<void> _checkCameraPermission() async {
+    try {
+      final status =
+          await (widget.permissionCoordinator ??
+                  PermissionRequestCoordinator.instance)
+              .request(Permission.camera);
+      if (!mounted || _closing) return;
+      setState(() {
+        _cameraAllowed = status.isGranted;
+        _checkingPermission = false;
+      });
+      // The scanner must be attached before start(), including after returning
+      // from the system permission settings.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_closing) unawaited(_syncCamera());
+      });
+    } catch (error, stack) {
+      debugPrint('QR camera permission failed: $error\n$stack');
+      if (!mounted || _closing) return;
+      setState(() {
+        _checkingPermission = false;
+        _cameraAllowed = false;
+      });
+    }
+  }
+
+  Future<void> _syncCamera() {
+    final operation = _cameraOperation.then((_) async {
+      if (_closing) return;
+      try {
+        if (_shouldRunCamera) {
+          if (_controller.value.error != null) {
+            // A failed start still owns native event subscriptions. Dispose it
+            // before retrying, rather than stacking listeners on the same one.
+            await _controller.dispose();
+            if (!_shouldRunCamera) return;
+            setState(() {
+              _controller = _createController();
+            });
+            await WidgetsBinding.instance.endOfFrame;
+            if (!_shouldRunCamera) return;
+          }
+          await _controller.start();
+        } else {
+          await _controller.stop();
+        }
+      } catch (error, stack) {
+        debugPrint('QR camera operation failed: $error\n$stack');
+        if (!mounted || _closing) return;
+        setState(() {
+          _error = context.l10n.t('cameraUnavailableHelp');
+        });
+      }
+    });
+    _cameraOperation = operation;
+    return operation;
+  }
+
+  bool get _shouldRunCamera =>
+      mounted && !_closing && _appActive && _cameraAllowed && !_handlingCode;
+
+  Future<void> _disposeCamera() async {
+    await _cameraOperation;
+    try {
+      try {
+        await _controller.stop();
+      } finally {
+        await _controller.dispose();
+      }
+    } catch (error, stack) {
+      debugPrint('QR camera cleanup failed: $error\n$stack');
+    }
+  }
+
+  bool _isCurrent(DirectShareInvite invite) =>
+      mounted && !_closing && identical(_activeInvite, invite);
+
+  void _cancelReceiverWait() {
+    _probeClient?.close(force: true);
+    _probeClient = null;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    final delay = _retryDelay;
+    _retryDelay = null;
+    if (delay != null && !delay.isCompleted) delay.complete();
+  }
+
+  Future<void> _receiverRetryDelay() {
+    final delay = Completer<void>();
+    _retryDelay = delay;
+    _retryTimer = Timer(const Duration(seconds: 1), () {
+      _retryTimer = null;
+      _retryDelay = null;
+      delay.complete();
+    });
+    return delay.future;
+  }
+
   Future<void> _handleDetect(BarcodeCapture capture) async {
-    if (_handlingCode) return;
-    String? value;
+    if (!mounted ||
+        _closing ||
+        !_appActive ||
+        _handlingCode ||
+        _connectionOperation != null) {
+      return;
+    }
+    DirectShareInvite? invite;
+    var foundValue = false;
     for (final barcode in capture.barcodes) {
       final raw = barcode.rawValue?.trim();
       if (raw != null && raw.isNotEmpty) {
-        value = raw;
-        break;
+        foundValue = true;
+        try {
+          invite = DirectShareInvite.decode(raw);
+          break;
+        } on FormatException {
+          // A frame can contain several QR codes; a different QR must not hide
+          // a valid BShare invitation in the same camera frame.
+        }
       }
     }
-    if (value == null) return;
-
-    DirectShareInvite invite;
-    try {
-      invite = DirectShareInvite.decode(value);
-    } catch (_) {
+    if (invite == null) {
+      if (!foundValue) return;
       setState(() {
         _error = context.l10n.t('invalidBShareQr');
         _statusKey = null;
@@ -97,19 +270,35 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
     }
 
     setState(() {
+      _activeInvite = invite;
       _handlingCode = true;
       _statusKey = 'connectingDirectNetwork';
       _error = null;
     });
-    await _controller.stop();
+    await _syncCamera();
 
+    if (!_isCurrent(invite)) return;
     await _connectToInvite(invite);
   }
 
   Future<void> _connectToInvite(
     DirectShareInvite invite, {
     bool openPanelIfWifiOff = true,
+  }) {
+    return _connectionOperation ??=
+        _connectToInviteOnce(
+          invite,
+          openPanelIfWifiOff: openPanelIfWifiOff,
+        ).whenComplete(() {
+          _connectionOperation = null;
+        });
+  }
+
+  Future<void> _connectToInviteOnce(
+    DirectShareInvite invite, {
+    bool openPanelIfWifiOff = true,
   }) async {
+    if (!_isCurrent(invite)) return;
     final l10n = context.l10n;
     if (mounted) {
       setState(() {
@@ -126,6 +315,7 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
       }
       final service = ref.read(directNetworkServiceProvider);
       final wifiReady = await service.ensureWifiReady();
+      if (!_isCurrent(invite)) return;
       if (!wifiReady) {
         if (openPanelIfWifiOff) {
           await _openWifiPowerPanel(invite);
@@ -135,9 +325,10 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
         return;
       }
       await service.connectToWifi(invite.credentials);
+      if (!_isCurrent(invite)) return;
       await _finishConnection(invite, verifyReachability: true);
     } catch (error) {
-      if (!mounted) return;
+      if (!_isCurrent(invite)) return;
       if (_shouldUseSystemWifiFallback(error)) {
         await _openWifiJoinSettings(invite);
         return;
@@ -149,7 +340,7 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
         _pendingAction = null;
         _error = error.toString();
       });
-      await _controller.start();
+      await _syncCamera();
     }
   }
 
@@ -159,7 +350,7 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
   }
 
   Future<void> _openWifiPowerPanel(DirectShareInvite invite) async {
-    if (!mounted) return;
+    if (!_isCurrent(invite)) return;
     setState(() {
       _pendingInvite = invite;
       _pendingAction = _PendingDirectAction.enableWifi;
@@ -170,7 +361,7 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
     try {
       await ref.read(directNetworkServiceProvider).openWifiPanel();
     } catch (error) {
-      if (!mounted) return;
+      if (!_isCurrent(invite)) return;
       setState(() {
         _handlingCode = false;
         _statusKey = null;
@@ -182,7 +373,7 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
   Future<void> _openWifiJoinSettings([DirectShareInvite? invite]) async {
     final target = invite ?? _pendingInvite;
     if (target == null) return;
-    if (!mounted) return;
+    if (!_isCurrent(target)) return;
     setState(() {
       _pendingInvite = target;
       _pendingAction = _PendingDirectAction.joinNetwork;
@@ -194,13 +385,13 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
       await ref
           .read(directNetworkServiceProvider)
           .openWifiJoinSettings(target.credentials);
-      if (!mounted) return;
+      if (!_isCurrent(target)) return;
       setState(() {
         _statusKey = 'waitingForDirectNetwork';
       });
       unawaited(_waitForReceiver(target));
     } catch (error) {
-      if (!mounted) return;
+      if (!_isCurrent(target)) return;
       setState(() {
         _handlingCode = false;
         _statusKey = null;
@@ -210,7 +401,7 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
   }
 
   Future<void> _waitForReceiver(DirectShareInvite invite) async {
-    if (!mounted || _pendingInvite != invite) return;
+    if (!_isCurrent(invite) || _pendingInvite != invite) return;
     if (_waitingForReceiver) return;
     _waitingForReceiver = true;
     setState(() {
@@ -227,16 +418,27 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
               host: invite.device.ip,
               port: invite.device.port,
             );
+        if (!_isCurrent(invite)) return;
         ref.invalidate(networkProvider);
         if (await _canReachReceiver(invite)) {
+          if (!_isCurrent(invite)) return;
           await _finishConnection(invite, verifyReachability: false);
           return;
         }
-        await Future<void>.delayed(const Duration(seconds: 1));
-        if (!mounted || _pendingInvite != invite) return;
+        if (!_isCurrent(invite)) return;
+        await _receiverRetryDelay();
+        if (!_isCurrent(invite) || _pendingInvite != invite) return;
       }
 
-      if (!mounted) return;
+      if (!_isCurrent(invite)) return;
+      setState(() {
+        _handlingCode = false;
+        _statusKey = null;
+        _error = context.l10n.t('directWifiManualHelp');
+      });
+    } catch (error, stack) {
+      debugPrint('QR receiver connection failed: $error\n$stack');
+      if (!_isCurrent(invite)) return;
       setState(() {
         _handlingCode = false;
         _statusKey = null;
@@ -251,22 +453,30 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
     DirectShareInvite invite, {
     required bool verifyReachability,
   }) async {
+    if (!_isCurrent(invite)) return;
     await ref
         .read(directNetworkServiceProvider)
         .bindToWifiForHost(host: invite.device.ip, port: invite.device.port);
+    if (!_isCurrent(invite)) return;
     ref.invalidate(networkProvider);
-    if (verifyReachability && !await _canReachReceiver(invite)) {
-      await _openWifiJoinSettings(invite);
-      return;
+    if (verifyReachability) {
+      final reachable = await _canReachReceiver(invite);
+      if (!_isCurrent(invite)) return;
+      if (!reachable) {
+        await _openWifiJoinSettings(invite);
+        return;
+      }
     }
     ref
         .read(selectedDeviceProvider.notifier)
         .set(invite.device.copyWith(lastSeen: DateTime.now()));
-    if (mounted) context.go('/send');
+    if (mounted) AppNavigationScope.back(context, fallback: '/send');
   }
 
   Future<bool> _canReachReceiver(DirectShareInvite invite) async {
+    if (!_isCurrent(invite)) return false;
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
+    _probeClient = client;
     try {
       final request = await client
           .getUrl(invite.device.baseUri.replace(path: '/api/ping'))
@@ -274,16 +484,19 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
       final response = await request.close().timeout(
         const Duration(seconds: 2),
       );
-      await response.drain<void>();
+      await response.drain<void>().timeout(const Duration(seconds: 2));
       return response.statusCode == HttpStatus.ok;
     } catch (_) {
       return false;
     } finally {
       client.close(force: true);
+      if (identical(_probeClient, client)) _probeClient = null;
     }
   }
 
   Future<void> _retryScan() async {
+    _activeInvite = null;
+    _cancelReceiverWait();
     setState(() {
       _pendingInvite = null;
       _pendingAction = null;
@@ -291,7 +504,7 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
       _statusKey = null;
       _error = null;
     });
-    await _controller.start();
+    await _syncCamera();
   }
 
   void _showPendingError(DirectShareInvite invite, String message) {
@@ -318,7 +531,33 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
           : Stack(
               fit: StackFit.expand,
               children: [
-                MobileScanner(controller: _controller, onDetect: _handleDetect),
+                MobileScanner(
+                  key: ObjectKey(_controller),
+                  controller: _controller,
+                  onDetect: _handleDetect,
+                  onDetectError: (error, stack) {
+                    debugPrint('QR detection failed: $error\n$stack');
+                    if (!mounted || _closing) return;
+                    setState(() {
+                      _error = context.l10n.t('cameraUnavailableHelp');
+                    });
+                  },
+                  useAppLifecycleState: false,
+                  tapToFocus: true,
+                  placeholderBuilder: (_) => const ColoredBox(
+                    color: Colors.black,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  errorBuilder: (context, error) {
+                    debugPrint('QR camera start failed: $error');
+                    return _CameraPermissionView(
+                      onRetry: () => unawaited(_requestCameraPermission()),
+                      unavailable:
+                          error.errorCode !=
+                          MobileScannerErrorCode.permissionDenied,
+                    );
+                  },
+                ),
                 const _ScanFrame(),
                 Positioned(
                   left: 16,
@@ -345,11 +584,10 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
                             }
                           }
                         : null,
-                    secondaryActionLabel:
-                        _pendingInvite != null && !_handlingCode
+                    secondaryActionLabel: _error != null && !_handlingCode
                         ? l10n.t('retryScan')
                         : null,
-                    onSecondaryAction: _pendingInvite != null && !_handlingCode
+                    onSecondaryAction: _error != null && !_handlingCode
                         ? _retryScan
                         : null,
                   ),
@@ -360,10 +598,56 @@ class _DirectQrScannerScreenState extends ConsumerState<DirectQrScannerScreen>
   }
 }
 
+class _SharedCameraInUseView extends StatelessWidget {
+  const _SharedCameraInUseView();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AppShell(
+      title: l10n.t('scanQr'),
+      backPath: '/send',
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.videocam_rounded, size: 44),
+              const SizedBox(height: 12),
+              Text(
+                l10n.cameraUiText('qrCameraBusyTitle'),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.cameraUiText('qrCameraBusyHelp'),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () => context.go('/camera'),
+                icon: const Icon(Icons.videocam_rounded),
+                label: Text(l10n.cameraUiText('openCamera')),
+                style: FilledButton.styleFrom(shape: const StadiumBorder()),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CameraPermissionView extends StatelessWidget {
-  const _CameraPermissionView({required this.onRetry});
+  const _CameraPermissionView({
+    required this.onRetry,
+    this.unavailable = false,
+  });
 
   final VoidCallback onRetry;
+  final bool unavailable;
 
   @override
   Widget build(BuildContext context) {
@@ -377,17 +661,27 @@ class _CameraPermissionView extends StatelessWidget {
             const Icon(Icons.photo_camera_rounded, size: 44),
             const SizedBox(height: 12),
             Text(
-              l10n.t('cameraPermissionTitle'),
+              l10n.t(
+                unavailable
+                    ? 'cameraUnavailableTitle'
+                    : 'cameraPermissionTitle',
+              ),
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
+            const SizedBox(height: 8),
+            Text(l10n.t('cameraUnavailableHelp'), textAlign: TextAlign.center),
             const SizedBox(height: 14),
             FilledButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
               label: Text(l10n.t('retry')),
+            ),
+            TextButton(
+              onPressed: () => unawaited(openAppSettings()),
+              child: Text(l10n.t('openAppSettings')),
             ),
           ],
         ),

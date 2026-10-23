@@ -1,0 +1,37 @@
+plugins {
+    id 'com.android.library'
+    id 'kotlin-android'
+}
+
+group 'de.julianassmann.flutter_background'
+version '1.0-SNAPSHOT'
+
+android {
+    compileSdkVersion 34
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    defaultConfig {
+        minSdkVersion 16
+    }
+
+    namespace 'de.julianassmann.flutter_background'
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}

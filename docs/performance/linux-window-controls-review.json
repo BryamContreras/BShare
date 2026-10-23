@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-10-23T20:54:24.791439+00:00",
+  "status": "passed_real_gtk_theme_validation_and_user_application_reopened",
+  "scope": "Linux native titlebar control visibility under current KDE Wayland decoration configuration. No Dart, Android, iOS, Windows or macOS production changes.",
+  "cause": {
+    "nativeLayoutAndPreviousBinaryCorrect": true,
+    "kdeGtkModule": "window-decorations-gtk-module",
+    "generatedAssets": "close-normal.svg, maximize-normal.svg and minimize-normal.svg contained no drawing geometry",
+    "themeFallback": "Breeze makes automatic titlebutton GtkImage foreground transparent",
+    "previousQaLimitation": "Temporary XDG_CONFIG_HOME skipped the real user GTK settings and decoration module."
+  },
+  "implementedChanges": {
+    "productionFile": "linux/runner/my_application.cc",
+    "sourceSha256": "5e1f79e4c1b45c3ced64f570069a8efb3bfc0f5502a860e426e8e6d785f19807",
+    "controlImplementation": "Explicit GTK buttons with Cairo glyphs instead of theme icon assets; accessible labels, tooltips and keyboard focus retained",
+    "buttonMinimumSize": [
+      36,
+      32
+    ],
+    "close": "gtk_window_close through existing delete-event and awaited Flutter shutdown",
+    "maximizeRestore": "GTK state event updates icon and accessible labels",
+    "periodicSourcesAdded": false,
+    "systemThemeFilesModified": false,
+    "headerBackendSelectionPreserved": true
+  },
+  "validation": {
+    "nativeControlsFixture": {
+      "receipt": {
+        "path": ".dart_tool/app_review/linux-controls-theme-native-controls.json",
+        "bytes": 1111,
+        "sha256": "6f11dfcf42a051cc51224d1e1b99b79c7fcc0c57c807132312044cb9bf207656"
+      },
+      "log": {
+        "path": ".dart_tool/app_review/linux-controls-theme-native-controls.log",
+        "bytes": 220,
+        "sha256": "0b16261f6b7e36d29ac2bd6410c8e818cde032ccb825f3ba71f141ad78764f40"
+      }
+    },
+    "shutdownNormal": {
+      "exitCode": 0,
+      "ownedWindowsAndEnginesExercised": 500,
+      "log": {
+        "path": ".dart_tool/app_review/linux-controls-theme-shutdown.log",
+        "bytes": 149,
+        "sha256": "beb2b3b1d1358f69f047518f8f2b7a548aa6f40ceef0c6062ec438205b65223f"
+      }
+    },
+    "shutdownAsanUbsan": {
+      "exitCode": 0,
+      "compiler": "clang++",
+      "ownedWindowsAndEnginesExercised": 500,
+      "log": {
+        "path": ".dart_tool/app_review/linux-controls-theme-shutdown-clang-sanitize.log",
+        "bytes": 149,
+        "sha256": "beb2b3b1d1358f69f047518f8f2b7a548aa6f40ceef0c6062ec438205b65223f"
+      }
+    },
+    "builds": {
+      "debug": {
+        "pid": 205466,
+        "command": [
+          "flutter",
+          "--suppress-analytics",
+          "build",
+          "linux",
+          "--debug",
+          "--no-pub"
+        ],
+        "startedAtUtc": "2026-10-23T20:46:51.692074+00:00",
+        "ninjaJobs": 2,
+        "ninjaWrapper": "/tmp/bshare-linux-controls-ninja-3is4cjff",
+        "homeUnchanged": true,
+        "exitCode": 0,
+        "completedAtUtc": "2026-10-23T20:47:58.329438+00:00",
+        "durationSeconds": 66.65,
+        "ninjaWrapperRemoved": true,
+        "sourceChangesSinceFreeze": [],
+        "receipt": {
+          "path": ".dart_tool/app_review/linux-controls-theme-debug-build.json",
+          "bytes": 465,
+          "sha256": "fc3a7eda4808b8280d09598f78b5a4d8d18aa14f364283e57902beb3e8ffebf0"
+        },
+        "log": {
+          "path": ".dart_tool/app_review/linux-controls-theme-debug-build.log",
+          "bytes": 111,
+          "sha256": "f8dad7ad0069cf99b7ea5fe61ae2c0ef2125590ad36afc057cf48370422600a8"
+        }
+      },
+      "release": {
+        "pid": 211757,
+        "command": [
+          "flutter",
+          "--suppress-analytics",
+          "build",
+          "linux",
+          "--release",
+          "--no-pub"
+        ],
+        "startedAtUtc": "2026-10-23T20:48:24.448052+00:00",
+        "ninjaJobs": 2,
+        "ninjaWrapper": "/tmp/bshare-linux-controls-ninja-d2cdid9m",
+        "homeUnchanged": true,
+        "exitCode": 0,
+        "completedAtUtc": "2026-10-23T20:49:09.574301+00:00",
+        "durationSeconds": 45.14,
+        "ninjaWrapperRemoved": true,
+        "sourceChangesSinceFreeze": [],
+        "receipt": {
+          "path": ".dart_tool/app_review/linux-controls-theme-release-build.json",
+          "bytes": 467,
+          "sha256": "71d37f4b7de2e0457829efa9f4efcc26bb560d7f1e07dd03ea64611fc9db5d78"
+        },
+        "log": {
+          "path": ".dart_tool/app_review/linux-controls-theme-release-build.log",
+          "bytes": 113,
+          "sha256": "0e1f715aeef31889c144d841f94cef94bc8bdfd01668e930bddd1879ee63a293"
+        }
+      }
+    },
+    "realGtkRuntime": {
+      "status": "passed",
+      "caseCount": 13,
+      "evidence": {
+        "path": ".dart_tool/app_review/linux-controls-theme-runtime-results.json",
+        "bytes": 17550,
+        "sha256": "7bf81649de674c51bde15b35f059e01ff94cf7dcb50c1990a9401dbc42a37f61"
+      },
+      "variants": [
+        "debug",
+        "release"
+      ],
+      "inheritedRealXdgConfigHome": true,
+      "gtkThemeOverride": null,
+      "gtkKdeConfigFileHashesUnchanged": 29,
+      "rootVisuallyInspected": [
+        "debug-home-normal",
+        "user-updated-window"
+      ]
+    },
+    "priorFlutterSuite": {
+      "count": 403,
+      "report": "docs/performance/settings-sidebar-review.json",
+      "repeatedForNativeOnlyChange": false,
+      "dartProductionSourcesUnchanged": true
+    },
+    "rootValidation": {
+      "path": ".dart_tool/app_review/linux-controls-theme-root-validation.json",
+      "bytes": 2018,
+      "sha256": "c53cbc8808d3dfb550f070558ab4dad4b4b5196c515c18a6b8debd2fee3b02ae"
+    }
+  },
+  "userApplication": {
+    "normalCloseOfOldNativeWindow": {
+      "oldPid": 178736,
+      "processExitedAfterNormalWindowClose": true,
+      "forceStopOrSignalsUsed": false
+    },
+    "reopened": {
+      "pid": 230527,
+      "executable": "/home/bryamelias/DEV/Dart/BShare/build/linux/x64/release/bundle/bshare",
+      "executableSha256": "2b19977506d46caa63af90b5a43e7f537747d7b76e778b7a25dd6c762f26cf2c",
+      "aotSha256": "13eddea468b4b3df774cf80305d31c3546a4277b8a78fb7d4c7e4f3b49cd8f75",
+      "startedAtUtc": "2026-10-23T20:52:59.897271+00:00",
+      "purpose": "Reopen the updated BShare application for the user after normal close of the old native executable",
+      "usesRealUserPreferences": true,
+      "environmentOverrides": {},
+      "testFixture": false,
+      "intentionallyLeftOpenForUser": true
+    },
+    "finalScreenshot": {
+      "path": ".dart_tool/app_review/linux-controls-theme-user-updated-window.png",
+      "bytes": 132325,
+      "sha256": "7a8509dd71f4805ef92f3cd29fd6127b615674617e54d1a557c476ffb243109a"
+    },
+    "captureReceipt": {
+      "path": ".dart_tool/app_review/linux-controls-theme-user-capture-updated-window.json",
+      "bytes": 2389,
+      "sha256": "c12866e545231e6e88aaf99268ce242b545c6c7ef3e2d7ec5a1bf88775769e8a"
+    },
+    "preferences": "Real user preferences used; no isolated overrides",
+    "newWindowControlsVisuallyConfirmed": true
+  },
+  "cleanup": {
+    "qaAppsAndHelpers": "Both temporary debug/release applications exited0 and their buses/launchers/scripts/sandboxes were removed; runtime report contains separate receipts.",
+    "remainingOwnedReviewHelperProcesses": [],
+    "deploymentAuditBusExit": {
+      "pid": 227970,
+      "stopReason": "dbus-stop",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-23T20:53:38.023793+00:00"
+    },
+    "deploymentKwinScriptFilesRemaining": [],
+    "originalUserApplicationReplacedByNormalClose": true,
+    "forceSignalsOrKillsUsedForUserApplication": false,
+    "intentionallyRunningApplication": 230527,
+    "purposeOfRemainingApplication": "Updated normal BShare window left visible for user; not a test process.",
+    "gtkConfigurationUnchanged": true
+  },
+  "historicalToolAttempt": {
+    "compiler": "c++",
+    "status": "linker_failed_missing_GCC_libasan_so_8_0_0",
+    "log": ".dart_tool/app_review/linux-controls-theme-shutdown-sanitize.log",
+    "resolvedBy": "Run the same production shutdown fixture with installed Clang sanitizer runtimes"
+  },
+  "limitations": [
+    "Native GUI behavior tested on current KDE Wayland session; header selection on other Linux window managers is unchanged.",
+    "The normal user application was reopened after the temporary QA runs. No camera, media, file transfer or Android benchmark was repeated for this native Linux-only change."
+  ]
+}

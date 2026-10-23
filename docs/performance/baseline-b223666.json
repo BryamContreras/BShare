@@ -1,0 +1,263 @@
+{
+  "benchmark": "production HTTP sender/receiver over IPv4 loopback",
+  "label": "baseline-b223666",
+  "recordedAtUtc": "2026-10-21T16:53:25.121908Z",
+  "dart": "3.12.2 (stable) (Tue Jun 9 01:11:39 2026 -0700) on \"linux_x64\"",
+  "os": "Linux 7.2.10-200.fc44.x86_64 #1 SMP PREEMPT_DYNAMIC Sun Oct 11 18:11:51 UTC 2026",
+  "processors": 6,
+  "fileMiB": 32,
+  "rounds": 3,
+  "cycles": 20,
+  "throughput": [
+    {
+      "label": "throughput-1-0",
+      "concurrency": 1,
+      "totalMiB": 32.0,
+      "elapsedMs": 241.234,
+      "aggregateMiBPerSecond": 132.65128464478474,
+      "peakSampledRssMiB": 268.11328125,
+      "startRssMiB": 242.453125,
+      "maximumReceiving": 1,
+      "senderProgressEvents": 131,
+      "receiverProgressEvents": 129,
+      "verifiedFiles": 1
+    },
+    {
+      "label": "throughput-1-1",
+      "concurrency": 1,
+      "totalMiB": 32.0,
+      "elapsedMs": 365.392,
+      "aggregateMiBPerSecond": 87.5771773875728,
+      "peakSampledRssMiB": 266.98046875,
+      "startRssMiB": 262.375,
+      "maximumReceiving": 1,
+      "senderProgressEvents": 131,
+      "receiverProgressEvents": 125,
+      "verifiedFiles": 1
+    },
+    {
+      "label": "throughput-1-2",
+      "concurrency": 1,
+      "totalMiB": 32.0,
+      "elapsedMs": 236.736,
+      "aggregateMiBPerSecond": 135.17166801838334,
+      "peakSampledRssMiB": 268.20703125,
+      "startRssMiB": 263.0703125,
+      "maximumReceiving": 1,
+      "senderProgressEvents": 131,
+      "receiverProgressEvents": 128,
+      "verifiedFiles": 1
+    },
+    {
+      "label": "throughput-3-0",
+      "concurrency": 3,
+      "totalMiB": 96.0,
+      "elapsedMs": 704.015,
+      "aggregateMiBPerSecond": 136.36073095033487,
+      "peakSampledRssMiB": 278.31640625,
+      "startRssMiB": 263.6171875,
+      "maximumReceiving": 3,
+      "senderProgressEvents": 393,
+      "receiverProgressEvents": 365,
+      "verifiedFiles": 3
+    },
+    {
+      "label": "throughput-3-1",
+      "concurrency": 3,
+      "totalMiB": 96.0,
+      "elapsedMs": 624.15,
+      "aggregateMiBPerSecond": 153.80918048546022,
+      "peakSampledRssMiB": 281.09375,
+      "startRssMiB": 273.7890625,
+      "maximumReceiving": 3,
+      "senderProgressEvents": 393,
+      "receiverProgressEvents": 363,
+      "verifiedFiles": 3
+    },
+    {
+      "label": "throughput-3-2",
+      "concurrency": 3,
+      "totalMiB": 96.0,
+      "elapsedMs": 658.191,
+      "aggregateMiBPerSecond": 145.85431888312056,
+      "peakSampledRssMiB": 284.484375,
+      "startRssMiB": 274.58984375,
+      "maximumReceiving": 3,
+      "senderProgressEvents": 393,
+      "receiverProgressEvents": 371,
+      "verifiedFiles": 3
+    }
+  ],
+  "sessions": {
+    "completed": 20,
+    "elapsedMs": 777.609,
+    "before": {
+      "rssBytes": 292179968,
+      "fileDescriptors": 10,
+      "socketDescriptors": 0
+    },
+    "after": {
+      "rssBytes": 292229120,
+      "fileDescriptors": 10,
+      "socketDescriptors": 0
+    },
+    "samples": [
+      {
+        "session": 1,
+        "rssBytes": 292323328,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 2,
+        "rssBytes": 292323328,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 3,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 4,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 5,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 6,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 7,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 8,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 9,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 10,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 11,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 12,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 13,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 14,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 15,
+        "rssBytes": 292327424,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 16,
+        "rssBytes": 292229120,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 17,
+        "rssBytes": 292229120,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 18,
+        "rssBytes": 292229120,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 19,
+        "rssBytes": 292229120,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      },
+      {
+        "session": 20,
+        "rssBytes": 292229120,
+        "fileDescriptors": 10,
+        "socketDescriptors": 0
+      }
+    ]
+  },
+  "cancelWhileWaitingForResponse": {
+    "streamClosedWithin2s": false,
+    "observedMs": 2003.049,
+    "terminalBeforeReceiverRelease": []
+  },
+  "pauseThenCancel": {
+    "terminal": [
+      "cancelled"
+    ],
+    "cancelToStreamClosedMs": 11.341,
+    "remainingFiles": [],
+    "receiverActive": 0
+  },
+  "stopDuringReceive": {
+    "stopMs": 1.087,
+    "activeAtStopReturn": 1,
+    "filesAtStopReturn": [],
+    "remainingFiles": [],
+    "receiverActive": 0,
+    "receiverTerminal": [
+      "failed"
+    ],
+    "serverIsRunning": false
+  },
+  "checks": {
+    "noDescriptorGrowthAcrossSessions": true,
+    "cancelWhileWaitingClosesStream": false,
+    "cancelPausedCleansUp": true,
+    "stopAwaitsCleanup": false
+  },
+  "errors": [],
+  "finalResources": {
+    "rssBytes": 292761600,
+    "fileDescriptors": 10,
+    "socketDescriptors": 0
+  }
+}

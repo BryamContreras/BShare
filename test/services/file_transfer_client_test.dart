@@ -1,5 +1,10 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/domain/entities/transfer_control.dart';
+import 'package:bshare/src/domain/entities/selected_transfer_file.dart';
+import 'package:bshare/src/domain/entities/transfer_progress_status.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/file_transfer_client.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -65,6 +70,138 @@ void main() {
 
       await Future<void>.delayed(const Duration(milliseconds: 200));
       expect(completed, isTrue);
+    });
+  });
+
+  group('transfer cleanup', () {
+    late Directory directory;
+    late FileTransferClient client;
+    HttpServer? receiver;
+
+    DeviceInfo target(int port) => DeviceInfo(
+      id: 'receiver',
+      name: 'Receiver',
+      platform: 'test',
+      ip: '127.0.0.1',
+      port: port,
+      lastSeen: DateTime.now(),
+    );
+
+    Future<SelectedTransferFile> createFile() async {
+      final file = File('${directory.path}/source.bin');
+      await file.writeAsBytes(List.filled(64 * 1024, 42));
+      return SelectedTransferFile(
+        path: file.path,
+        name: 'source.bin',
+        size: await file.length(),
+      );
+    }
+
+    setUp(() async {
+      directory = await Directory.systemTemp.createTemp('bshare-client-test-');
+      client = FileTransferClient(_FakeAppLogger());
+    });
+    tearDown(() async {
+      client.dispose();
+      await receiver?.close(force: true);
+      receiver = null;
+      await directory.delete(recursive: true);
+    });
+
+    test(
+      'missing source reports failure and closes its progress stream',
+      () async {
+        final file = SelectedTransferFile(
+          path: '${directory.path}/missing',
+          name: 'missing',
+          size: 5,
+        );
+        final events = await client
+            .sendFile(
+              target: target(1),
+              file: file,
+              transferId: 'missing',
+              senderId: 'sender',
+              senderName: 'Sender',
+              control: TransferControl(),
+            )
+            .toList()
+            .timeout(const Duration(seconds: 2));
+        expect(events, hasLength(1));
+        expect(events.single.status, TransferProgressStatus.failed);
+      },
+    );
+
+    test(
+      'cancel interrupts a sender waiting for receiver acknowledgement',
+      () async {
+        receiver = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        final received = Completer<void>();
+        receiver!.listen((request) async {
+          await request.drain<void>();
+          received.complete();
+          // Intentionally withhold acknowledgement until the server is closed.
+        });
+        final control = TransferControl();
+        final events = client
+            .sendFile(
+              target: target(receiver!.port),
+              file: await createFile(),
+              transferId: 'cancel-wait',
+              senderId: 'sender',
+              senderName: 'Sender',
+              control: control,
+            )
+            .toList();
+        await received.future.timeout(const Duration(seconds: 3));
+        control.cancel();
+        final result = await events.timeout(const Duration(seconds: 2));
+        expect(result.last.status, TransferProgressStatus.cancelled);
+      },
+    );
+
+    test(
+      'dispose interrupts active HTTP requests and closes streams',
+      () async {
+        receiver = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        final received = Completer<void>();
+        receiver!.listen((request) async {
+          await request.drain<void>();
+          received.complete();
+        });
+        final events = client
+            .sendFile(
+              target: target(receiver!.port),
+              file: await createFile(),
+              transferId: 'dispose-wait',
+              senderId: 'sender',
+              senderName: 'Sender',
+              control: TransferControl(),
+            )
+            .toList();
+        await received.future.timeout(const Duration(seconds: 3));
+        client.dispose();
+        expect(
+          (await events.timeout(const Duration(seconds: 2))).last.status,
+          TransferProgressStatus.cancelled,
+        );
+      },
+    );
+
+    test('cancelled stream also cancels its transfer control', () async {
+      final control = TransferControl()..pause();
+      final subscription = client
+          .sendFile(
+            target: target(1),
+            file: await createFile(),
+            transferId: 'cancel-subscription',
+            senderId: 'sender',
+            senderName: 'Sender',
+            control: control,
+          )
+          .listen((_) {});
+      await subscription.cancel();
+      expect(control.isCancelled, isTrue);
     });
   });
 

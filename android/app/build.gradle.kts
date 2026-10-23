@@ -24,6 +24,7 @@ android {
 
     defaultConfig {
         applicationId = "com.bshare.bshare"
+        manifestPlaceholders["bshareLabel"] = "BShare"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -32,7 +33,9 @@ android {
         versionName = flutter.versionName
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            // These ABIs have Flutter AOT engines and matching WebRTC/QR/JNI
+            // libraries. x86 (32 bit) has no Flutter release AOT target.
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
         }
     }
 
@@ -54,12 +57,16 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 
     packaging {
         jniLibs {
-            excludes += setOf("**/armeabi-v7a/**", "**/x86/**")
+            excludes += setOf("**/x86/**")
         }
     }
 }

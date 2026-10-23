@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:bshare/src/application/providers.dart';
-import 'package:bshare/src/domain/entities/selected_transfer_file.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
 import 'package:bshare/src/presentation/widgets/app_shell.dart';
+import 'package:bshare/src/presentation/widgets/discovery_status_card.dart';
 import 'package:bshare/src/presentation/widgets/formatters.dart';
 import 'package:bshare/src/presentation/widgets/gradient_action_button.dart';
 import 'package:flutter/material.dart';
@@ -19,12 +20,13 @@ class SendFilesScreen extends ConsumerStatefulWidget {
 
 class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
   final _scrollController = ScrollController();
-  final _removingFiles = <String>{};
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(discoveryProvider.notifier).start());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(ref.read(discoveryProvider.notifier).start());
+    });
   }
 
   @override
@@ -38,15 +40,6 @@ class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
     if (mounted) context.go('/transfers');
   }
 
-  Future<void> _clearSelectedFiles(List<SelectedTransferFile> files) async {
-    if (files.isEmpty || _removingFiles.isNotEmpty) return;
-    setState(() => _removingFiles.addAll(files.map((file) => file.path)));
-    await Future<void>.delayed(const Duration(milliseconds: 190));
-    if (!mounted) return;
-    ref.read(sendControllerProvider).clearFiles();
-    setState(() => _removingFiles.clear());
-  }
-
   @override
   Widget build(BuildContext context) {
     final files = ref.watch(pickedFilesProvider);
@@ -56,7 +49,9 @@ class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
       (progress) => !progress.isDone && selectedPaths.contains(progress.id),
     );
     final discoveredDevices = ref.watch(discoveryProvider);
+    final discovery = ref.watch(discoveryStatusProvider);
     final selected = ref.watch(selectedDeviceProvider);
+    final discoveredIds = discoveredDevices.map((device) => device.id).toSet();
     final devices = [...discoveredDevices];
     if (selected != null &&
         !devices.any((device) => device.id == selected.id)) {
@@ -97,43 +92,38 @@ class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
                   ],
                   GradientIconButton(
                     tooltip: l10n.t('refreshDevices'),
-                    onPressed: () =>
-                        ref.read(discoveryProvider.notifier).refresh(),
+                    onPressed: discovery.isSearching
+                        ? null
+                        : () => ref.read(discoveryProvider.notifier).refresh(),
                     icon: Icons.refresh_rounded,
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              if (devices.isEmpty)
+              DiscoveryStatusCard(deviceCount: discoveredDevices.length),
+              for (final device in devices)
                 Card(
                   child: ListTile(
-                    leading: const Icon(Icons.radar_rounded),
-                    title: Text(l10n.t('searchingNearbyDevices')),
-                  ),
-                )
-              else
-                for (final device in devices)
-                  Card(
-                    child: ListTile(
-                      leading: const CircleAvatar(
-                        child: Icon(Icons.devices_rounded),
-                      ),
-                      title: Text(device.name),
-                      subtitle: Text(
-                        '${device.platform} - ${device.ip}:${device.port}',
-                      ),
-                      trailing: Icon(
-                        selected?.id == device.id
-                            ? Icons.check_circle_rounded
-                            : Icons.circle_outlined,
-                        color: selected?.id == device.id
-                            ? Theme.of(context).colorScheme.primary
-                            : null,
-                      ),
-                      onTap: () =>
-                          ref.read(selectedDeviceProvider.notifier).set(device),
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.devices_rounded),
                     ),
+                    title: Text(device.name),
+                    subtitle: Text(
+                      '${device.platform} - ${device.ip}:${device.port}'
+                      '${discoveredIds.contains(device.id) ? '' : '\n${l10n.t('savedDeviceNotDetected')}'}',
+                    ),
+                    trailing: Icon(
+                      selected?.id == device.id
+                          ? Icons.check_circle_rounded
+                          : Icons.circle_outlined,
+                      color: selected?.id == device.id
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    onTap: () =>
+                        ref.read(selectedDeviceProvider.notifier).set(device),
                   ),
+                ),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -167,7 +157,7 @@ class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
                     tooltip: l10n.t('clearSelectedFiles'),
                     onPressed: files.isEmpty
                         ? null
-                        : () => _clearSelectedFiles(files),
+                        : () => ref.read(sendControllerProvider).clearFiles(),
                     icon: Icons.clear_all_rounded,
                   ),
                 ],
@@ -182,59 +172,34 @@ class _SendFilesScreenState extends ConsumerState<SendFilesScreen> {
                 )
               else
                 for (final file in files)
-                  _SlideAway(
-                    active: _removingFiles.contains(file.path),
-                    child: Card(
-                      child: ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.insert_drive_file_rounded),
-                        title: Text(
-                          file.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          file.relativePath == null
-                              ? formatBytes(file.size)
-                              : '${file.relativePath} - ${formatBytes(file.size)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: IconButton(
-                          tooltip: l10n.t('removeFile'),
-                          onPressed: () => ref
-                              .read(sendControllerProvider)
-                              .removeFile(file.path),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
+                  Card(
+                    child: ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.insert_drive_file_rounded),
+                      title: Text(
+                        file.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        file.relativePath == null
+                            ? formatBytes(file.size)
+                            : '${file.relativePath} - ${formatBytes(file.size)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: IconButton(
+                        tooltip: l10n.t('removeFile'),
+                        onPressed: () => ref
+                            .read(sendControllerProvider)
+                            .removeFile(file.path),
+                        icon: const Icon(Icons.close_rounded),
                       ),
                     ),
                   ),
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-class _SlideAway extends StatelessWidget {
-  const _SlideAway({required this.active, required this.child});
-
-  final bool active;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedSlide(
-      offset: active ? const Offset(0.08, 0) : Offset.zero,
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
-      child: AnimatedOpacity(
-        opacity: active ? 0 : 1,
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        child: child,
       ),
     );
   }

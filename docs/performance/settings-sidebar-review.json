@@ -1,0 +1,485 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-10-23T20:27:55.170737+00:00",
+  "status": "passed_scoped_settings_and_linux_ui_validation",
+  "scope": "Uniform settings groups, mobile-only camera capture settings, desktop sidebar branding and preserved state on desktop resize.",
+  "implementedChanges": {
+    "settings": {
+      "commonWidget": "lib/src/presentation/widgets/settings_section.dart",
+      "groups": [
+        "Device",
+        "Transfers",
+        "Appearance",
+        "Screen sharing"
+      ],
+      "mobileOnlyGroup": "Camera",
+      "cameraPlatforms": [
+        "Android",
+        "iOS"
+      ],
+      "desktopCameraSettingsHidden": [
+        "Linux",
+        "Windows",
+        "macOS"
+      ],
+      "cameraHardwareEnumeratedBySettings": false,
+      "cameraProfilesPreservedByDesktopSaves": true,
+      "mobileMaxFramesPerSecond": 60,
+      "draftNameAndPortPreservedOnOtherPreferenceSaves": true
+    },
+    "branding": {
+      "desktopLocation": "Left navigation header",
+      "homeToolbar": "Localized Home title",
+      "expandedSidebarWidthDp": 280,
+      "compactRailWidthDp": 80,
+      "compactBelowWindowWidthDp": 900,
+      "destinations": 7,
+      "sidebarFillsAvailableHeight": true,
+      "sidebarScrollable": true,
+      "mobileHeaderAndBottomNavigationPreserved": true
+    },
+    "resizeFix": "Keep the Center/ConstrainedBox/Padding hierarchy stable across 900 dp; only constraints and padding change, retaining child state and scroll position."
+  },
+  "validation": {
+    "focusedTests": {
+      "count": 41,
+      "status": "passed",
+      "log": {
+        "path": ".dart_tool/app_review/settings-brand-v2-focal-tests.log",
+        "bytes": 6262,
+        "sha256": "5538974ecdce4e466d9a92b24deda0394ec7b823f7977054a16789ef5f88b2f0"
+      }
+    },
+    "fullFlutterTests": {
+      "command": [
+        "unshare",
+        "-Urn",
+        "python3",
+        ".dart_tool/app_review/settings_sidebar_v2_isolated_tests.py"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 175.53,
+      "receipt": {
+        "path": ".dart_tool/app_review/settings-sidebar-v2-tests-isolated.json",
+        "bytes": 177,
+        "sha256": "4e6fced90af9d68ed335befef9f0a8149617766b84df8d2a8098681ab9d9fc04"
+      },
+      "log": {
+        "path": ".dart_tool/app_review/settings-sidebar-v2-tests-isolated.log",
+        "bytes": 82170,
+        "sha256": "d74ab3d4c91d67a6d6d63c502881e08d3b88e6160d9fe8768aa3c62991c9dee0"
+      },
+      "count": 403,
+      "effectiveCommand": [
+        "flutter",
+        "--suppress-analytics",
+        "test",
+        "--no-pub"
+      ],
+      "environment": {
+        "networkNamespace": "Isolated user/network namespace; loopback enabled",
+        "CI": "true"
+      },
+      "isolationEvidence": {
+        "path": ".dart_tool/app_review/settings-sidebar-v2-tests-isolation.json",
+        "bytes": 196,
+        "sha256": "8fafb0f307af4ab2a1ed57f91d4aca1553670f973118d3a1247788986535ad45"
+      },
+      "assertionsDisabled": false
+    },
+    "analyze": {
+      "command": [
+        "dart",
+        "analyze",
+        "--fatal-infos"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 16.82,
+      "receipt": {
+        "path": ".dart_tool/app_review/settings-sidebar-v2-analyze.json",
+        "bytes": 115,
+        "sha256": "2c44dd837638f9b53462dda0a98383d38c117d2eb7bf44a8024d68f62a84c054"
+      },
+      "log": {
+        "path": ".dart_tool/app_review/settings-sidebar-v2-analyze.log",
+        "bytes": 37,
+        "sha256": "c18777986d05f51d2fecf76558229199ff41d836c155419293c81229e05096bd"
+      }
+    },
+    "sourceFreeze": {
+      "fileCount": 217,
+      "changedSinceFreeze": [],
+      "evidence": {
+        "path": ".dart_tool/app_review/settings-sidebar-v2-source-freeze.json",
+        "bytes": 31012,
+        "sha256": "f1937694c5eea3fd96eb69d3bd77e681d892e1803e4cb7b83f639a314e7bcd21"
+      },
+      "androidKernelProof": {
+        "path": ".dart_tool/app_review/settings-sidebar-v2-android-kernel-source-proof.json",
+        "bytes": 1092,
+        "sha256": "a6e3712caea5d27a4562693fc5d10e7f80430b9c8fe08a66e307bbac94cf872b"
+      },
+      "linuxKernelProof": {
+        "path": ".dart_tool/app_review/settings-sidebar-linux-v2-kernel-source-proof.json",
+        "bytes": 1156,
+        "sha256": "0ef09d6554f2986a673a59c8901e57902283c120b3f151b79ff1f736863ea729"
+      }
+    },
+    "androidReleaseBuild": {
+      "command": [
+        "./gradlew",
+        "--no-daemon",
+        "--max-workers=2",
+        "-I",
+        "../.dart_tool/bshare-compat.init.gradle",
+        "-Ptarget-platform=android-arm,android-arm64,android-x64",
+        "-Ptarget=lib/main.dart",
+        "-Pdart-obfuscation=false",
+        "-Ptrack-widget-creation=false",
+        "-Ptree-shake-icons=true",
+        "assembleRelease"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 265.0,
+      "receipt": {
+        "path": ".dart_tool/app_review/settings-sidebar-v2-build.json",
+        "bytes": 399,
+        "sha256": "6e07d518fa602b9b4f169f1434174611b08dfffbc453eb810b1ec4eada01e60b"
+      },
+      "log": {
+        "path": ".dart_tool/app_review/settings-sidebar-v2-build.log",
+        "bytes": 48261,
+        "sha256": "28ae0d95988d7622d7e7cc752d7eb1f93b716a6283de5ed64eddfe2e47838f5b"
+      }
+    },
+    "androidStaticInspection": {
+      "native": {
+        "path": ".dart_tool/app_review/settings-sidebar-v2-apk-native.json",
+        "bytes": 21700,
+        "sha256": "8bae9f104585b524fae7b60af90b8f25bf44b8465d3d328132886650ef9fb208"
+      },
+      "qr": {
+        "path": ".dart_tool/app_review/settings-sidebar-v2-qr.json",
+        "bytes": 753,
+        "sha256": "55a01852f1bec030505bf5b34bb531791cf4afd756f6d157f793441f1c4bcc51"
+      },
+      "completeAbis": [
+        "arm64-v8a",
+        "armeabi-v7a",
+        "x86_64"
+      ],
+      "nativeLibraryCount": 24,
+      "qrPublicNoArgumentRegistrars": 3,
+      "physicalRuntimeVerifiedForThisApk": false
+    },
+    "linux": {
+      "status": "passed",
+      "environment": {
+        "desktop": "KDE",
+        "sessionType": "wayland",
+        "gdkBackend": "wayland"
+      },
+      "build": {
+        "pid": 96888,
+        "command": [
+          "flutter",
+          "--suppress-analytics",
+          "build",
+          "linux",
+          "--release",
+          "--no-pub"
+        ],
+        "startedAtUtc": "2026-10-23T20:20:08.142297+00:00",
+        "ninjaJobs": 2,
+        "ninjaWrapper": "/tmp/bshare-settings-sidebar-v2-ninja-zgn0_2ot",
+        "homeUnchanged": true,
+        "exitCode": 0,
+        "completedAtUtc": "2026-10-23T20:23:00.321505+00:00",
+        "durationSeconds": 172.19,
+        "ninjaWrapperRemoved": true,
+        "sourceChangesSinceFreeze": [],
+        "receipt": {
+          "path": ".dart_tool/app_review/settings-sidebar-linux-v2-build.json",
+          "sha256": "d6bd6735d2b066040941fda4c41176e82b06ea0d95b434d13c37fa4be27a0a21",
+          "bytes": 472
+        },
+        "log": {
+          "path": ".dart_tool/app_review/settings-sidebar-linux-v2-build.log",
+          "sha256": "0e1f715aeef31889c144d841f94cef94bc8bdfd01668e930bddd1879ee63a293",
+          "bytes": 113
+        },
+        "kernelInputProof": {
+          "recordedAtUtc": "2026-10-23T20:26:31.552007+00:00",
+          "kernel": ".dart_tool/flutter_build/7a2867e4079be864018059b0fa23ca44/app.dill",
+          "kernelSha256": "134240b56a8b7c7f5e474047380e3e60839eaff07337e5b10d3c8e2639aef92d",
+          "files": {
+            "lib/src/presentation/widgets/app_shell.dart": {
+              "sourceSha256": "26464b8345ae04e4a5fcc7d5bd957cf251d708dceda8a8ea3ea34d02b0e50bf4",
+              "matchesFreeze": true,
+              "exactSourceEmbedded": true
+            },
+            "lib/src/presentation/screens/settings_screen.dart": {
+              "sourceSha256": "6e4b4bd2d66fafee3b8d694f2894276828c13a93eca5a193d8bff590b894523a",
+              "matchesFreeze": true,
+              "exactSourceEmbedded": true
+            },
+            "lib/src/presentation/widgets/settings_section.dart": {
+              "sourceSha256": "d2e8551175e8d1c99acf074426cca35497f534688ca2e17edc3195d66bc829e9",
+              "matchesFreeze": true,
+              "exactSourceEmbedded": true
+            },
+            "lib/src/presentation/localization/app_localizations.dart": {
+              "sourceSha256": "36bbd686ae8aef417e3917063e30682533354287bcd61c7f8e6a663559ddd9f4",
+              "matchesFreeze": true,
+              "exactSourceEmbedded": true
+            }
+          },
+          "allExactSourcesEmbedded": true,
+          "evidence": {
+            "path": ".dart_tool/app_review/settings-sidebar-linux-v2-kernel-source-proof.json",
+            "sha256": "0ef09d6554f2986a673a59c8901e57902283c120b3f151b79ff1f736863ea729",
+            "bytes": 1156
+          }
+        },
+        "sourceFreeze": {
+          "path": ".dart_tool/app_review/settings-sidebar-linux-v2-source-freeze.json",
+          "sha256": "6142ad083c872a79b924d439d178d67dccdfd5140e11a6e32335fc8c42b9750b",
+          "bytes": 10867
+        }
+      },
+      "artifact": {
+        "bundle": "build/linux/x64/release/bundle",
+        "executable": {
+          "sha256": "3dc764099fdf48e35a86d4e2e044a66e0e7565c80457af1b2ab90d0d8f67d956",
+          "bytes": 30736
+        },
+        "aot": {
+          "sha256": "13eddea468b4b3df774cf80305d31c3546a4277b8a78fb7d4c7e4f3b49cd8f75",
+          "bytes": 8815504
+        },
+        "fileCount": 19,
+        "canonicalFileMapSha256": "cd2eadb39b92d3c27da8dfb640167c982cd27f98a83853c5bb1085a26d4c049e",
+        "manifest": {
+          "path": ".dart_tool/app_review/settings-sidebar-linux-v2-bundle-manifest.json",
+          "sha256": "3f56793ff4c8689acd31b20a6b65c65f226b449992d99ed105a2da4d25e437fb",
+          "bytes": 3060
+        }
+      },
+      "caseCount": 7,
+      "cases": [
+        {
+          "name": "Home1280 sidebar logo and BShare; Inicio AppBar without duplicate Flutter brand",
+          "status": "passed",
+          "evidence": [
+            "home-wide"
+          ]
+        },
+        {
+          "name": "Settings use matching cards for Dispositivo, Transferencias, Apariencia and Compartir pantalla; no camera capture settings on desktop",
+          "status": "passed",
+          "evidence": [
+            "settings-wide-top",
+            "settings-wide-bottom"
+          ]
+        },
+        {
+          "name": "Guardar ajustes remains reachable at end of settings",
+          "status": "passed",
+          "evidence": [
+            "settings-wide-bottom",
+            "settings-compact-preserved",
+            "settings-restored-preserved"
+          ]
+        },
+        {
+          "name": "1280→800→1280 retains selected Settings route and scrolled content near end instead of resetting to top",
+          "status": "passed",
+          "evidence": [
+            "settings-wide-bottom",
+            "settings-compact-preserved",
+            "settings-restored-preserved"
+          ],
+          "measurement": "Visual continuity in real release window; exact ScrollController offset and child-state identity are covered by coordinated widget regressions separately"
+        },
+        {
+          "name": "Home800 has responsive single-column content and compact left rail80 with logo+BShare",
+          "status": "passed",
+          "evidence": [
+            "home-compact"
+          ]
+        },
+        {
+          "name": "Native minimize/maximize/close controls remain visible; actual close button exits app normally",
+          "status": "passed",
+          "evidence": [
+            "home-wide",
+            "home-compact"
+          ],
+          "closeInput": {
+            "path": ".dart_tool/app_review/settings-sidebar-linux-v2-click-close-native-titlebar.json",
+            "sha256": "aa25a3ad5b900be980f6cd89ebac75de07e3c38709236b0b855846bbadb17708",
+            "bytes": 457
+          }
+        },
+        {
+          "name": "No camera, microphone or screen capture started; no own listener/capture fd before close",
+          "status": "passed",
+          "resources": {
+            "path": ".dart_tool/app_review/settings-sidebar-linux-v2-before-close-resources.json",
+            "sha256": "eac5d7781e1481b7c438eb083acb08255ff5bbe125b24c48ec6f86c3b01f92d2",
+            "bytes": 177
+          }
+        }
+      ],
+      "runtimeEvidence": {
+        "path": ".dart_tool/app_review/settings-sidebar-linux-v2-results.json",
+        "bytes": 12731,
+        "sha256": "668c007a966b2d608b6081610191277d459fbe03fc0314a8a34b05df0d760134"
+      },
+      "rootVisuallyReviewed": [
+        "home-wide",
+        "settings-wide-top",
+        "settings-compact-preserved"
+      ],
+      "limitations": [
+        "Existing AT-SPI startup warning atk_socket_embed plug_id assertion remains; application functioned and closed with exit0.",
+        "Current native runtime is KDE Wayland only. Windows/macOS are covered by coordinated widget platform tests, not native builds in this task.",
+        "Minimize and maximize visibility was checked this revision; functional click tests for these controls belong to the previous desktop polish report. No camera/audio/USB transport or performance benchmark was run by this UI task."
+      ]
+    }
+  },
+  "androidArtifact": {
+    "recordedAtUtc": "2026-10-23T20:24:53.902714+00:00",
+    "buildPath": "build/app/outputs/apk/release/app-release.apk",
+    "retainedPath": ".dart_tool/app_review/settings-sidebar-v2.apk",
+    "deliveryPath": "build/app/outputs/flutter-apk/bshare-optimized-release.apk",
+    "bytes": 110897879,
+    "sha256": "d1b846184081e96a3e110556e9c45c776bcce1987dc890095bc1b18a602b76b3",
+    "aotLibraries": [
+      "lib/arm64-v8a/libapp.so",
+      "lib/armeabi-v7a/libapp.so",
+      "lib/x86_64/libapp.so"
+    ],
+    "debugKernelPresent": false,
+    "installedOnPhysicalDevice": false
+  },
+  "physicalDevice": {
+    "recordedAtUtc": "2026-10-23T20:25:46.322051+00:00",
+    "status": "not_installed_no_connected_adb_device",
+    "adbDevices": [],
+    "mdnsAdvertisedEndpointResponds": false,
+    "previousPhysicalValidationArtifactSha256": "5ff3674cb5d76bd8b16f9fe47b1030956356d155244defbf778a6b9137260e7c",
+    "currentApkSha256": "d1b846184081e96a3e110556e9c45c776bcce1987dc890095bc1b18a602b76b3",
+    "userAdbServerPreserved": true
+  },
+  "historicalAttempts": {
+    "hostSuite": {
+      "evidence": {
+        "path": ".dart_tool/app_review/settings-sidebar-final-tests.json",
+        "bytes": 139,
+        "sha256": "3d1fd1c2aeb9848e65868e2f9302a3ea0a7306da7530bb1a35ff41daaafc8046"
+      },
+      "log": {
+        "path": ".dart_tool/app_review/settings-sidebar-final-tests.log",
+        "bytes": 79545,
+        "sha256": "87625baab7d920885984b7b6e7a0d061fe761a18b5c8c452ed05a7808d20a92b"
+      },
+      "passed": 399,
+      "failed": 1,
+      "cause": "Exclusive UDP53318 cleanup assertion conflicted with the user running BShare instance; user process was preserved."
+    },
+    "firstIsolatedSuite": {
+      "evidence": {
+        "path": ".dart_tool/app_review/settings-sidebar-final-tests-isolated.json",
+        "bytes": 174,
+        "sha256": "cf2aa6e07b44618279291d9def3383795156a15e0a99c18c6a991d37a0859134"
+      },
+      "log": {
+        "path": ".dart_tool/app_review/settings-sidebar-final-tests-isolated.log",
+        "bytes": 81970,
+        "sha256": "93dc571b10fcb44da91eb0b0d5ee5e12ba1353da12d7e4b9b83937d9acdf9a03"
+      },
+      "passed": 399,
+      "failed": 1,
+      "cause": "Namespace maps the user to UID0; Flutter wrapper added a superuser warning to process-runner stderr. Final CI=true run retains exact output assertions and passes."
+    },
+    "initialAndroidBuildNotDelivered": {
+      "path": ".dart_tool/app_review/settings-sidebar-initial-artifact.json",
+      "bytes": 414,
+      "sha256": "4560c43721088efa46fe347745b65dff04e6d80c9cea07ced2e582e64ac6a70c"
+    },
+    "initialLinuxBuild": {
+      "buildReceipt": {
+        "path": ".dart_tool/app_review/settings-sidebar-linux-build.json",
+        "sha256": "e2ead8bc3b4bae72dee9b6566a80ba3fa755545850117f22c73867e2ecb6f8a1",
+        "bytes": 468
+      },
+      "kernelInputProof": {
+        "path": ".dart_tool/app_review/settings-sidebar-linux-v1-kernel-source-proof.json",
+        "sha256": "c51df11a746ceea16512eecccbc38fd72428730cd2e6c4a02f7f8e690f83290e",
+        "bytes": 1121
+      },
+      "bundleManifest": {
+        "path": ".dart_tool/app_review/settings-sidebar-linux-v1-bundle-manifest.json",
+        "sha256": "161841dc1abf2392a29b9ce9423e4d86b0d8424bb439513e814bdad76c5a5bb8",
+        "bytes": 3060
+      },
+      "cleanup": {
+        "path": ".dart_tool/app_review/settings-sidebar-linux-v1-cleanup.json",
+        "sha256": "da3fb487ab09e1f9b04bba23e3bf06fee176c85acc4136ac691c17d8b5520559",
+        "bytes": 1390
+      },
+      "finding": "Real runtime showed Settings scroll reset crossing900 because _ResponsiveContent replaced the child hierarchy; stable Center→ConstrainedBox→Padding fixed it before finalV2 build."
+    }
+  },
+  "cleanup": {
+    "ownedReviewPythonProcessesStillRunning": [],
+    "allRootBuildTestAnalyzerJobsReaped": true,
+    "linux": {
+      "recordedAtUtc": "2026-10-23T20:26:31.314604+00:00",
+      "ownedPidStillPresent": {
+        "96888": false,
+        "109301": false,
+        "109276": false,
+        "109143": false
+      },
+      "ownKWinScriptsStillLoaded": {
+        "bshare-settings-sidebar-v2-prelaunch-focus": false,
+        "bshare-settings-sidebar-v2-home-initial": false,
+        "bshare-settings-sidebar-v2-settings-wide-open-focused": false,
+        "bshare-settings-sidebar-v2-settings-wide-scroll-focused": false,
+        "bshare-settings-sidebar-v2-compact-settings": false,
+        "bshare-settings-sidebar-v2-compact-settings-focus": false,
+        "bshare-settings-sidebar-v2-restored-settings": false,
+        "bshare-settings-sidebar-v2-restored-settings-focus": false,
+        "bshare-settings-sidebar-v2-home-restored-open-focused": false,
+        "bshare-settings-sidebar-v2-home-compact": false,
+        "bshare-settings-sidebar-v2-home-compact-focus": false,
+        "bshare-settings-sidebar-v2-close-native-titlebar-focused": false,
+        "bshare-settings-sidebar-v2-after-close": false,
+        "bshare-settings-sidebar-v2-restore-original-focus": false
+      },
+      "ownScriptFilesRemaining": [],
+      "ownBusNameStillOwned": false,
+      "appWindowCountAfterClose": 0,
+      "ownXdgSandboxRemoved": true,
+      "temporaryNinjaWrapperRemoved": true,
+      "focusOriginalRestored": true,
+      "pointerRestoredForEveryInput": true,
+      "homeUnchanged": true,
+      "userPreferencesChanged": false,
+      "userProcessSignalsSent": false,
+      "userDebugBSharePid19076Present": true,
+      "sourceChangesSinceFinalFreeze": [],
+      "appExitCode": 0,
+      "busExitCode": 0
+    },
+    "userBShareAndAdbServerPreserved": true,
+    "noEmulatorsOrAdbForwardsCreated": true
+  },
+  "limitations": [
+    "Native desktop execution was tested on KDE Wayland only; Windows/macOS and Android/iOS presentation are covered by widget platform tests.",
+    "S22 unavailable over ADB; updated APK was built and statically inspected but not installed.",
+    "No camera/audio/USB transport or throughput benchmark repeated for these presentation changes; prior measurements apply to their retained artifacts."
+  ]
+}

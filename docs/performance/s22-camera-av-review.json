@@ -1,0 +1,1234 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-10-22T03:37:04.959368+00:00",
+  "status": "passed",
+  "scope": "Final Android release camera AV validation on S22 and native Linux PC over Wi-Fi.",
+  "artifact": {
+    "path": ".dart_tool/app_review/camera-av-adm-built.apk",
+    "retainedPath": ".dart_tool/app_review/camera-av-adm-built.apk",
+    "bytes": 40297775,
+    "sha256": "6ec9ce105c7ac021bb202a6a0fa7fb3d29aa6ad069cc0dfe7029de5a1480277f",
+    "structure": {
+      "hasAotLibrary": true,
+      "hasDebugKernel": false
+    },
+    "originalDeliveryPath": "build/app/outputs/flutter-apk/bshare-optimized-release.apk",
+    "note": "Historical AV revision. The shared delivery path may contain a newer build; use this retained APK and its recorded digest for these observations."
+  },
+  "installation": {
+    "package": "com.bshare.bshare.audit",
+    "installedSha256": "6ec9ce105c7ac021bb202a6a0fa7fb3d29aa6ad069cc0dfe7029de5a1480277f",
+    "matchesDelivered": true
+  },
+  "automatedValidation": {
+    "flutterTestsPassed": 248,
+    "nativeAdm": {
+      "sdk": "io.github.webrtc-sdk:android:144.7559.09",
+      "harnessPassed": true,
+      "harnessScenarios": 19,
+      "compileExitCode": 0,
+      "releaseInspectionChecksPassed": 17,
+      "physicalStatusInNativeReview": "passed-final-release"
+    },
+    "nativeLocalMediaOwnership": {
+      "passed": true,
+      "exitCode": 0,
+      "scenarios": 15,
+      "cycles": 1000,
+      "modelChecks": [
+        "App track.stop → repeated track.stop → stream.dispose → repeated stream.dispose.",
+        "Direct disposal of a live combined audio/video stream.",
+        "Dart clone attaching the same Java track wrapper to two streams.",
+        "Borrowed remote wrapper remains alive for its peer owner.",
+        "Already-disposed borrowed remote wrapper does not prevent terminal native stream release.",
+        "A sender independently retains its native track/source after the local Java wrapper is disposed.",
+        "Engine cleanup repeated with shared wrappers does not double-dispose.",
+        "A removed track releases immediately when stopped.",
+        "Preserved external wrappers remain borrowed; preserved local references count toward sharing.",
+        "Failed createAudioTrack, null track creation, rejected attach and throwing attach release temporary source and track.",
+        "1000 microphone allocation/stop/dispose cycles leave source/track/stream native-reference model counts and Java ownership maps at zero.",
+        "Capture stop/join runs without holding the localTracks map lock."
+      ],
+      "limits": [
+        "The 1000-cycle check is a deterministic SDK ownership model compiled from unchanged production methods; it is not a physical Android heap measurement.",
+        "Final release physical evidence verifies tested device-resource cleanup and PCM behavior on this S22 Ultra/PC Wi-Fi setup; it does not measure audio/video synchronization or universal device support."
+      ],
+      "scope": "Controlled ownership model; not a physical native-heap measurement."
+    },
+    "finalRefinementDelta": [
+      "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/GetUserMediaImpl.java",
+      "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/MethodCallHandlerImpl.java",
+      "third_party/flutter_webrtc/test/native/test_android_audio_recording_gate.py",
+      "third_party/flutter_webrtc/test/native/test_local_media_ownership.py"
+    ],
+    "scope": {
+      "changedSince248FlutterTestsAndLinuxRelease": [
+        "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/GetUserMediaImpl.java",
+        "third_party/flutter_webrtc/android/src/main/java/com/cloudwebrtc/webrtc/MethodCallHandlerImpl.java",
+        "third_party/flutter_webrtc/test/native/test_android_audio_recording_gate.py",
+        "third_party/flutter_webrtc/test/native/test_local_media_ownership.py"
+      ],
+      "flutterDartSourceUnchanged": true,
+      "productionJavaOnly": true
+    }
+  },
+  "checks": {
+    "artifactDigest": {
+      "status": "passed"
+    },
+    "releaseAotArtifact": {
+      "status": "passed",
+      "detail": {
+        "hasAotLibrary": true,
+        "hasDebugKernel": false
+      }
+    },
+    "installedMatchesArtifact": {
+      "status": "passed"
+    },
+    "productionSourceUnchangedSinceFreeze": {
+      "status": "passed",
+      "detail": {
+        "files": 82,
+        "changedPaths": []
+      }
+    },
+    "androidBuild": {
+      "status": "passed",
+      "detail": {
+        "exitCode": 0,
+        "elapsedSeconds": 303.13
+      }
+    },
+    "flutterTests": {
+      "status": "passed",
+      "detail": {
+        "exitCode": 0,
+        "elapsedSeconds": 144.49,
+        "finishedAt": "2026-10-22T02:49:52.301771+00:00"
+      }
+    },
+    "analyzer": {
+      "status": "passed",
+      "detail": {
+        "exitCode": 0,
+        "elapsedSeconds": 20.19,
+        "finishedAt": "2026-10-22T02:47:48.111367+00:00"
+      }
+    },
+    "linuxBuild": {
+      "status": "passed",
+      "detail": {
+        "exitCode": 0,
+        "elapsedSeconds": 159.96,
+        "finishedAt": "2026-10-22T02:50:07.809817+00:00"
+      }
+    },
+    "nativePcExit": {
+      "status": "passed",
+      "detail": {
+        "exitCode": 0
+      }
+    },
+    "flutterSuiteLog": {
+      "status": "passed"
+    },
+    "analyzerLog": {
+      "status": "passed"
+    },
+    "flutterValidationScopeStillApplies": {
+      "status": "passed"
+    },
+    "linuxValidationScopeStillApplies": {
+      "status": "passed"
+    },
+    "nativeAdmHarness": {
+      "status": "passed"
+    },
+    "nativeAdmCompile": {
+      "status": "passed"
+    },
+    "nativeAdmReleaseInspection": {
+      "status": "passed"
+    },
+    "nativeLocalMediaOwnershipModel": {
+      "status": "passed"
+    },
+    "nativeOwnershipSourcesMatchFreeze": {
+      "status": "passed"
+    },
+    "frontControlledAcousticSignalReceived": {
+      "status": "passed"
+    },
+    "nativeReviewedSourceMatchesFreeze": {
+      "status": "passed"
+    },
+    "initialMicrophoneOff": {
+      "status": "passed"
+    },
+    "firstMicrophoneOn": {
+      "status": "passed"
+    },
+    "microphoneOffAfterOn": {
+      "status": "passed"
+    },
+    "microphoneOnAgain": {
+      "status": "passed"
+    },
+    "receiverJoinsWhileMicrophoneOff": {
+      "status": "passed"
+    },
+    "rearTorchActive": {
+      "status": "passed"
+    },
+    "frontAndRearCapture": {
+      "status": "passed"
+    },
+    "dimWithoutLock": {
+      "status": "passed"
+    },
+    "finalAndroidCleanup": {
+      "status": "passed",
+      "detail": {
+        "recorderInactive": true,
+        "cameraClientReleased": true,
+        "foregroundServicesReleased": true,
+        "cameraWakeLockReleased": true,
+        "sourceHttpUnavailable": true,
+        "projectionReleased": true,
+        "dimBrightnessRestored": true
+      }
+    },
+    "lateViewerActivatesStoredMicrophoneIntent": {
+      "status": "passed"
+    },
+    "verticalCameraControlColumn": {
+      "status": "passed"
+    },
+    "frontFlashDisabledInUi": {
+      "status": "passed"
+    },
+    "localPreviewHiddenInBothFacings": {
+      "status": "passed"
+    },
+    "deviceAndAppBackDestinations": {
+      "status": "passed"
+    },
+    "adbMappingsAndDiscoveryListenersClosed": {
+      "status": "passed"
+    },
+    "finalProbeVideoAdvances": {
+      "status": "passed"
+    },
+    "testHelpersCleanup": {
+      "status": "passed",
+      "detail": "Independent cleanup receipt required; Android resource summaries and PC exit status do not prove all browser/probe/test helpers are closed."
+    }
+  },
+  "pendingChecks": [],
+  "failedChecks": [],
+  "physicalObservations": {
+    "dim": {
+      "tag": "av-release-dim",
+      "recordedAtUtc": "2026-10-22T03:31:35.174134+00:00",
+      "ownRecordingActive": true,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [
+        "0.01"
+      ],
+      "brightnessOverride": [
+        "0.01"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 1,
+      "cameraForegroundServiceTypesHex": [
+        "0xc0"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "1",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 1080,
+        "height": 1920,
+        "generation": 1
+      },
+      "flashModes": [
+        "OFF",
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "disabled": {
+      "tag": "av-release-disabled",
+      "recordedAtUtc": "2026-10-22T03:32:00.821671+00:00",
+      "ownRecordingActive": false,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 0,
+      "cameraForegroundServiceTypesHex": [
+        "0x40"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "0",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 1080,
+        "height": 1920,
+        "generation": 1
+      },
+      "flashModes": [
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "enabled-again": {
+      "tag": "av-release-enabled-again",
+      "recordedAtUtc": "2026-10-22T03:32:21.578091+00:00",
+      "ownRecordingActive": true,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 1,
+      "cameraForegroundServiceTypesHex": [
+        "0xc0"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "0",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 180,
+        "height": 320,
+        "generation": 1
+      },
+      "flashModes": [
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "first-on": {
+      "tag": "av-release-first-on",
+      "recordedAtUtc": "2026-10-22T03:30:13.723426+00:00",
+      "ownRecordingActive": true,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 1,
+      "cameraForegroundServiceTypesHex": [
+        "0xc0"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "0",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 540,
+        "height": 960,
+        "generation": 1
+      },
+      "flashModes": [
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "flash-on": {
+      "tag": "av-release-flash-on",
+      "recordedAtUtc": "2026-10-22T03:30:21.728981+00:00",
+      "ownRecordingActive": true,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 1,
+      "cameraForegroundServiceTypesHex": [
+        "0xc0"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "0",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 1080,
+        "height": 1920,
+        "generation": 1
+      },
+      "flashModes": [
+        "TORCH"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "front-hidden": {
+      "tag": "av-release-front-hidden",
+      "recordedAtUtc": "2026-10-22T03:30:35.986944+00:00",
+      "ownRecordingActive": true,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 1,
+      "cameraForegroundServiceTypesHex": [
+        "0xc0"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "1",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 1080,
+        "height": 1920,
+        "generation": 1
+      },
+      "flashModes": [
+        "OFF",
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "initial-off": {
+      "tag": "av-release-initial-off",
+      "recordedAtUtc": "2026-10-22T03:29:56.169839+00:00",
+      "ownRecordingActive": false,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 0,
+      "cameraForegroundServiceTypesHex": [
+        "0x40"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "0",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 360,
+        "height": 640,
+        "generation": 1
+      },
+      "flashModes": [
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "late-source-on": {
+      "tag": "av-release-late-source-on",
+      "recordedAtUtc": "2026-10-22T03:33:06.110507+00:00",
+      "ownRecordingActive": false,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 0,
+      "cameraForegroundServiceTypesHex": [
+        "0xc0"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "0",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 1080,
+        "height": 1920,
+        "generation": 2
+      },
+      "flashModes": [
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "late-viewer": {
+      "tag": "av-release-late-viewer",
+      "recordedAtUtc": "2026-10-22T03:33:36.223556+00:00",
+      "ownRecordingActive": true,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 1,
+      "cameraForegroundServiceTypesHex": [
+        "0xc0"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "0",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 270,
+        "height": 480,
+        "generation": 2
+      },
+      "flashModes": [
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "pc-closed": {
+      "tag": "av-release-pc-closed",
+      "recordedAtUtc": "2026-10-22T03:32:40.099283+00:00",
+      "ownRecordingActive": true,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 1,
+      "cameraForegroundServiceTypesHex": [
+        "0xc0"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "0",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 1080,
+        "height": 1920,
+        "generation": 1
+      },
+      "flashModes": [
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "rear-hidden": {
+      "tag": "av-release-rear-hidden",
+      "recordedAtUtc": "2026-10-22T03:31:57.122207+00:00",
+      "ownRecordingActive": true,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 1,
+      "cameraForegroundServiceTypesHex": [
+        "0xc0"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "0",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 1080,
+        "height": 1920,
+        "generation": 1
+      },
+      "flashModes": [
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "rejoin-off": {
+      "tag": "av-release-rejoin-off",
+      "recordedAtUtc": "2026-10-22T03:32:13.725944+00:00",
+      "ownRecordingActive": false,
+      "activeCameraClientEmpty": false,
+      "ownCameraWakeLockActive": true,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "ownRecordingEntryCount": 0,
+      "cameraForegroundServiceTypesHex": [
+        "0x40"
+      ],
+      "foregroundServiceCount": 2,
+      "source": {
+        "source": "camera",
+        "cameraId": "0",
+        "resolution": 1080,
+        "frameRate": 30,
+        "width": 270,
+        "height": 480,
+        "generation": 1
+      },
+      "flashModes": [
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "stopped-final": {
+      "tag": "av-release-stopped-final",
+      "recordedAtUtc": "2026-10-22T03:33:55.850878+00:00",
+      "ownRecordingActive": false,
+      "activeCameraClientEmpty": true,
+      "ownCameraWakeLockActive": false,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "httpUnavailable": "URLError",
+      "ownRecordingEntryCount": 0,
+      "cameraForegroundServiceTypesHex": [],
+      "foregroundServiceCount": 0,
+      "source": {},
+      "flashModes": [
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    },
+    "stopped": {
+      "tag": "av-release-stopped",
+      "recordedAtUtc": "2026-10-22T03:32:47.969737+00:00",
+      "ownRecordingActive": false,
+      "activeCameraClientEmpty": true,
+      "ownCameraWakeLockActive": false,
+      "wakefulness": [
+        "Awake"
+      ],
+      "windowBrightness": [],
+      "brightnessOverride": [
+        "NaN"
+      ],
+      "keyguardShowing": [
+        "false"
+      ],
+      "httpUnavailable": "URLError",
+      "ownRecordingEntryCount": 0,
+      "cameraForegroundServiceTypesHex": [],
+      "foregroundServiceCount": 0,
+      "source": {},
+      "flashModes": [
+        "OFF"
+      ],
+      "mediaProjectionAbsent": true
+    }
+  },
+  "decodedPcmMeasurements": {
+    "disabled": {
+      "tag": "av-release-disabled",
+      "startedAtUtc": "2026-10-22T03:32:01.288830+00:00",
+      "endedAtUtc": "2026-10-22T03:32:05.321275+00:00",
+      "rate": 48000,
+      "channels": 1,
+      "samples": 98304,
+      "rmsS16": 0.0,
+      "peakS16": 0,
+      "nonzeroSamples": 0,
+      "rawAudioRetained": false
+    },
+    "enabled-again": {
+      "tag": "av-release-enabled-again",
+      "startedAtUtc": "2026-10-22T03:32:21.905945+00:00",
+      "endedAtUtc": "2026-10-22T03:32:25.929314+00:00",
+      "rate": 48000,
+      "channels": 1,
+      "samples": 98304,
+      "rmsS16": 90.82663536458008,
+      "peakS16": 932,
+      "nonzeroSamples": 95761,
+      "rawAudioRetained": false
+    },
+    "first-on": {
+      "tag": "av-release-first-on",
+      "startedAtUtc": "2026-10-22T03:30:14.161588+00:00",
+      "endedAtUtc": "2026-10-22T03:30:18.179948+00:00",
+      "rate": 48000,
+      "channels": 1,
+      "samples": 98304,
+      "rmsS16": 29.406771485977778,
+      "peakS16": 571,
+      "nonzeroSamples": 64340,
+      "rawAudioRetained": false
+    },
+    "front-hidden": {
+      "tag": "av-release-front-hidden",
+      "startedAtUtc": "2026-10-22T03:30:36.522089+00:00",
+      "endedAtUtc": "2026-10-22T03:30:41.567927+00:00",
+      "rate": 48000,
+      "channels": 1,
+      "samples": 163840,
+      "rmsS16": 0.1336828102262965,
+      "peakS16": 4,
+      "nonzeroSamples": 2469,
+      "rawAudioRetained": false
+    },
+    "front-signal": {
+      "tag": "av-release-front-signal",
+      "startedAtUtc": "2026-10-22T03:31:35.792622+00:00",
+      "endedAtUtc": "2026-10-22T03:31:42.847479+00:00",
+      "rate": 48000,
+      "channels": 1,
+      "samples": 262144,
+      "rmsS16": 19.916514674076268,
+      "peakS16": 425,
+      "nonzeroSamples": 44369,
+      "rawAudioRetained": false
+    },
+    "initial-off": {
+      "tag": "av-release-initial-off",
+      "startedAtUtc": "2026-10-22T03:29:56.527917+00:00",
+      "endedAtUtc": "2026-10-22T03:30:00.561422+00:00",
+      "rate": 48000,
+      "channels": 1,
+      "samples": 98304,
+      "rmsS16": 0.0,
+      "peakS16": 0,
+      "nonzeroSamples": 0,
+      "rawAudioRetained": false
+    },
+    "late-viewer": {
+      "tag": "av-release-late-viewer",
+      "startedAtUtc": "2026-10-22T03:33:30.081658+00:00",
+      "endedAtUtc": "2026-10-22T03:33:35.116607+00:00",
+      "rate": 48000,
+      "channels": 1,
+      "samples": 163840,
+      "rmsS16": 132.65345552949614,
+      "peakS16": 1784,
+      "nonzeroSamples": 130512,
+      "rawAudioRetained": false
+    },
+    "rejoin-off": {
+      "tag": "av-release-rejoin-off",
+      "startedAtUtc": "2026-10-22T03:32:14.123574+00:00",
+      "endedAtUtc": "2026-10-22T03:32:18.136008+00:00",
+      "rate": 48000,
+      "channels": 1,
+      "samples": 98304,
+      "rmsS16": 0.0,
+      "peakS16": 0,
+      "nonzeroSamples": 0,
+      "rawAudioRetained": false
+    }
+  },
+  "controlledAcousticSignal": {
+    "syntheticSource": "440 to 880 Hz chirp, three seconds",
+    "playbackStreamVolume": 0.25,
+    "wavePeakFraction": 0.15,
+    "route": "User default speaker, distinct from receiver audit sink",
+    "microphoneRawAudioRetained": false,
+    "playbackExitCode": 0,
+    "measurement": "av-release-front-signal-pcm.json",
+    "scope": "Positive microphone-path check during frontal-camera capture. Quiet ambient PCM is not classified as a microphone failure."
+  },
+  "probe": {
+    "summary": {
+      "passed": true,
+      "samples": 34,
+      "audioSamples": 30,
+      "cameraIds": [
+        "0",
+        "1"
+      ],
+      "sources": [
+        "camera"
+      ]
+    },
+    "metrics": {
+      "samples": 34,
+      "sameConfigurationIntervals": 20,
+      "excludedAdjacentIntervals": {
+        "configurationChanged": 9,
+        "missingStats": 4,
+        "counterResetOrInvalidTime": 0
+      },
+      "groups": [
+        {
+          "cameraId": "0",
+          "generation": 1,
+          "requestedResolution": 1080,
+          "requestedFrameRate": 30,
+          "metadataDimensions": [
+            1080,
+            1920
+          ],
+          "displayDimensions": [
+            1080,
+            1920
+          ],
+          "rtpDimensions": [
+            1920,
+            1080
+          ],
+          "audioSsrcs": [
+            "2128035333"
+          ],
+          "sourceTrackId": "43e3a2ea-280e-4da0-af30-537854d83c4b",
+          "videoSsrc": 3337666967,
+          "videoStatsId": "IT01V3337666967",
+          "intervals": 1,
+          "statsSeconds": 5.06,
+          "decodedFrameDelta": 152,
+          "videoByteDelta": 3386155,
+          "videoCodec": "video/H264",
+          "audio": [
+            {
+              "ssrc": "2128035333",
+              "codec": "audio/opus",
+              "intervals": 1,
+              "statsSeconds": 5.060287109375,
+              "packetsReceivedDelta": 254,
+              "bytesReceivedDelta": 9082,
+              "totalSamplesReceivedDelta": 242400,
+              "totalAudioEnergyDelta": 0,
+              "concealedSamplesDelta": 0
+            }
+          ],
+          "weightedDecodedFps": 30.04
+        },
+        {
+          "cameraId": "1",
+          "generation": 1,
+          "requestedResolution": 1080,
+          "requestedFrameRate": 30,
+          "metadataDimensions": [
+            1080,
+            1920
+          ],
+          "displayDimensions": [
+            1080,
+            1920
+          ],
+          "rtpDimensions": [
+            1920,
+            1080
+          ],
+          "audioSsrcs": [
+            "2128035333"
+          ],
+          "sourceTrackId": "6c93eeaf-8ceb-4a39-84c3-579f6fc1997c",
+          "videoSsrc": 3337666967,
+          "videoStatsId": "IT01V3337666967",
+          "intervals": 15,
+          "statsSeconds": 75.68,
+          "decodedFrameDelta": 2269,
+          "videoByteDelta": 45364440,
+          "videoCodec": "video/H264",
+          "audio": [
+            {
+              "ssrc": "2128035333",
+              "codec": "audio/opus",
+              "intervals": 15,
+              "statsSeconds": 75.67961010742188,
+              "packetsReceivedDelta": 3784,
+              "bytesReceivedDelta": 155171,
+              "totalSamplesReceivedDelta": 3632640,
+              "totalAudioEnergyDelta": 0,
+              "concealedSamplesDelta": 0
+            }
+          ],
+          "weightedDecodedFps": 29.98
+        },
+        {
+          "cameraId": "0",
+          "generation": 1,
+          "requestedResolution": 1080,
+          "requestedFrameRate": 30,
+          "metadataDimensions": [
+            1080,
+            1920
+          ],
+          "displayDimensions": [
+            1080,
+            1920
+          ],
+          "rtpDimensions": [
+            1920,
+            1080
+          ],
+          "audioSsrcs": [
+            "2128035333"
+          ],
+          "sourceTrackId": "41f31289-ab85-4f91-b216-313c95b4f82b",
+          "videoSsrc": 3337666967,
+          "videoStatsId": "IT01V3337666967",
+          "intervals": 4,
+          "statsSeconds": 20.168,
+          "decodedFrameDelta": 604,
+          "videoByteDelta": 11817801,
+          "videoCodec": "video/H264",
+          "audio": [
+            {
+              "ssrc": "2128035333",
+              "codec": "audio/opus",
+              "intervals": 4,
+              "statsSeconds": 20.168466796875002,
+              "packetsReceivedDelta": 442,
+              "bytesReceivedDelta": 25444,
+              "totalSamplesReceivedDelta": 967200,
+              "totalAudioEnergyDelta": 0,
+              "concealedSamplesDelta": 539676
+            }
+          ],
+          "weightedDecodedFps": 29.95
+        }
+      ],
+      "performanceClaimsAllowed": true,
+      "scope": "Only adjacent connected samples with matching camera, generation, source track, video RTP/Stats identity, dimensions, codecs, capture settings and nonempty audio SSRC set. Missing RTP identity excludes an interval. FPS uses RTCStats time deltas; no end-to-end latency or synchronization-offset claim."
+    }
+  },
+  "historicalFindings": [
+    {
+      "artifactSha256": "4b0e6fbe1ccf648200c8ae8cfc34e0476ddeac441b521207571d4eabe78980c6",
+      "finding": "Audio transceiver created before remote description remained unassociated; answer audio direction inactive. Video worked, microphone playback did not.",
+      "fix": "Use the audio transceiver associated with the remote audio m-line after setRemoteDescription, preserve stream identity and attach/detach its sender.",
+      "scope": "historical artifact; not a final release success claim"
+    },
+    {
+      "artifactSha256": "d709e1d1da516565248b533a0efec95181f44286ce8ec7d15bf1e04793fe06dc",
+      "finding": "Audio playback worked, but Android recording remained active with microphone UI off. Detaching an audio track only silenced transmission.",
+      "fix": "Explicit Android WebRTC recording-device gate before signaling and while toggling/stopping.",
+      "scope": "historical artifact; not a final release success claim"
+    },
+    {
+      "artifactSha256": "736a05793f3dbb7ee81e986701e4b7def1f2eaa8c1fb78ad8f834d17bed23ba0",
+      "finding": "With microphone permission initially absent, the reserved send-only audio channel attempted AudioRecord initialization despite recording disabled. The failed initialization persisted after permission was granted; video advanced but native PC PCM remained zero.",
+      "fixStatus": "Native ADM initialization correction in progress; no successful final audio claim for this artifact.",
+      "scope": "historical artifact; not a final release success claim"
+    }
+  ],
+  "evidence": {
+    "artifact": {
+      "path": ".dart_tool/app_review/camera-av-adm-artifact.json",
+      "bytes": 351,
+      "sha256": "df41ef9c2bc6b7fc220f3251fc13558dd340e05f97f82e5726b8988688be9fa3"
+    },
+    "install": {
+      "path": ".dart_tool/app_review/camera-av-adm-install.json",
+      "bytes": 232,
+      "sha256": "3862dd2f75c6dc9825eba3fb8388c04b3224d215b394a5bde514f0d35c506e38"
+    },
+    "source": {
+      "path": ".dart_tool/app_review/camera-av-adm-production-sha256.json",
+      "bytes": 10886,
+      "sha256": "e4a956be1ff5c83f9ff7aef80d5b2adadb34e68c02b17c3369f336a05f2f3baf"
+    },
+    "validationScope": {
+      "path": ".dart_tool/app_review/camera-av-adm-validation-scope.json",
+      "bytes": 491,
+      "sha256": "cfc3435cf96106e1d0d0ca295c97b7aea487e81163ba676464a58a2216986d93"
+    },
+    "androidBuild": {
+      "path": ".dart_tool/app_review/camera-av-adm-android-status.json",
+      "bytes": 103,
+      "sha256": "3e382ee01dc597f6a5bb859a3872690bface4a1805e5da61508494e81bb3111a"
+    },
+    "flutterTests": {
+      "path": ".dart_tool/app_review/camera-av-gated-tests-status.json",
+      "bytes": 100,
+      "sha256": "d719ab813ff19da449bf15b34330aa2f7be1152dc61c3fd6f62da520afefc9f0"
+    },
+    "flutterTestLog": {
+      "path": ".dart_tool/app_review/camera-av-gated-tests.log",
+      "bytes": 52235,
+      "sha256": "42726304602ed35522d97591c9e84b78e0b627b0e1e5ffe71fcc9c99d55fee1b"
+    },
+    "analyzer": {
+      "path": ".dart_tool/app_review/camera-av-gated-analyze-status.json",
+      "bytes": 99,
+      "sha256": "13274a130dc0a2aa083a36cb267fdcdf2a43dd96f53eacb8c490a98ba3259051"
+    },
+    "analyzerLog": {
+      "path": ".dart_tool/app_review/camera-av-gated-analyze.log",
+      "bytes": 164,
+      "sha256": "9b95bbdcc061f71edc086f8f5329a21134b27dcc0f62725a64a32242dcf76b6e"
+    },
+    "linuxBuild": {
+      "path": ".dart_tool/app_review/camera-av-gated-linux-status.json",
+      "bytes": 100,
+      "sha256": "c10d8b4c574c75eaf20619f46197104746a5aacbfe64fc3c57d35171fcc401e1"
+    },
+    "nativePcExit": {
+      "path": ".dart_tool/app_review/camera-av-adm-pc-status.json",
+      "bytes": 31,
+      "sha256": "865ef3efd9f211b23657b46af1bba2e99c674ea7b2916b839fde6c66e092b371"
+    },
+    "nativeAdmReview": {
+      "path": ".dart_tool/app_review/camera-av-native-adm-review.json",
+      "bytes": 24690,
+      "sha256": "08fa79c174d9f9eaff7c610f11783336357fdffe9efb64dbca50f02e8591834e"
+    },
+    "historicalFindings": {
+      "path": ".dart_tool/app_review/camera-av-stage-findings.json",
+      "bytes": 1882,
+      "sha256": "d4293ec46e3a33eadf914b2b225a6e1e7ad0f6b6db6cd1dcfa52a540ebadcfb7"
+    },
+    "probeSummary": {
+      "path": ".dart_tool/camera_audit/av-release-probe/summary.json",
+      "bytes": 529,
+      "sha256": "f9b65d3f121bb7e528738f6057300fd3bd62cdcc75569388aba9e2b209046981"
+    },
+    "probeSamples": {
+      "path": ".dart_tool/camera_audit/av-release-probe/samples.json",
+      "bytes": 58891,
+      "sha256": "9fd0d383024232809a29ddb0993160b7d284db20e5af81ca7b009d5e61d7724c"
+    },
+    "releaseUi": {
+      "path": ".dart_tool/app_review/camera-av-release-ui-evidence.json",
+      "bytes": 3305,
+      "sha256": "adcf3d7d026d19b96a84710ba825130362d30d795da3b16c84326675f35e93b5"
+    },
+    "finalMappings": {
+      "path": ".dart_tool/app_review/camera-av-final-mappings.json",
+      "bytes": 68,
+      "sha256": "c199aac77086a9d96a81426604cc2f04e2a3487ec0cb7dcac80058aa7c320bb7"
+    },
+    "nativeFinalPhysicalReview": {
+      "path": ".dart_tool/app_review/camera-av-native-final-physical-evidence.json",
+      "bytes": 54102,
+      "sha256": "ff42cda07e84a249145e68dcf675acb39437977e4a174e31dddbd1e886dd6edf"
+    },
+    "snapshots": {
+      "dim": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-dim-summary.json",
+        "bytes": 1614,
+        "sha256": "baaa3a09acb49ad7b458549667c39f927d3f3dda28994f7b08d24c2be1e1a646"
+      },
+      "disabled": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-disabled-summary.json",
+        "bytes": 1455,
+        "sha256": "ebc157ddeedb87be65c10a685880ffd37020e7a9785df2f4da77828c3763a9db"
+      },
+      "enabled-again": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-enabled-again-summary.json",
+        "bytes": 1582,
+        "sha256": "efc1b3542433fbcceeac0c8d4581453a519c1ff4b1eb2a9d73a04d577033a580"
+      },
+      "first-on": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-first-on-summary.json",
+        "bytes": 1577,
+        "sha256": "3b9871e2bbdf08890302023298406687ba9a47a1f0957c190e51de1b03481019"
+      },
+      "flash-on": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-flash-on-summary.json",
+        "bytes": 1581,
+        "sha256": "39af8782af2dd276b90217db20fc0b54461b2abcbdd12b9e219af8a00a885e81"
+      },
+      "front-hidden": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-front-hidden-summary.json",
+        "bytes": 1608,
+        "sha256": "1999629333dd4c702fefcf87e8260805161ca17fe9a979cef11b5f948a498fce"
+      },
+      "initial-off": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-initial-off-summary.json",
+        "bytes": 1456,
+        "sha256": "5c1a9ac6eb8a6c464c1573d3c40d6cad463ce2e39e1c40246a6004d676b7c9e1"
+      },
+      "late-source-on": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-late-source-on-summary.json",
+        "bytes": 1460,
+        "sha256": "3b08aceda3788d9cd8cc6773eec3f09678d0c15e6ca497992f83cf4363a0d1db"
+      },
+      "late-viewer": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-late-viewer-summary.json",
+        "bytes": 1579,
+        "sha256": "92ed88e33179c85cbedd100fff293754a5a17d23c44365454acd1751ebd9ee09"
+      },
+      "pc-closed": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-pc-closed-summary.json",
+        "bytes": 1580,
+        "sha256": "6035178c75c586ba65a25818f87a4ce206a4ee6e7e0d3ddc268abeee3db6c36f"
+      },
+      "rear-hidden": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-rear-hidden-summary.json",
+        "bytes": 1582,
+        "sha256": "e4fe2f9ad6957288c99514cd020ab873450ca37d16183747a2d72f397fce224c"
+      },
+      "rejoin-off": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-rejoin-off-summary.json",
+        "bytes": 1455,
+        "sha256": "38f0cf5e9d54e77c69fa6d9a840892afa7f1f76cb09ad22e83f4639c63933fe6"
+      },
+      "stopped-final": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-stopped-final-summary.json",
+        "bytes": 633,
+        "sha256": "69e7474eb7d68b422977457d2e009af70f3804940ec761578314ae7fa8f2cc2b"
+      },
+      "stopped": {
+        "path": ".dart_tool/camera_audit/physical-av/av-release-stopped-summary.json",
+        "bytes": 627,
+        "sha256": "1b82c366076781c0c21db77039ea8f6b551bed268eaabef26620d6e3c6b78d67"
+      }
+    },
+    "pcmMeasurements": {
+      "disabled": {
+        "path": ".dart_tool/camera_audit/av-physical/av-release-disabled-pcm.json",
+        "bytes": 327,
+        "sha256": "3b1bcbf5b57940776b6538fb0b8f17bc5c9edd2ca95799837bc1bde56b8117d3"
+      },
+      "enabled-again": {
+        "path": ".dart_tool/camera_audit/av-physical/av-release-enabled-again-pcm.json",
+        "bytes": 352,
+        "sha256": "1f139fbd435363dbefdc4baba32c8b31e88d3128c288daa81be0bf7cca5a8e13"
+      },
+      "first-on": {
+        "path": ".dart_tool/camera_audit/av-physical/av-release-first-on-pcm.json",
+        "bytes": 348,
+        "sha256": "8f895533f6f5747f5d585e49670f1892037f438ec50149e672439c40e3758e67"
+      },
+      "front-hidden": {
+        "path": ".dart_tool/camera_audit/av-physical/av-release-front-hidden-pcm.json",
+        "bytes": 350,
+        "sha256": "dbeea7e144abba70982ebeed70ae2ef1f5d61f41574cf6d399278c712b28f953"
+      },
+      "front-signal": {
+        "path": ".dart_tool/camera_audit/av-physical/av-release-front-signal-pcm.json",
+        "bytes": 353,
+        "sha256": "f598af301590fb454fac5df46c66841a4e8f7adeee9ef3192d2f8a29831a79d8"
+      },
+      "initial-off": {
+        "path": ".dart_tool/camera_audit/av-physical/av-release-initial-off-pcm.json",
+        "bytes": 330,
+        "sha256": "794963cd30b8d331eef96e7a84f3d166f97bb72d37a8de85244df6890b8c43fe"
+      },
+      "late-viewer": {
+        "path": ".dart_tool/camera_audit/av-physical/av-release-late-viewer-pcm.json",
+        "bytes": 354,
+        "sha256": "d1d5ed8942eca1acfeccef7e61b2c702d8acaebea92e318834e18f202533f13b"
+      },
+      "rejoin-off": {
+        "path": ".dart_tool/camera_audit/av-physical/av-release-rejoin-off-pcm.json",
+        "bytes": 329,
+        "sha256": "3cb7d1baeeb8c548a7af204322d6f6d0801c90d8aa4815bfeb45154aa2ce3d97"
+      }
+    },
+    "nativeOwnershipReview": {
+      "path": ".dart_tool/app_review/camera-av-native-ownership-review.json",
+      "bytes": 7455,
+      "sha256": "e05bd30ee37d6a54708d546c5f174c5f7aee5128b2694ba7fd393f8d1822d1d1"
+    },
+    "controlledAcousticSignal": {
+      "path": ".dart_tool/app_review/camera-av-release-controlled-signal.json",
+      "bytes": 309,
+      "sha256": "13e56fc469e96f5deb0bc2f76c320a161ea0418b8b0c03539752346499d3fdec"
+    },
+    "nativeOwnershipTestLog": {
+      "path": ".dart_tool/app_review/camera-av-local-media-ownership-test.log",
+      "bytes": 108,
+      "sha256": "c3ac0ba86778146abe5befb0ed8a2e0d9ea1664f3bdfa689104f179081f4f18f"
+    },
+    "nativeOwnershipCompileLog": {
+      "path": ".dart_tool/app_review/camera-av-local-media-ownership-javac.log",
+      "bytes": 677,
+      "sha256": "453afc99592eb0d5a2b46ce9c417055b97eeb3b4371eb55a9e2017f95a5b4f38"
+    },
+    "testHelpersCleanup": {
+      "path": ".dart_tool/app_review/camera-av-adm-cleanup.json",
+      "bytes": 447,
+      "sha256": "eefb899a739245cfa3ef3e7f482ada9c8cdc0514dc206d78d44d66718c69a5e1"
+    }
+  },
+  "limits": [
+    "Only av-release evidence is attributed to this APK. Debug trials and earlier failed release artifacts remain historical.",
+    "PCM nonzero/silence thresholds are RMS >1 and peak >16 or RMS <=1 and peak <=16 S16 respectively; silent PCM alone does not prove recorder release.",
+    "No raw audio, SDP credentials, images or full Android dumps are embedded. Evidence digests refer to retained local files.",
+    "Snapshot stage names describe operator actions; visual layout and preview-toggle intent require UI tests/operator inspection.",
+    "First-on names the first observed release activation; a first runtime permission grant requires its own permission baseline/operator evidence.",
+    "Decoded audio sample counters can advance through silence or concealment; microphone acceptance uses native recorder state and separately decoded PCM.",
+    "Automatic dim timing is covered by controlled tests; the physical snapshot verifies the observed dim/awake state.",
+    "Local-media ownership model counters and the ADM gate harness are separate checks; neither proves absence of every physical native-heap leak.",
+    "No end-to-end latency, audio/video synchronization offset, all-device compatibility, USB physical validation or iOS execution claim."
+  ]
+}

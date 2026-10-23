@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:bshare/src/application/receive_controller.dart';
+import 'package:bshare/src/application/camera_session_controller.dart';
 import 'package:bshare/src/application/send_controller.dart';
 import 'package:bshare/src/domain/entities/app_settings.dart';
+import 'package:bshare/src/domain/entities/camera_device.dart';
 import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/domain/entities/incoming_transfer.dart';
 import 'package:bshare/src/domain/entities/receive_progress.dart';
@@ -16,8 +18,13 @@ import 'package:bshare/src/infrastructure/repositories/history_repository.dart';
 import 'package:bshare/src/infrastructure/repositories/settings_repository.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/android_apps_service.dart';
+import 'package:bshare/src/infrastructure/services/android_platform_info_service.dart';
+import 'package:bshare/src/infrastructure/services/android_storage_access_service.dart';
 import 'package:bshare/src/infrastructure/services/android_background_execution_service.dart';
 import 'package:bshare/src/infrastructure/services/android_screen_share_execution_service.dart';
+import 'package:bshare/src/infrastructure/services/android_camera_execution_service.dart';
+import 'package:bshare/src/infrastructure/services/camera_display_service.dart';
+import 'package:bshare/src/infrastructure/services/usb_camera_network_service.dart';
 import 'package:bshare/src/infrastructure/services/android_share_service.dart';
 import 'package:bshare/src/infrastructure/services/direct_network_service.dart';
 import 'package:bshare/src/infrastructure/services/file_server.dart';
@@ -35,6 +42,16 @@ import 'package:uuid/uuid.dart';
 final loggerProvider = Provider((ref) => const AppLogger());
 
 final androidAppsServiceProvider = Provider((ref) => AndroidAppsService());
+
+final androidPlatformInfoProvider = Provider(
+  (ref) => AndroidPlatformInfoService.instance,
+);
+
+final androidStorageAccessProvider = Provider(
+  (ref) => AndroidStorageAccessService(
+    platformInfo: ref.watch(androidPlatformInfoProvider),
+  ),
+);
 
 final androidBackgroundExecutionProvider = Provider((ref) {
   final service = AndroidBackgroundExecutionService(ref.watch(loggerProvider));
@@ -54,7 +71,13 @@ final androidScreenShareExecutionProvider = Provider((ref) {
   return service;
 });
 
-final directNetworkServiceProvider = Provider((ref) => DirectNetworkService());
+final directNetworkServiceProvider = Provider((ref) {
+  final service = DirectNetworkService(
+    platformInfo: ref.watch(androidPlatformInfoProvider),
+  );
+  ref.onDispose(() => unawaited(service.dispose()));
+  return service;
+});
 
 final sharedPreferencesProvider = FutureProvider(
   (ref) => SharedPreferences.getInstance(),
@@ -70,16 +93,50 @@ final settingsProvider = AsyncNotifierProvider<SettingsController, AppSettings>(
 );
 
 class SettingsController extends AsyncNotifier<AppSettings> {
+  Future<void> _saving = Future<void>.value();
   @override
   Future<AppSettings> build() async {
     final repo = await ref.watch(settingsRepositoryProvider.future);
     return repo.load();
   }
 
-  Future<void> save(AppSettings settings) async {
-    final repo = await ref.read(settingsRepositoryProvider.future);
-    await repo.save(settings);
-    state = AsyncData(settings);
+  Future<void> save(AppSettings settings) => saveChanges((_) => settings);
+
+  Future<void> saveChanges(
+    FutureOr<AppSettings> Function(AppSettings current) change,
+  ) {
+    final operation = _saving.then((_) async {
+      final repo = await ref.read(settingsRepositoryProvider.future);
+      final current = state.asData?.value ?? await repo.load();
+      final settings = await change(current);
+      if (settings.downloadDirectory != current.downloadDirectory) {
+        await ref
+            .read(androidStorageAccessProvider)
+            .ensureAccess(settings.downloadDirectory);
+        await ensureDirectory(settings.downloadDirectory);
+      }
+      await repo.save(settings);
+      if (!ref.mounted) return;
+      state = AsyncData(settings);
+      if (settings.downloadDirectory != current.downloadDirectory ||
+          settings.autoAccept != current.autoAccept) {
+        ref
+            .read(fileServerProvider)
+            .updateReceiverSettings(
+              downloadDirectory: settings.downloadDirectory,
+              autoAccept: settings.autoAccept,
+            );
+      }
+      if (settings.deviceName != current.deviceName &&
+          ref.read(discoveryStatusProvider).isListening) {
+        await ref.read(discoveryProvider.notifier).start();
+      }
+    });
+    _saving = operation.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return operation;
   }
 }
 
@@ -126,55 +183,265 @@ final discoveryProvider =
       DiscoveryController.new,
     );
 
+enum DiscoveryPhase { idle, searching, listening, error }
+
+class DiscoveryStatus {
+  const DiscoveryStatus({
+    this.phase = DiscoveryPhase.idle,
+    this.error,
+    this.lastScanAt,
+  });
+
+  final DiscoveryPhase phase;
+  final Object? error;
+  final DateTime? lastScanAt;
+
+  bool get isSearching => phase == DiscoveryPhase.searching;
+  bool get isListening => isSearching || phase == DiscoveryPhase.listening;
+}
+
+final discoveryStatusProvider =
+    NotifierProvider<DiscoveryStatusController, DiscoveryStatus>(
+      DiscoveryStatusController.new,
+    );
+
+class DiscoveryStatusController extends Notifier<DiscoveryStatus> {
+  @override
+  DiscoveryStatus build() => const DiscoveryStatus();
+
+  void set(DiscoveryStatus value) => state = value;
+}
+
 class DiscoveryController extends Notifier<List<DeviceInfo>> {
+  DiscoveryController({DateTime Function()? clock})
+    : _clock = clock ?? DateTime.now;
+
+  // Receivers announce every three seconds. One complete announcement cycle
+  // fits inside this finite window; the socket keeps listening afterwards.
+  static const searchWindow = Duration(seconds: 12);
+  static const deviceLifetime = Duration(seconds: 20);
+
+  final DateTime Function() _clock;
   StreamSubscription<DeviceInfo>? _subscription;
+  LanDiscoveryService? _service;
+  DeviceInfo? _self;
+  bool _advertise = false;
+  bool _running = false;
+  Timer? _searchTimer;
+  Timer? _expiryTimer;
+  Completer<void>? _searchCompletion;
+  Future<void>? _refreshFuture;
+  Future<void> _operation = Future<void>.value();
+
+  Future<void> _serialize(Future<void> Function() action) {
+    final operation = _operation.then((_) => action());
+    _operation = operation.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stack) {},
+    );
+    return operation;
+  }
 
   @override
   List<DeviceInfo> build() {
-    ref.onDispose(() => _subscription?.cancel());
+    ref.onDispose(() {
+      _finishSearch();
+      _expiryTimer?.cancel();
+      _expiryTimer = null;
+      unawaited(_subscription?.cancel());
+      _subscription = null;
+    });
     return const [];
   }
 
-  Future<void> start({bool advertise = false, String? ipOverride}) async {
-    final settings = await ref.read(settingsProvider.future);
-    final ip = ipOverride ?? (await ref.read(networkProvider.future)).ip;
-    if (ip == null) return;
-    final server = ref.read(fileServerProvider);
-    final self = DeviceInfo(
-      id: settings.deviceId,
-      name: settings.deviceName,
-      platform: currentPlatformName(),
-      ip: ip,
-      port: server.port ?? settings.preferredPort,
-      lastSeen: DateTime.now(),
-    );
-    final service = ref.read(discoveryServiceProvider);
-    await service.start(self, advertise: advertise);
-    await _subscription?.cancel();
-    _subscription = service.devices.listen((device) {
-      final now = DateTime.now();
-      final fresh = state
-          .where(
-            (item) =>
-                now.difference(item.lastSeen) < const Duration(seconds: 20) &&
-                item.id != device.id,
-          )
-          .toList();
-      state = [...fresh, device]..sort((a, b) => a.name.compareTo(b.name));
+  Future<void> start({bool advertise = false, String? ipOverride}) =>
+      _serialize(() => _start(advertise: advertise, ipOverride: ipOverride));
+
+  Future<void> _start({
+    required bool advertise,
+    String? ipOverride,
+    bool beginSearch = true,
+  }) async {
+    if (!ref.mounted) return;
+    if (!_running) _setStatus(DiscoveryPhase.searching);
+    try {
+      final settings = await ref.read(settingsProvider.future);
+      if (!ref.mounted) return;
+      final ip = ipOverride ?? (await ref.read(networkProvider.future)).ip;
+      if (!ref.mounted) return;
+      if (ip == null || ip.isEmpty) {
+        throw StateError('No local network address is available');
+      }
+      final server = ref.read(fileServerProvider);
+      final self = DeviceInfo(
+        id: settings.deviceId,
+        name: settings.deviceName,
+        platform: currentPlatformName(),
+        ip: ip,
+        port: server.port ?? settings.preferredPort,
+        lastSeen: _clock(),
+      );
+      // A sending/discovery screen must not turn off an active receiver's
+      // advertisements when it also requests discovery.
+      final shouldAdvertise = _advertise || advertise;
+      if (_running &&
+          _sameEndpoint(self, _self) &&
+          shouldAdvertise == _advertise) {
+        return;
+      }
+      final service = ref.read(discoveryServiceProvider);
+      _service = service;
+      if (_self?.ip != self.ip) state = const [];
+      // Subscribe before binding: a receiver may announce immediately.
+      _subscription ??= service.devices.listen(_onDevice);
+      await service.start(self, advertise: shouldAdvertise);
+      if (!ref.mounted) {
+        await service.stop();
+        return;
+      }
+      _self = self;
+      _advertise = shouldAdvertise;
+      _running = true;
+      _expiryTimer ??= Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => _pruneDevices(),
+      );
+      if (beginSearch) _beginSearch();
+    } catch (error) {
+      if (!ref.mounted) return;
+      ref.read(loggerProvider).warn('Discovery could not start: $error');
+      await _stopListening();
+      if (ref.mounted) _setStatus(DiscoveryPhase.error, error: error);
+    }
+  }
+
+  bool _sameEndpoint(DeviceInfo self, DeviceInfo? previous) =>
+      previous != null &&
+      self.id == previous.id &&
+      self.ip == previous.ip &&
+      self.port == previous.port &&
+      self.name == previous.name &&
+      self.platform == previous.platform;
+
+  void _onDevice(DeviceInfo device) {
+    if (!ref.mounted) return;
+    final now = _clock();
+    final fresh = state
+        .where(
+          (item) =>
+              now.difference(item.lastSeen) < deviceLifetime &&
+              item.id != device.id,
+        )
+        .toList();
+    state = [...fresh, device]..sort((a, b) => a.name.compareTo(b.name));
+    // Keep the selected destination aligned with renewed announcements after
+    // DHCP or receiver configuration changes. Running transfers retain their
+    // immutable destination captured when send() started.
+    final selected = ref.read(selectedDeviceProvider);
+    if (selected?.id == device.id && !_sameEndpoint(device, selected)) {
+      ref.read(selectedDeviceProvider.notifier).set(device);
+    }
+  }
+
+  void _pruneDevices() {
+    if (!ref.mounted) return;
+    final now = _clock();
+    final fresh = state
+        .where((item) => now.difference(item.lastSeen) < deviceLifetime)
+        .toList();
+    if (fresh.length != state.length) state = fresh;
+  }
+
+  void _setStatus(DiscoveryPhase phase, {Object? error}) {
+    if (!ref.mounted) return;
+    final previous = ref.read(discoveryStatusProvider);
+    ref
+        .read(discoveryStatusProvider.notifier)
+        .set(
+          DiscoveryStatus(
+            phase: phase,
+            error: error,
+            lastScanAt: previous.lastScanAt,
+          ),
+        );
+  }
+
+  Future<void> _beginSearch() {
+    _finishSearch();
+    final completion = Completer<void>();
+    _searchCompletion = completion;
+    _setStatus(DiscoveryPhase.searching);
+    _searchTimer = Timer(searchWindow, () {
+      _searchTimer = null;
+      if (ref.mounted && _running) {
+        ref
+            .read(discoveryStatusProvider.notifier)
+            .set(
+              DiscoveryStatus(
+                phase: DiscoveryPhase.listening,
+                lastScanAt: _clock(),
+              ),
+            );
+      }
+      if (!completion.isCompleted) completion.complete();
+      if (identical(_searchCompletion, completion)) _searchCompletion = null;
     });
+    return completion.future;
   }
 
-  Future<void> refresh() async {
-    state = const [];
-    await start(advertise: false);
+  void _finishSearch() {
+    _searchTimer?.cancel();
+    _searchTimer = null;
+    final completion = _searchCompletion;
+    _searchCompletion = null;
+    if (completion != null && !completion.isCompleted) completion.complete();
   }
 
-  Future<void> stop() async {
+  Future<void> refresh() {
+    final pending = _refreshFuture;
+    if (pending != null) return pending;
+    Future<void>? search;
+    final operation = _serialize(() async {
+      if (!ref.mounted) return;
+      // Re-read the interface after a Wi-Fi change, preserving the open socket
+      // when its configuration is still valid.
+      ref.invalidate(networkProvider);
+      await _start(advertise: _advertise, beginSearch: false);
+      if (!ref.mounted || !_running) return;
+      _pruneDevices();
+      search = _beginSearch();
+    }).then((_) => search ?? Future<void>.value());
+    _refreshFuture = operation;
+    void clearPending() {
+      if (identical(_refreshFuture, operation)) _refreshFuture = null;
+    }
+
+    unawaited(
+      operation.then<void>(
+        (_) => clearPending(),
+        onError: (Object _, StackTrace _) => clearPending(),
+      ),
+    );
+    return operation;
+  }
+
+  Future<void> _stopListening() async {
+    _finishSearch();
+    _expiryTimer?.cancel();
+    _expiryTimer = null;
+    _running = false;
+    _advertise = false;
+    _self = null;
     await _subscription?.cancel();
     _subscription = null;
-    await ref.read(discoveryServiceProvider).stop();
-    state = const [];
+    await _service?.stop();
+    if (ref.mounted) state = const [];
   }
+
+  Future<void> stop() => _serialize(() async {
+    await _stopListening();
+    if (ref.mounted) _setStatus(DiscoveryPhase.idle);
+  });
 }
 
 final incomingTransfersProvider =
@@ -183,14 +450,29 @@ final incomingTransfersProvider =
     );
 
 class IncomingTransfersController extends Notifier<List<IncomingTransfer>> {
+  final Set<Completer<bool>> _pendingDecisions = {};
+
   @override
-  List<IncomingTransfer> build() => const [];
+  List<IncomingTransfer> build() {
+    ref.onDispose(() {
+      for (final decision in _pendingDecisions.toList()) {
+        if (!decision.isCompleted) decision.complete(false);
+      }
+    });
+    return const [];
+  }
 
   Future<bool> requestDecision(IncomingTransfer transfer) async {
+    _pendingDecisions.add(transfer.decision);
     state = [...state, transfer];
-    final accepted = await transfer.decision.future;
-    state = state.where((item) => item.id != transfer.id).toList();
-    return accepted;
+    try {
+      return await transfer.decision.future;
+    } finally {
+      _pendingDecisions.remove(transfer.decision);
+      if (ref.mounted) {
+        state = state.where((item) => item.id != transfer.id).toList();
+      }
+    }
   }
 
   void decide(String id, bool accepted) {
@@ -276,10 +558,47 @@ final screenShareServiceProvider = Provider((ref) {
   final service = ScreenShareService(
     ref.watch(loggerProvider),
     ref.watch(androidScreenShareExecutionProvider),
+    cameraExecution: ref.watch(androidCameraExecutionProvider),
+    onSharingStopped: () async {
+      if (ref.mounted) {
+        try {
+          await ref.read(cameraDisplayServiceProvider).stop();
+        } finally {
+          await ref
+              .read(receiveControllerProvider.notifier)
+              .stopIfScreenShareOnly();
+        }
+      }
+    },
   );
   ref.onDispose(service.dispose);
   return service;
 });
+
+final androidCameraExecutionProvider = Provider(
+  (ref) => AndroidCameraExecutionService(),
+);
+
+final cameraDisplayServiceProvider = Provider((ref) {
+  final service = CameraDisplayService();
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+final cameraDevicesProvider = FutureProvider<List<CameraDevice>>(
+  (ref) => ref.read(screenShareServiceProvider).enumerateCameras(),
+);
+
+final usbCameraNetworkServiceProvider = Provider(
+  (ref) => UsbCameraNetworkService(),
+);
+final usbCameraNetworkProvider = FutureProvider<UsbCameraNetworkSnapshot>(
+  (ref) => ref.read(usbCameraNetworkServiceProvider).snapshot(),
+);
+final cameraSessionProvider =
+    NotifierProvider<CameraSessionController, CameraSessionState>(
+      CameraSessionController.new,
+    );
 
 final pickedFilesProvider =
     NotifierProvider<PickedFilesController, List<SelectedTransferFile>>(
@@ -403,41 +722,159 @@ final sendControllerProvider = Provider((ref) {
 final runtimeCleanupProvider = Provider((ref) => RuntimeCleanup(ref));
 
 class RuntimeCleanup {
-  const RuntimeCleanup(this._ref);
+  RuntimeCleanup(this._ref);
 
   final Ref _ref;
+  Future<void> _operation = Future<void>.value();
+  final Map<({bool cancelTransfers, bool cleanupSelectedFiles}), Future<void>>
+  _pending = {};
 
   Future<void> cleanupNetworking({
     bool cancelTransfers = true,
     bool cleanupSelectedFiles = false,
-  }) async {
-    if (cancelTransfers) {
-      final selectedFiles = _ref.read(pickedFilesProvider);
-      await _ref
-          .read(sendControllerProvider)
-          .dispose(
+  }) {
+    final key = (
+      cancelTransfers: cancelTransfers,
+      cleanupSelectedFiles: cleanupSelectedFiles,
+    );
+    final existing = _pending[key];
+    if (existing != null) return existing;
+    late final Future<void> operation;
+    operation = _operation
+        .then(
+          (_) => _cleanupNetworking(
+            cancelTransfers: cancelTransfers,
             cleanupSelectedFiles: cleanupSelectedFiles,
-            selectedFiles: selectedFiles,
-          );
-      if (cleanupSelectedFiles) {
-        _ref.read(pickedFilesProvider.notifier).clear();
+          ),
+        )
+        .whenComplete(() {
+          _pending.remove(key);
+        });
+    _pending[key] = operation;
+    _operation = operation.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stack) {},
+    );
+    return operation;
+  }
+
+  Future<void> _cleanupNetworking({
+    required bool cancelTransfers,
+    required bool cleanupSelectedFiles,
+  }) async {
+    final logger = _ref.read(loggerProvider);
+    Future<void> attempt(String step, FutureOr<void> Function() action) async {
+      try {
+        await action();
+      } catch (error) {
+        logger.warn('Could not clean up $step: $error');
       }
-      _ref.read(transferControlProvider.notifier).clear();
-      _ref.read(incomingTransfersProvider.notifier).rejectAll();
     }
-    await _ref
-        .read(screenShareServiceProvider)
-        .stop(_ref.read(fileServerProvider));
-    await _ref
-        .read(receiveControllerProvider.notifier)
-        .stop(force: cancelTransfers);
-    await _ref.read(discoveryProvider.notifier).stop();
-    await _ref.read(directNetworkServiceProvider).stopLocalOnlyHotspot();
-    await _ref.read(directNetworkServiceProvider).disconnectWifi();
+
     if (cancelTransfers) {
-      _ref.read(sendProgressProvider.notifier).clear();
-      _ref.read(receiveProgressProvider.notifier).clear();
-      _ref.read(receiveTransferControlProvider.notifier).clear();
+      await attempt('outgoing transfers', () async {
+        final selectedFiles = _ref.read(pickedFilesProvider);
+        await _ref
+            .read(sendControllerProvider)
+            .dispose(
+              cleanupSelectedFiles: cleanupSelectedFiles,
+              selectedFiles: selectedFiles,
+            );
+      });
+      if (cleanupSelectedFiles) {
+        await attempt(
+          'selected files',
+          () => _ref.read(pickedFilesProvider.notifier).clear(),
+        );
+      }
+      await attempt('outgoing controls', () {
+        for (final control in _ref.read(transferControlProvider).values) {
+          control.cancel();
+        }
+        _ref.read(transferControlProvider.notifier).clear();
+      });
+      await attempt(
+        'incoming decisions',
+        () => _ref.read(incomingTransfersProvider.notifier).rejectAll(),
+      );
+      await attempt('incoming controls', () {
+        for (final control
+            in _ref.read(receiveTransferControlProvider).values) {
+          control.cancel();
+        }
+      });
+    }
+    await attempt(
+      'screen sharing',
+      () => _ref
+          .read(screenShareServiceProvider)
+          .stop(_ref.read(fileServerProvider)),
+    );
+    await attempt(
+      'camera display',
+      () => _ref.read(cameraDisplayServiceProvider).stop(),
+    );
+    await attempt('receiver', () async {
+      await _ref
+          .read(receiveControllerProvider.notifier)
+          .stop(force: cancelTransfers);
+    });
+    if (cancelTransfers) {
+      // Also close the listener when a controller cleanup step has failed.
+      await attempt(
+        'HTTP receiver',
+        () => _ref.read(fileServerProvider).stop(),
+      );
+    }
+    await attempt(
+      'discovery',
+      () => _ref.read(discoveryProvider.notifier).stop(),
+    );
+    await attempt(
+      'discovery socket',
+      () => _ref.read(discoveryServiceProvider).stop(),
+    );
+    await attempt(
+      'hotspot',
+      () => _ref.read(directNetworkServiceProvider).stopLocalOnlyHotspot(),
+    );
+    await attempt(
+      'Wi-Fi binding',
+      () => _ref.read(directNetworkServiceProvider).disconnectWifi(),
+    );
+    if (cancelTransfers) {
+      await attempt(
+        'sending foreground execution',
+        () => _ref
+            .read(androidBackgroundExecutionProvider)
+            .release(BackgroundExecutionOwner.fileSending),
+      );
+      await attempt(
+        'receiving foreground execution',
+        () => _ref
+            .read(androidBackgroundExecutionProvider)
+            .release(BackgroundExecutionOwner.fileReceiving),
+      );
+      await attempt(
+        'screen capture execution',
+        () => _ref.read(androidScreenShareExecutionProvider).stop(),
+      );
+      await attempt(
+        'camera capture execution',
+        () => _ref.read(androidCameraExecutionProvider).stop(),
+      );
+      await attempt(
+        'send progress',
+        () => _ref.read(sendProgressProvider.notifier).clear(),
+      );
+      await attempt(
+        'receive progress',
+        () => _ref.read(receiveProgressProvider.notifier).clear(),
+      );
+      await attempt(
+        'receive controls',
+        () => _ref.read(receiveTransferControlProvider.notifier).clear(),
+      );
     }
   }
 }

@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:webrtc_interface/webrtc_interface.dart';
 
 import '../helper.dart';
+import 'event_channel.dart';
 import 'utils.dart';
 
 class MediaStreamTrackNative extends MediaStreamTrack {
@@ -27,6 +28,57 @@ class MediaStreamTrackNative extends MediaStreamTrack {
   bool _enabled;
 
   bool _muted = false;
+
+  StreamTrackCallback? _onEnded;
+  StreamSubscription<Map<String, dynamic>>? _endedEventSubscription;
+  Future<void> _endedEventCancellation = Future.value();
+  Future<void>? _stopping;
+  bool _ended = false;
+  bool _stopped = false;
+
+  @override
+  StreamTrackCallback? get onEnded => _onEnded;
+
+  @override
+  set onEnded(StreamTrackCallback? callback) {
+    _onEnded = _ended || _stopped ? null : callback;
+    if (_onEnded == null) {
+      unawaited(_cancelEndedEvents());
+      return;
+    }
+    _endedEventSubscription ??= FlutterWebRTCEventChannel
+        .instance.handleEvents.stream
+        .listen(_handleEndedEvent);
+  }
+
+  void _handleEndedEvent(Map<String, dynamic> event) {
+    final stoppedTrack = event['onScreenCaptureStopped'];
+    if (_ended ||
+        _stopped ||
+        stoppedTrack is! Map ||
+        stoppedTrack['trackId'] != _trackId) {
+      return;
+    }
+    _ended = true;
+    final callback = _onEnded;
+    _onEnded = null;
+    // Cancel before notifying: the callback can stop/dispose this track, and
+    // a repeated native notification must not trigger another teardown.
+    unawaited(_cancelEndedEvents());
+    callback?.call();
+  }
+
+  Future<void> _cancelEndedEvents() {
+    final cancellation = _endedEventSubscription?.cancel();
+    _endedEventSubscription = null;
+    if (cancellation != null) {
+      _endedEventCancellation = Future.wait<void>([
+        _endedEventCancellation,
+        cancellation,
+      ]).then<void>((_) {});
+    }
+    return _endedEventCancellation;
+  }
 
   String get peerConnectionId => _peerConnectionId;
 
@@ -123,10 +175,21 @@ class MediaStreamTrackNative extends MediaStreamTrack {
   }
 
   @override
-  Future<void> stop() async {
-    await WebRTC.invokeMethod(
-      'trackDispose',
-      <String, dynamic>{'trackId': _trackId},
-    );
+  Future<void> stop() => _stopping ??= _stop();
+
+  Future<void> _stop() async {
+    _stopped = true;
+    _onEnded = null;
+    await _cancelEndedEvents();
+    try {
+      await WebRTC.invokeMethod(
+        'trackDispose',
+        <String, dynamic>{'trackId': _trackId},
+      );
+    } catch (_) {
+      // A failed native disposal can be retried without restoring listeners.
+      _stopping = null;
+      rethrow;
+    }
   }
 }

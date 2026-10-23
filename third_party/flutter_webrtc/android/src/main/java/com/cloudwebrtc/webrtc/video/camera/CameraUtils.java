@@ -12,6 +12,7 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.params.MeteringRectangle;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.util.Range;
 import android.util.Size;
@@ -30,6 +31,7 @@ import org.webrtc.CameraEnumerationAndroid;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.flutter.embedding.engine.systemchannels.PlatformChannel;
 import io.flutter.plugin.common.MethodCall;
@@ -375,35 +377,19 @@ public class CameraUtils {
     }
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && info.capturer instanceof Camera2Capturer) {
-      CameraManager manager;
-      CameraDevice cameraDevice;
-
       try {
-        Object session =
-                getPrivateProperty(
-                        Camera2Capturer.class.getSuperclass(), info.capturer, "currentSession");
-        manager =
-                (CameraManager)
-                        getPrivateProperty(Camera2Capturer.class, info.capturer, "cameraManager");
-        cameraDevice =
-                (CameraDevice) getPrivateProperty(session.getClass(), session, "cameraDevice");
-      } catch (NoSuchFieldWithNameException e) {
-        // Most likely the upstream Camera2Capturer class have changed
-        resultError("hasTorch", "[TORCH] Failed to get `" + e.fieldName + "` from `" + e.className + "`", result);
-        return;
+        CameraManager manager = (CameraManager)
+                getPrivateProperty(Camera2Capturer.class, info.capturer, "cameraManager");
+        String cameraName = (String) getPrivateProperty(
+                Camera2Capturer.class.getSuperclass(), info.capturer, "cameraName");
+        // Capability belongs to the camera, even while its asynchronous capture
+        // session is opening or closing. Do not dereference currentSession here.
+        CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraName);
+        result.success(Boolean.TRUE.equals(
+                characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE)));
+      } catch (NoSuchFieldWithNameException | CameraAccessException | RuntimeException e) {
+        resultError("hasTorch", "[TORCH] Camera capability unavailable: " + e.getMessage(), result);
       }
-
-      boolean flashIsAvailable;
-      try {
-        CameraCharacteristics characteristics =
-                manager.getCameraCharacteristics(cameraDevice.getId());
-        flashIsAvailable = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
-      } catch (CameraAccessException e) {
-        // Should never happen since we are already accessing the camera
-        throw new RuntimeException(e);
-      }
-
-      result.success(flashIsAvailable);
       return;
     }
 
@@ -414,6 +400,10 @@ public class CameraUtils {
         Object session =
                 getPrivateProperty(
                         Camera1Capturer.class.getSuperclass(), info.capturer, "currentSession");
+        if (session == null) {
+          resultError("hasTorch", "[TORCH] Camera session is not ready", result);
+          return;
+        }
         camera = (Camera) getPrivateProperty(session.getClass(), session, "camera");
       } catch (NoSuchFieldWithNameException e) {
         // Most likely the upstream Camera1Capturer class have changed
@@ -421,11 +411,15 @@ public class CameraUtils {
         return;
       }
 
-      Camera.Parameters params = camera.getParameters();
-      List<String> supportedModes = params.getSupportedFlashModes();
-
-      result.success(
-              supportedModes != null && supportedModes.contains(Camera.Parameters.FLASH_MODE_TORCH));
+      try {
+        if (camera == null) throw new IllegalStateException("Camera session is not ready");
+        Camera.Parameters params = camera.getParameters();
+        List<String> supportedModes = params.getSupportedFlashModes();
+        result.success(supportedModes != null
+                && supportedModes.contains(Camera.Parameters.FLASH_MODE_TORCH));
+      } catch (RuntimeException e) {
+        resultError("hasTorch", "[TORCH] Camera capability unavailable: " + e.getMessage(), result);
+      }
       return;
     }
 
@@ -545,11 +539,75 @@ public class CameraUtils {
 
   @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
   public void setTorch(String trackId, boolean torch, MethodChannel.Result result) {
-    VideoCapturerInfo info = getUserMediaImpl.getCapturerInfo(trackId);
+    final VideoCapturerInfo info = getUserMediaImpl.getCapturerInfo(trackId);
     if (info == null) {
       resultError("setTorch", "Video capturer not found for id: " + trackId, result);
       return;
     }
+    if (!(info.capturer instanceof Camera2Capturer)
+            && !(info.capturer instanceof Camera1Capturer)) {
+      resultError("setTorch", "[TORCH] Video capturer not compatible", result);
+      return;
+    }
+    final Handler cameraHandler;
+    try {
+      cameraHandler = (Handler) getPrivateProperty(
+              info.capturer.getClass().getSuperclass(), info.capturer, "cameraThreadHandler");
+    } catch (NoSuchFieldWithNameException | RuntimeException e) {
+      resultError("setTorch", "[TORCH] Camera thread unavailable: " + e.getMessage(), result);
+      return;
+    }
+    if (cameraHandler == null) {
+      resultError("setTorch", "[TORCH] Camera session is not ready", result);
+      return;
+    }
+
+    // Capture, switching and disposal share this camera thread. Resolve exactly
+    // once even when its looper is closed between enqueueing and execution.
+    final Handler replyHandler = new Handler(Looper.getMainLooper());
+    final MethodChannel.Result mainResult = new AnyThreadResult(result);
+    final AtomicBoolean completed = new AtomicBoolean(false);
+    final Runnable timeout = () -> {
+      if (completed.compareAndSet(false, true)) {
+        resultError("setTorch", "[TORCH] Camera did not respond", mainResult);
+      }
+    };
+    final MethodChannel.Result once = new MethodChannel.Result() {
+      @Override
+      public void success(Object value) {
+        if (!completed.compareAndSet(false, true)) return;
+        replyHandler.removeCallbacks(timeout);
+        mainResult.success(value);
+      }
+      @Override
+      public void error(String code, String message, Object details) {
+        if (!completed.compareAndSet(false, true)) return;
+        replyHandler.removeCallbacks(timeout);
+        mainResult.error(code, message, details);
+      }
+      @Override
+      public void notImplemented() {
+        if (!completed.compareAndSet(false, true)) return;
+        replyHandler.removeCallbacks(timeout);
+        mainResult.notImplemented();
+      }
+    };
+    replyHandler.postDelayed(timeout, 3000L);
+    if (!cameraHandler.post(() -> {
+      if (completed.get()) return;
+      try {
+        setTorchOnCameraThread(info, torch, once);
+      } catch (RuntimeException e) {
+        resultError("setTorch", "[TORCH] Camera session unavailable: " + e.getMessage(), once);
+      }
+    })) {
+      resultError("setTorch", "[TORCH] Camera thread is closed", once);
+    }
+  }
+
+  @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+  private void setTorchOnCameraThread(
+          VideoCapturerInfo info, boolean torch, MethodChannel.Result result) {
     if (info.capturer instanceof Camera2Capturer) {
       CameraCaptureSession captureSession;
       CameraDevice cameraDevice;
@@ -562,6 +620,10 @@ public class CameraUtils {
         Object session =
                 getPrivateProperty(
                         Camera2Capturer.class.getSuperclass(), info.capturer, "currentSession");
+        if (session == null) {
+          resultError("setTorch", "[TORCH] Camera session is not ready", result);
+          return;
+        }
         CameraManager manager =
                 (CameraManager)
                         getPrivateProperty(Camera2Capturer.class, info.capturer, "cameraManager");
@@ -583,6 +645,11 @@ public class CameraUtils {
       }
 
       try {
+        if (cameraDevice == null || captureSession == null || captureFormat == null
+                || surface == null || cameraThreadHandler == null || fpsUnitFactor <= 0) {
+          resultError("setTorch", "[TORCH] Camera session is not ready", result);
+          return;
+        }
         final CaptureRequest.Builder captureRequestBuilder =
                 cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
         captureRequestBuilder.set(
@@ -615,6 +682,10 @@ public class CameraUtils {
         Object session =
                 getPrivateProperty(
                         Camera1Capturer.class.getSuperclass(), info.capturer, "currentSession");
+        if (session == null) {
+          resultError("setTorch", "[TORCH] Camera session is not ready", result);
+          return;
+        }
         camera = (Camera) getPrivateProperty(session.getClass(), session, "camera");
       } catch (NoSuchFieldWithNameException e) {
         // Most likely the upstream Camera1Capturer class have changed
@@ -622,6 +693,10 @@ public class CameraUtils {
         return;
       }
 
+      if (camera == null) {
+        resultError("setTorch", "[TORCH] Camera session is not ready", result);
+        return;
+      }
       Camera.Parameters params = camera.getParameters();
       params.setFlashMode(
               torch ? Camera.Parameters.FLASH_MODE_TORCH : Camera.Parameters.FLASH_MODE_OFF);

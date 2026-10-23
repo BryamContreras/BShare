@@ -89,6 +89,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -108,12 +109,21 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   static public final String TAG = "FlutterWebRTCPlugin";
 
   private final Map<String, PeerConnectionObserver> mPeerConnectionObservers = new HashMap<>();
+  // WebRTC's AudioState is shared by every peer from this factory. Keep the
+  // requested state for peers created after a camera microphone toggle too.
+  private boolean audioRecordingEnabled = true;
+  private final Object audioRecordingStateLock = new Object();
+  private boolean audioRecordingManaged = false;
+  private boolean audioRecordingThreadRunning = false;
   private final BinaryMessenger messenger;
   private final Context context;
   private final TextureRegistry textures;
   private PeerConnectionFactory mFactory;
   private final Map<String, MediaStream> localStreams = new HashMap<>();
   private final Map<String, LocalTrack> localTracks = new HashMap<>();
+  // Only locally created wrappers belong to us. Remote wrappers can also be
+  // attached to a local stream, but remain owned by their peer connection.
+  private final Map<MediaStreamTrack, Boolean> ownedLocalTracks = new IdentityHashMap<>();
   private final LongSparseArray<FlutterRTCVideoRenderer> renders = new LongSparseArray<>();
 
   public RecordSamplesReadyCallbackAdapter recordSamplesReadyCallbackAdapter;
@@ -170,30 +180,22 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   }
 
   void dispose() {
-    for (final MediaStream mediaStream : localStreams.values()) {
+    for (final MediaStream mediaStream : new ArrayList<>(localStreams.values())) {
       try {
         streamDispose(mediaStream);
       } catch (Exception e) {
         Log.w(TAG, "dispose(): error in streamDispose", e);
       }
-      try {
-        mediaStream.audioTracks.clear();
-        mediaStream.videoTracks.clear();
-        mediaStream.preservedVideoTracks.clear();
-        mediaStream.dispose();
-      } catch (Exception e) {
-        Log.w(TAG, "dispose(): error disposing media stream", e);
-      }
     }
     localStreams.clear();
+    final List<MediaStreamTrack> remainingTracks;
     synchronized (localTracks) {
-      for (final LocalTrack track : localTracks.values()) {
-        try {
-          track.dispose();
-        } catch (Exception e) {
-          Log.w(TAG, "dispose(): error disposing local track", e);
-        }
-      }
+      remainingTracks = new ArrayList<>(ownedLocalTracks.keySet());
+    }
+    for (final MediaStreamTrack track : remainingTracks) {
+      disposeOwnedLocalTrack(track);
+    }
+    synchronized (localTracks) {
       localTracks.clear();
     }
     for (final PeerConnectionObserver connection : mPeerConnectionObservers.values()) {
@@ -320,6 +322,18 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       audioDeviceModuleBuilder.setAudioAttributes(audioAttributes);
     }
 
+    audioDeviceModuleBuilder.setAudioRecordStateCallback(
+        new JavaAudioDeviceModule.AudioRecordStateCallback() {
+          @Override
+          public void onWebRtcAudioRecordStart() {
+            onAudioRecordingStarted();
+          }
+
+          @Override
+          public void onWebRtcAudioRecordStop() {
+            onAudioRecordingStopped();
+          }
+        });
     audioDeviceModule = audioDeviceModuleBuilder.createAudioDeviceModule();
 
     if(!bypassVoiceProcessing) {
@@ -459,6 +473,15 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         ConstraintsMap res = new ConstraintsMap();
         res.putString("peerConnectionId", peerConnectionId);
         result.success(res.toMap());
+        break;
+      }
+      case "setAudioRecordingEnabled": {
+        Boolean enabled = call.argument("enabled");
+        if (enabled == null) {
+          resultError("setAudioRecordingEnabled", "enabled is required", result);
+        } else {
+          setAudioRecordingEnabled(enabled, result);
+        }
         break;
       }
       case "getUserMedia": {
@@ -1500,8 +1523,90 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
             parseMediaConstraints(constraints),
             observer);
     observer.setPeerConnection(peerConnection);
+    try {
+      if (peerConnection != null) {
+        // A negotiated send-only audio transceiver can open Android's microphone
+        // even without a Dart audio track. Gate the ADM before any SDP is applied.
+        peerConnection.setAudioRecording(audioRecordingEnabled);
+      }
+    } catch (RuntimeException error) {
+      try {
+        observer.dispose();
+      } catch (RuntimeException cleanupError) {
+        Log.w(TAG, "Could not dispose peer after recording gate failure", cleanupError);
+      }
+      throw error;
+    }
     mPeerConnectionObservers.put(peerConnectionId, observer);
     return peerConnectionId;
+  }
+
+  private void setAudioRecordingEnabled(boolean enabled, Result result) {
+    // SDK 144 initializes recording even for a disabled audio sender. Its
+    // virtual device prepares the JNI buffer without opening Android's ADC.
+    // When enabling, start that same virtual reader first; the callback below
+    // lets it acquire hardware only after its existing JNI buffer is ready.
+    try {
+      setRequestedAudioRecording(enabled);
+      for (PeerConnectionObserver observer : mPeerConnectionObservers.values()) {
+        PeerConnection peer = observer.getPeerConnection();
+        if (peer != null) peer.setAudioRecording(enabled);
+      }
+      if (!enabled) audioDeviceModule.requestStopRecording();
+      result.success(null);
+    } catch (RuntimeException error) {
+      // The native call controls AudioState/ADM recording, rather than merely
+      // substituting silent samples or changing Android's system microphone.
+      try {
+        setRequestedAudioRecording(false);
+      } catch (RuntimeException cleanupError) {
+        Log.w(TAG, "Could not disable Android recording device", cleanupError);
+      }
+      for (PeerConnectionObserver observer : mPeerConnectionObservers.values()) {
+        try {
+          PeerConnection peer = observer.getPeerConnection();
+          if (peer != null) peer.setAudioRecording(false);
+        } catch (RuntimeException cleanupError) {
+          Log.w(TAG, "Could not disable peer audio recording", cleanupError);
+        }
+      }
+      try {
+        audioDeviceModule.requestStopRecording();
+      } catch (RuntimeException cleanupError) {
+        Log.w(TAG, "Could not release Android recording device", cleanupError);
+      }
+      resultError("setAudioRecordingEnabled", error.getMessage(), result);
+    }
+  }
+
+  private void setRequestedAudioRecording(boolean enabled) {
+    synchronized (audioRecordingStateLock) {
+      audioRecordingManaged = true;
+      audioRecordingEnabled = enabled;
+      // An already-running reader must keep its current device on repeated ON.
+      // With no peers, leave the virtual mode ready for the first negotiated
+      // reader; setting ON must not initialize hardware or replace its buffer.
+      audioDeviceModule.setAudioRecordEnabled(enabled && audioRecordingThreadRunning);
+    }
+  }
+
+  private void onAudioRecordingStarted() {
+    synchronized (audioRecordingStateLock) {
+      audioRecordingThreadRunning = true;
+      if (audioRecordingManaged) {
+        // SDK 144 invokes this on its reader before the acquisition loop, even
+        // when it started virtually. That loop initializes the real ADC in the
+        // existing buffer after this switch; no prewarm allocation is needed.
+        audioDeviceModule.setAudioRecordEnabled(audioRecordingEnabled);
+      }
+    }
+  }
+
+  private void onAudioRecordingStopped() {
+    synchronized (audioRecordingStateLock) {
+      audioRecordingThreadRunning = false;
+      if (audioRecordingManaged) audioDeviceModule.setAudioRecordEnabled(false);
+    }
   }
 
   @Override
@@ -1514,6 +1619,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   public boolean putLocalTrack(String trackId, LocalTrack track) {
     synchronized (localTracks) {
       localTracks.put(trackId, track);
+      ownedLocalTracks.put(track.track, true);
     }
     return true;
   }
@@ -1763,6 +1869,8 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     synchronized (localTracks) {
       localTracks.remove(trackId);
     }
+    // A detached track has no later stream.dispose() to release its wrapper.
+    if (!isTrackInLocalStream(track.track, null)) disposeOwnedLocalTrack(track.track);
   }
 
   public void mediaStreamTrackSetEnabled(final String id, final boolean enabled, String peerConnectionId) {
@@ -2149,37 +2257,88 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     MediaStream stream = localStreams.get(streamId);
     if (stream != null) {
       streamDispose(stream);
-      localStreams.remove(streamId);
-      removeStreamForRendererById(streamId);
     } else {
       Log.d(TAG, "streamDispose() mediaStream is null");
     }
   }
 
   public void streamDispose(final MediaStream stream) {
-    List<VideoTrack> videoTracks = stream.videoTracks;
-    for (VideoTrack track : videoTracks) {
+    try {
+      // Detach renderers while getId() and the native stream are still valid.
+      removeStreamForRendererById(stream.getId());
+    } catch (IllegalStateException e) {
+      Log.d(TAG, "streamDispose(): stream already disposed");
+    }
+    localStreams.values().remove(stream);
+    for (VideoTrack track : new ArrayList<>(stream.videoTracks)) {
       try {
-        String trackId = track.id();
-        synchronized (localTracks) {
-          localTracks.remove(trackId);
-        }
-        getUserMediaImpl.removeVideoCapturer(trackId);
         stream.removeTrack(track);
       } catch (IllegalStateException e) {
         Log.d(TAG, "streamDispose(): video track already disposed, skipping");
+      } finally {
+        if (!isTrackInLocalStream(track, stream)) disposeOwnedLocalTrack(track);
       }
     }
-    List<AudioTrack> audioTracks = stream.audioTracks;
-    for (AudioTrack track : audioTracks) {
+    for (AudioTrack track : new ArrayList<>(stream.audioTracks)) {
       try {
-        String trackId = track.id();
-        synchronized (localTracks) {
-          localTracks.remove(trackId);
-        }
         stream.removeTrack(track);
       } catch (IllegalStateException e) {
         Log.d(TAG, "streamDispose(): audio track already disposed, skipping");
+      } finally {
+        if (!isTrackInLocalStream(track, stream)) disposeOwnedLocalTrack(track);
+      }
+    }
+    // Preserved tracks are borrowed, matching the SDK's ownership contract.
+    for (VideoTrack track : new ArrayList<>(stream.preservedVideoTracks)) {
+      try {
+        stream.removeTrack(track);
+      } catch (IllegalStateException e) {
+        Log.d(TAG, "streamDispose(): preserved track already disposed, skipping");
+      }
+    }
+    // A borrowed wrapper may already have been disposed by its peer. The SDK
+    // must still release the stream even if native removeTrack could not use
+    // that wrapper; the native stream destructor releases its remaining refs.
+    stream.audioTracks.clear();
+    stream.videoTracks.clear();
+    stream.preservedVideoTracks.clear();
+    try {
+      stream.dispose();
+    } catch (IllegalStateException e) {
+      Log.d(TAG, "streamDispose(): stream already disposed, skipping");
+    }
+  }
+
+  private boolean isTrackInLocalStream(MediaStreamTrack track, MediaStream excluded) {
+    for (MediaStream candidate : localStreams.values()) {
+      if (candidate == excluded) continue;
+      for (AudioTrack other : candidate.audioTracks) if (other == track) return true;
+      for (VideoTrack other : candidate.videoTracks) if (other == track) return true;
+      for (VideoTrack other : candidate.preservedVideoTracks) if (other == track) return true;
+    }
+    return false;
+  }
+
+  private void disposeOwnedLocalTrack(MediaStreamTrack track) {
+    synchronized (localTracks) {
+      if (ownedLocalTracks.remove(track) == null) return;
+    }
+    try {
+      String trackId = track.id();
+      synchronized (localTracks) {
+        LocalTrack local = localTracks.get(trackId);
+        if (local != null && local.track == track) localTracks.remove(trackId);
+      }
+      removeTrackForRendererById(trackId);
+      track.setEnabled(false);
+      if (track instanceof VideoTrack) getUserMediaImpl.removeVideoCapturer(trackId);
+    } catch (RuntimeException e) {
+      Log.w(TAG, "disposeOwnedLocalTrack(): error stopping track", e);
+    } finally {
+      try {
+        track.dispose();
+      } catch (IllegalStateException e) {
+        Log.d(TAG, "disposeOwnedLocalTrack(): track already disposed, skipping");
       }
     }
   }

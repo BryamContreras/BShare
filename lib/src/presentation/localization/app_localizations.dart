@@ -41,6 +41,7 @@ class AppLocalizations {
       'send': 'Send',
       'receive': 'Receive',
       'transfers': 'Transfers',
+      'transfersCompact': 'Transfers',
       'screen': 'Screen',
       'settings': 'Settings',
       'back': 'Back',
@@ -54,10 +55,12 @@ class AppLocalizations {
       'receiveSubtitle': 'Make this device visible and accept incoming files.',
       'screenSubtitle': 'Share or watch a screen in real time.',
       'settingsUnavailable': 'Settings unavailable',
+      'settingsDeviceSection': 'Device',
+      'settingsAppearanceSection': 'Appearance',
       'deviceName': 'Device name',
       'preferredPort': 'Preferred port',
       'preferredPortHelp':
-          'If this port is busy, BShare will use the next available one.',
+          'Used the next time you start Receive. If busy, the next available port is used.',
       'automaticReceive': 'Automatic receive',
       'automaticReceiveHelp': 'Accept files without prompting.',
       'theme': 'Theme',
@@ -72,9 +75,29 @@ class AppLocalizations {
       'saveSettings': 'Save settings',
       'clearHistory': 'Clear history',
       'settingsSaved': 'Settings saved',
+      'settingsSaveFailed': 'Could not save settings. Please try again.',
+      'screenCaptureSettings': 'Screen sharing',
+      'screenResolution': 'Resolution',
+      'screenNativeResolution': 'Original resolution',
+      'screenFrameRate': 'Frame rate',
+      'screenCaptureSettingsHelp':
+          'Applies to the next stream. Resolution limits the shorter edge and preserves the screen proportions. Higher values use more battery and network capacity; actual frame rate depends on the device and connection.',
+      'screenStartFailed':
+          'Could not start screen sharing. Check permissions and your connection, then try again.',
       'targetDevice': 'Target device',
       'refreshDevices': 'Refresh devices',
       'searchingNearbyDevices': 'Searching for nearby devices',
+      'discoveryPreparing': 'Preparing device search',
+      'discoveryEmpty': 'No devices found yet',
+      'discoveryFoundOne': '1 device available',
+      'discoveryFoundMany': '{count} devices available',
+      'savedDeviceNotDetected':
+          'Saved destination; not detected on this network yet.',
+      'discoveryFailed': 'Could not search for devices',
+      'discoveryFailedHelp':
+          'Check your Wi-Fi connection, then refresh to try again.',
+      'discoveryAutomaticHelp':
+          'Open Receive on the other device and use the same Wi-Fi network. If you change networks, tap Refresh.',
       'scanDirectQr': 'Scan direct QR',
       'scanQr': 'Scan QR',
       'pointCameraAtQr': 'Point the camera at the BShare QR code',
@@ -88,6 +111,10 @@ class AppLocalizations {
       'retryScan': 'Scan again',
       'invalidBShareQr': 'This is not a valid BShare QR code',
       'cameraPermissionTitle': 'Camera access needed',
+      'cameraUnavailableTitle': 'Camera unavailable',
+      'cameraUnavailableHelp':
+          'Check camera permission and close other apps using the camera, then try again.',
+      'openAppSettings': 'Open settings',
       'files': 'Files',
       'clearSelectedFiles': 'Clear selected files',
       'noFilesSelected': 'No files selected',
@@ -158,6 +185,14 @@ class AppLocalizations {
       'noAppsFound': 'No apps found',
       'storage': 'Storage',
       'openFolderFailed': 'Could not open this folder',
+      'storagePermissionRequired':
+          'Allow access to files to use this folder or receive files. Camera and screen sharing do not need this permission.',
+      'storageAccessFailed':
+          'Could not access the selected folder. Check its permissions and try again.',
+      'receiverStartFailed':
+          'Could not start receiving. Check permissions and your connection, then try again.',
+      'videoReceiverOnly':
+          'File reception is off. Start receiving to allow files.',
       'goUp': 'Go up',
       'selectThisFolder': 'Select this folder',
       'transferStatus.queued': 'Queued',
@@ -183,6 +218,7 @@ class AppLocalizations {
       'send': 'Enviar',
       'receive': 'Recibir',
       'transfers': 'Transferencias',
+      'transfersCompact': 'Actividad',
       'screen': 'Pantalla',
       'settings': 'Ajustes',
       'back': 'Volver',
@@ -197,10 +233,12 @@ class AppLocalizations {
           'Haz visible este dispositivo y acepta archivos entrantes.',
       'screenSubtitle': 'Comparte o mira una pantalla en tiempo real.',
       'settingsUnavailable': 'Ajustes no disponibles',
+      'settingsDeviceSection': 'Dispositivo',
+      'settingsAppearanceSection': 'Apariencia',
       'deviceName': 'Nombre del dispositivo',
       'preferredPort': 'Puerto preferido',
       'preferredPortHelp':
-          'Si este puerto está ocupado, BShare usará el siguiente disponible.',
+          'Se usará la próxima vez que actives Recibir. Si está ocupado, se usará el siguiente disponible.',
       'automaticReceive': 'Recepción automática',
       'automaticReceiveHelp': 'Aceptar archivos sin preguntar.',
       'theme': 'Tema',
@@ -215,9 +253,30 @@ class AppLocalizations {
       'saveSettings': 'Guardar ajustes',
       'clearHistory': 'Borrar historial',
       'settingsSaved': 'Ajustes guardados',
+      'settingsSaveFailed':
+          'No se pudieron guardar los ajustes. Vuelve a intentar.',
+      'screenCaptureSettings': 'Compartir pantalla',
+      'screenResolution': 'Resolución',
+      'screenNativeResolution': 'Resolución original',
+      'screenFrameRate': 'Frecuencia de cuadros',
+      'screenCaptureSettingsHelp':
+          'Se aplica a la próxima transmisión. La resolución limita el lado corto y conserva las proporciones de la pantalla. Los valores altos consumen más batería y red; la frecuencia real depende del dispositivo y la conexión.',
+      'screenStartFailed':
+          'No se pudo compartir la pantalla. Revisa los permisos y la conexión y vuelve a intentar.',
       'targetDevice': 'Dispositivo destino',
       'refreshDevices': 'Actualizar dispositivos',
       'searchingNearbyDevices': 'Buscando dispositivos cercanos',
+      'discoveryPreparing': 'Preparando búsqueda de dispositivos',
+      'discoveryEmpty': 'Aún no se encontraron dispositivos',
+      'discoveryFoundOne': '1 dispositivo disponible',
+      'discoveryFoundMany': '{count} dispositivos disponibles',
+      'savedDeviceNotDetected':
+          'Destino guardado; aún no detectado en esta red.',
+      'discoveryFailed': 'No se pudieron buscar dispositivos',
+      'discoveryFailedHelp':
+          'Revisa la conexión Wi-Fi y pulsa actualizar para volver a intentar.',
+      'discoveryAutomaticHelp':
+          'Abre Recibir en el otro dispositivo y usa la misma red Wi-Fi. Si cambias de red, pulsa Actualizar.',
       'scanDirectQr': 'Escanear QR directo',
       'scanQr': 'Escanear QR',
       'pointCameraAtQr': 'Apunta la cámara al código QR de BShare',
@@ -231,6 +290,10 @@ class AppLocalizations {
       'retryScan': 'Escanear otra vez',
       'invalidBShareQr': 'Este no es un código QR válido de BShare',
       'cameraPermissionTitle': 'Se necesita acceso a la cámara',
+      'cameraUnavailableTitle': 'Cámara no disponible',
+      'cameraUnavailableHelp':
+          'Revisa el permiso de cámara y cierra otras apps que la estén usando. Luego vuelve a intentar.',
+      'openAppSettings': 'Abrir ajustes',
       'files': 'Archivos',
       'clearSelectedFiles': 'Limpiar archivos seleccionados',
       'noFilesSelected': 'No hay archivos seleccionados',
@@ -302,6 +365,14 @@ class AppLocalizations {
       'noAppsFound': 'No se encontraron apps',
       'storage': 'Almacenamiento',
       'openFolderFailed': 'No se pudo abrir esta carpeta',
+      'storagePermissionRequired':
+          'Permite el acceso a archivos para usar esta carpeta o recibir archivos. Compartir cámara y pantalla no necesita este permiso.',
+      'storageAccessFailed':
+          'No se pudo acceder a la carpeta seleccionada. Revisa sus permisos e inténtalo de nuevo.',
+      'receiverStartFailed':
+          'No se pudo iniciar la recepción. Revisa los permisos y la conexión e inténtalo de nuevo.',
+      'videoReceiverOnly':
+          'La recepción de archivos está desactivada. Iníciala para recibir archivos.',
       'goUp': 'Subir',
       'selectThisFolder': 'Seleccionar esta carpeta',
       'transferStatus.queued': 'En cola',

@@ -1,0 +1,493 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-10-22T23:07:36.108349+00:00",
+  "status": "passed_scoped_ui_and_physical_lifecycle_validation_installed_on_s22",
+  "scope": "Mobile Home card typography, desktop navigation, Linux window controls and subtle navigation transitions.",
+  "implementedChanges": {
+    "mobileHomeCards": {
+      "titleFontDp": {
+        "cardWidthBelow340": 15,
+        "otherCardWidths": 20
+      },
+      "subtitleFontDp": {
+        "cardWidthBelow340": 12,
+        "otherCardWidths": 13
+      },
+      "scope": "Android and iOS Home cards opt into compact typography; desktop inherits the existing text theme."
+    },
+    "desktopNavigation": {
+      "screenLabelEs": "Compartir pantalla",
+      "cameraLabelEs": "C\u00e1mara del dispositivo",
+      "sidebarWidthDp": 280,
+      "layout": "The outer row stretches vertically; the sidebar fills available window height and starts navigation at the top. Its content scrolls when window height or text scale needs more space.",
+      "mobile": "Screen and camera remain Home actions rather than extra mobile bottom-navigation destinations."
+    },
+    "linuxWindowControls": {
+      "implementation": "GTK decorations, resizing and deletion are enabled. The client-side header bar is explicitly shown and exposes minimize, maximize and close with :minimize,maximize,close.",
+      "closeLifecycle": "Existing asynchronous close/session cleanup is preserved.",
+      "targetEnvironment": "KDE Wayland with Breeze",
+      "status": "passed_in_kde_wayland"
+    },
+    "navigationTransitions": {
+      "androidAndDesktop": "Brief fade without slide/scale page effects.",
+      "forwardMilliseconds": 140,
+      "reverseMilliseconds": 110,
+      "ios": "Cupertino navigation and its interactive edge swipe are retained.",
+      "reducedMotion": "Route effects are skipped when disableAnimations is set. Scroll-to-top uses zero duration under the same preference.",
+      "scrollToTopMilliseconds": 220,
+      "otherChanges": [
+        "Clearing the Send selection no longer adds an artificial delay.",
+        "The Android app picker no longer waits an extra 120 ms before its native call."
+      ]
+    }
+  },
+  "validation": {
+    "focusedWidgetTests": {
+      "status": "passed",
+      "count": 19,
+      "evidence": {
+        "path": ".dart_tool/app_review/desktop-polish-focused-tests.log",
+        "bytes": 2934,
+        "sha256": "130e3a6c597f9bc2bcd87ad084ee05c55cfa330bc5d4c37fd14816fabc539b5c"
+      }
+    },
+    "transitionTests": {
+      "status": "passed_in_final_full_suite",
+      "count": 4,
+      "source": "test/subtle_page_transitions_test.dart",
+      "coverage": [
+        "Android/desktop fade durations",
+        "Fade without slide/scale",
+        "Reduced-motion behavior on each platform",
+        "Cupertino edge-swipe back"
+      ]
+    },
+    "analyze": {
+      "status": "passed",
+      "command": [
+        "dart",
+        "analyze",
+        "--fatal-infos"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 34.99,
+      "reason": "Recheck exact final source independently of Flutter CLI shutdown warning; previous Flutter analysis also reported no issues.",
+      "evidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-analyze.json",
+        "bytes": 255,
+        "sha256": "e1ab8ed6f8685d80d412e37c2534529425f0e95a8b8c1b8ea7a724ae4e435ce6"
+      },
+      "log": {
+        "path": ".dart_tool/app_review/desktop-polish-final-analyze.log",
+        "bytes": 37,
+        "sha256": "c18777986d05f51d2fecf76558229199ff41d836c155419293c81229e05096bd"
+      }
+    },
+    "fullFlutterTests": {
+      "status": "passed",
+      "command": [
+        "flutter",
+        "--suppress-analytics",
+        "test",
+        "--no-pub"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 252.85,
+      "evidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-tests.json",
+        "bytes": 139,
+        "sha256": "3c8eb081a31aa6c086f269ec26cf78d8f49c69bb6a433730e633ccbfb2d9f8e4"
+      },
+      "log": {
+        "path": ".dart_tool/app_review/desktop-polish-final-tests.log",
+        "bytes": 76653,
+        "sha256": "7b8f938cb55f889d1746f21c2e4fe081860ef850f84dbf37ee9e10bc8a6b16d5"
+      },
+      "count": 383
+    },
+    "sourceFreeze": {
+      "evidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-source-freeze.json",
+        "bytes": 30859,
+        "sha256": "964e845603568dfd97d8b147f3bc6439c940f89746aa15d636a70c40fb8abf69"
+      },
+      "fileCount": 212,
+      "changedSinceFreeze": [],
+      "androidKernelProof": {
+        "path": ".dart_tool/app_review/desktop-polish-final-android-kernel-source-proof.json",
+        "bytes": 1569,
+        "sha256": "9bc0b5db6d040d0c9052b7da25860cf2bb1138d692396309ae026091363c0a79"
+      }
+    },
+    "androidBuildAndInstall": {
+      "status": "passed",
+      "artifactSha256": "5ff3674cb5d76bd8b16f9fe47b1030956356d155244defbf778a6b9137260e7c",
+      "artifactPath": ".dart_tool/app_review/desktop-polish-final.apk",
+      "installEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-s22-install.json",
+        "bytes": 615,
+        "sha256": "15f47ccfb895dfa88bf2aad0aad1ea9366b71e27e0ff83e8557e1ca9276966b4"
+      },
+      "sharedCompatibilityReport": "docs/performance/android-compatibility-review.json",
+      "originalDeliveryPath": "build/app/outputs/flutter-apk/bshare-optimized-release.apk"
+    },
+    "linuxBuild": {
+      "status": "passed",
+      "artifact": {
+        "bundle": "build/linux/x64/release/bundle",
+        "executable": {
+          "path": "build/linux/x64/release/bundle/bshare",
+          "bytes": 30736,
+          "sha256": "3dc764099fdf48e35a86d4e2e044a66e0e7565c80457af1b2ab90d0d8f67d956"
+        },
+        "aot": {
+          "path": "build/linux/x64/release/bundle/lib/libapp.so",
+          "bytes": 8782736,
+          "sha256": "0735693af5f72a0ef6889cfe1036055930b5adc71f0207ca9f52371887a2475a"
+        },
+        "canonicalFileMapSha256": "1cc647d5faa02361e74a5caba2bbb243c25be479fb117313bfd875ec0fc73e0c",
+        "fileCount": 19,
+        "manifest": {
+          "path": ".dart_tool/app_review/desktop-polish-linux-bundle-manifest.json",
+          "sha256": "71456f7b6baccdeb39bfdc2001070d7f64041ff757329486d25a5dd2d7c0abb5",
+          "bytes": 3221
+        }
+      },
+      "final": {
+        "command": [
+          "flutter",
+          "--suppress-analytics",
+          "build",
+          "linux",
+          "--release",
+          "--no-pub"
+        ],
+        "pid": 913223,
+        "startedAtUtc": "2026-10-22T23:13:54.039081+00:00",
+        "completedAtUtc": "2026-10-22T23:17:00.086089+00:00",
+        "durationSeconds": 186.04707413399956,
+        "exitCode": 0,
+        "ninjaJobs": 2,
+        "ninjaWrapperSha256": "6f65db11df983424fbd3d84ac29def63e24ef526f1570cf843490d2bdb5c1716",
+        "purpose": "Final AppShell reduced-motion scroll fix; prior build kernel proven stale",
+        "receipt": {
+          "path": ".dart_tool/app_review/desktop-polish-linux-verified-build.json",
+          "sha256": "c122284f769bc75d0feea8920b95ffd00fd76e8ab0dab1053f664371e4de64b9",
+          "bytes": 509
+        },
+        "log": {
+          "path": ".dart_tool/app_review/desktop-polish-linux-verified-build.log",
+          "sha256": "0e1f715aeef31889c144d841f94cef94bc8bdfd01668e930bddd1879ee63a293",
+          "bytes": 113
+        }
+      },
+      "historicalAttempts": [
+        {
+          "receipt": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-build.json",
+            "sha256": "542012b5301ce0febd081abff5f1c5d63e89c137db4fbc4b567883a02bb9fd5e",
+            "bytes": 309
+          },
+          "log": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-build.log",
+            "sha256": "9ed6aaa86dc74560b1464f3cdb691c9b31ed3edf3069a50b5db3e37712d9a567",
+            "bytes": 1312
+          },
+          "exitCode": 1,
+          "reason": "Frontend read transitions helper before missing Cupertino import was corrected; preserved as failed attempt"
+        },
+        {
+          "receipt": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-final-build.json",
+            "sha256": "160bd94678adee128c38af42e6a07bd4199c741cf45e6b489010b948bf0ab0d9",
+            "bytes": 419
+          },
+          "log": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-final-build.log",
+            "sha256": "0e1f715aeef31889c144d841f94cef94bc8bdfd01668e930bddd1879ee63a293",
+            "bytes": 113
+          },
+          "exitCode": 0,
+          "reason": "Successful intermediate compilation proven to retain AppShell before final jumpTo fix; superseded by final incremental build",
+          "staleKernelProof": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-kernel-source-proof.json",
+            "sha256": "9cf51790578c4b061097107a5e550289059225fda5d62856abbde0d90b8c87be",
+            "bytes": 723
+          }
+        }
+      ],
+      "kernelInputProof": {
+        "recordedAtUtc": "2026-10-22T23:16:04.727081+00:00",
+        "kernel": ".dart_tool/flutter_build/7a2867e4079be864018059b0fa23ca44/app.dill",
+        "kernelSha256": "634c4add088763477364b6a3b1ac74c5d6d7af9fe3a94cbf99270f8aa3f5cc31",
+        "sourceMatches": {
+          "lib/src/presentation/app.dart": true,
+          "lib/src/presentation/screens/home_screen.dart": true,
+          "lib/src/presentation/widgets/action_card.dart": true,
+          "lib/src/presentation/widgets/app_shell.dart": true,
+          "lib/src/presentation/navigation/subtle_page_transitions.dart": true,
+          "lib/src/presentation/screens/send_files_screen.dart": true,
+          "lib/src/presentation/screens/android_app_picker_screen.dart": true
+        },
+        "sourceHashes": {
+          "lib/src/presentation/app.dart": "7524ddc7fc074ad8416f8fef59f29803de6a5cb150c4f6c2f39943abd0c787d7",
+          "lib/src/presentation/screens/home_screen.dart": "6140063fe6b8ad304597706389b8989ce0faa330c0fef291103b3f7b0f287790",
+          "lib/src/presentation/widgets/action_card.dart": "bd47d87faa75f0db2f8c2a0e0dace6f1017a220c509ef8caaea1e672129c8361",
+          "lib/src/presentation/widgets/app_shell.dart": "723c625952fa67cda67a310845f16bf90b68b89dd713ca271063e689968d7bb5",
+          "lib/src/presentation/navigation/subtle_page_transitions.dart": "06dfb17191f9f249afc7fe4ee791eefe4b988827695b3c228efd1dec0abafb8a",
+          "lib/src/presentation/screens/send_files_screen.dart": "6792e992350ae0e4e817171426cd2608e4e3e7eb8c275af7990bedb69cf0e300",
+          "lib/src/presentation/screens/android_app_picker_screen.dart": "9a81eceb514a7ba9dcb973aa88037a3ee98beb1efbdc2d81bde727ceadd640ec"
+        },
+        "allExactSourcesEmbedded": true,
+        "evidence": {
+          "path": ".dart_tool/app_review/desktop-polish-linux-verified-kernel-source-proof.json",
+          "sha256": "76a6564edd1031b3ec8438e038dae55ac1fe69c25b15f08f40562655b0d8e28d",
+          "bytes": 1604
+        }
+      },
+      "finalSourceFreeze": {
+        "path": ".dart_tool/app_review/desktop-polish-linux-verified-source-freeze.json",
+        "sha256": "f8e013972621e565255780cb59e74e44b55f0b498a7cd7c28d43f2d4a9546e9a",
+        "bytes": 10741
+      },
+      "changesAfterFinalFreeze": [],
+      "evidence": {
+        "path": ".dart_tool/app_review/desktop-polish-linux-results.json",
+        "bytes": 16412,
+        "sha256": "fb375182b46837849de7f559aa8237b093251af9d7ef582ba643f012fab9c3f9"
+      }
+    },
+    "linuxRuntime": {
+      "status": "passed",
+      "environment": {
+        "desktop": "KDE",
+        "sessionType": "wayland",
+        "gdkBackend": "wayland",
+        "kwinPackage": "kwin-6.7.5-1.fc44.x86_64",
+        "gtkPackage": "gtk3-3.24.52-2.fc44.x86_64",
+        "gtkThemeObservedInSession": "Breeze",
+        "gtkDefaultDecorationLayoutObservedBeforePatch": ":minimize,maximize,close"
+      },
+      "cases": [
+        {
+          "name": "native controls visible",
+          "status": "passed",
+          "evidence": [
+            ".dart_tool/app_review/desktop-polish-linux-normal.png",
+            ".dart_tool/app_review/desktop-polish-linux-maximized.png",
+            ".dart_tool/app_review/desktop-polish-linux-resized.png"
+          ]
+        },
+        {
+          "name": "maximize using real GTK titlebar button click",
+          "status": "passed",
+          "result": {
+            "width": 1920,
+            "height": 1080,
+            "maximizeHorizontal": 2,
+            "maximizeVertical": 1
+          },
+          "input": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-click-maximize-click.json",
+            "sha256": "f7392288852344c7da9d3e5b81d9122f6e8c98f4fec76666bf5e5f18d57feaef",
+            "bytes": 486
+          },
+          "state": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-window-info-maximized.json",
+            "sha256": "5e17b6275ea387008d21aafffda1adc951f55a003356702db4d6cb01dcdfb7f6",
+            "bytes": 956
+          }
+        },
+        {
+          "name": "restore using second click of GTK maximize/restore button",
+          "status": "passed",
+          "result": {
+            "width": 1280,
+            "height": 767,
+            "maximizeHorizontal": 0,
+            "maximizeVertical": 0
+          },
+          "input": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-click-restore-click.json",
+            "sha256": "e0f3a8199d5644db44794f81d2c1aad582345db7f22ff2e3551f0a2e1574ed1d",
+            "bytes": 484
+          },
+          "state": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-window-info-restored.json",
+            "sha256": "6be753164d9886220477496b683412b9234d9b5a3367b83a04d64987e10a51b3",
+            "bytes": 958
+          }
+        },
+        {
+          "name": "minimize using real GTK titlebar button click",
+          "status": "passed",
+          "result": {
+            "minimized": true
+          },
+          "input": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-click-minimize-click.json",
+            "sha256": "de204163b2b0f9f9c6a8d3ecbbd292c901076ae91247799fa35fb64dcabe22b1",
+            "bytes": 486
+          },
+          "state": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-window-info-minimized.json",
+            "sha256": "925163fce549f22051b03995b783ad7b2e8a814136935f40043f6827c41b9087",
+            "bytes": 958
+          }
+        },
+        {
+          "name": "restore minimized window through KWin own-PID activation",
+          "status": "passed",
+          "result": {
+            "minimized": false
+          },
+          "state": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-window-info-unminimized.json",
+            "sha256": "32aaebc3c231cc5a7ba85c6031400800f95bdf4a26e664fd039fe47a6fcdeaeb",
+            "bytes": 961
+          }
+        },
+        {
+          "name": "resize through KWin own-PID frame geometry",
+          "status": "passed",
+          "result": {
+            "width": 1120,
+            "height": 760
+          },
+          "state": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-window-info-resized.json",
+            "sha256": "02a5d0b9e563bdd1f72886b4fc2591b70408cc087720ad4577342f23eb033fd7",
+            "bytes": 957
+          }
+        },
+        {
+          "name": "close using real GTK titlebar button click and dispose engines normally",
+          "status": "passed",
+          "result": {
+            "appExitCode": 0,
+            "remainingOwnWindows": 0
+          },
+          "input": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-click-close-click.json",
+            "sha256": "08794d9e13c8f2019bf1958966f0cbbab903e38651852d2958f55b5659a603f4",
+            "bytes": 480
+          },
+          "state": {
+            "path": ".dart_tool/app_review/desktop-polish-linux-window-events.jsonl",
+            "sha256": "bd27a8a2a808fbe88afcbbbfe1822d68be87aee3254b8b0ec8b6bd541687e40f",
+            "bytes": 6952
+          }
+        }
+      ],
+      "exitCode": 0,
+      "evidence": {
+        "path": ".dart_tool/app_review/desktop-polish-linux-results.json",
+        "bytes": 16412,
+        "sha256": "fb375182b46837849de7f559aa8237b093251af9d7ef582ba643f012fab9c3f9"
+      }
+    },
+    "physicalMobileUi": {
+      "status": "passed_home_visuals_navigation_and_permission_lifecycle",
+      "device": "Samsung Galaxy S22 Ultra, Android14/API34 ARM64",
+      "installedApkSha256": "5ff3674cb5d76bd8b16f9fe47b1030956356d155244defbf778a6b9137260e7c",
+      "evidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-s22-home-complete.png",
+        "bytes": 333492,
+        "sha256": "e174edf4c591e86a9d1179b386f3c63fc960523a4f8eb86a592dc666f9a1a844"
+      },
+      "fontSizesAndResponsiveLayout": "The final S22 Home screenshot was inspected with all four cards visible and no overflow. Final widget tests cover typography sizes and the responsive layout matrix.",
+      "additionalPermissionRegression": "passed; final APK storage revocation/reopen, real Wi-Fi file reception with matching hash and UI Stop are recorded in the shared Android compatibility report.",
+      "homeSemanticsEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-s22-unlocked-home.xml",
+        "bytes": 9100,
+        "sha256": "0b25ad049a64bdc78ae986164559bf49ced67fad3a6f7da2b923820328eb8613"
+      },
+      "permissionRegressionEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-s22-revocation.json",
+        "bytes": 2441,
+        "sha256": "046922ada09d457121339053140fee05cb07449e82ce5faabba0d1a21403ab29"
+      },
+      "fileReceptionEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-s22-transfer.json",
+        "bytes": 630,
+        "sha256": "16c5d641ead2cc3524222ffd0c31d859c4d361333953e4541cf19367fb61c35d"
+      },
+      "uiStopEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-s22-ui-stop.json",
+        "bytes": 249,
+        "sha256": "0e4873ed99f49449ecccceed560e58af52ea3a2d180872f88f448829d1a0ee47"
+      },
+      "aggregateEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-s22-results.json",
+        "bytes": 6949,
+        "sha256": "7c690dc58efd93290be4008bf5c11d884ef3d34a608ec8f4bca2c1f6d79eb646"
+      }
+    },
+    "cleanup": {
+      "status": "passed",
+      "ownedLinuxProcessFinished": true,
+      "otherOwnedHelpersFinished": true,
+      "ownedBuildAndTestProcessesFinished": true,
+      "ownedEmulatorsStoppedAndTemporaryAvdsRemoved": true,
+      "testMappingsAndFixturesRemoved": true,
+      "physicalPermissionBaselineRestored": true,
+      "physicalPermissionBaselineNote": "The physical test revoked shared-storage access while reception was active, then restored the original all-files UID mode allow. The final grant matches the baseline; the test fixture and device UI dumps were removed.",
+      "physicalSourceAndCaptureResourcesReleased": true,
+      "userAdbServerPreserved": true,
+      "rootEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-s22-cleanup.json",
+        "bytes": 630,
+        "sha256": "25776ff1298f976e8154326c9504d3582a648b3e7d3b0e630717ddf4e6430e1f"
+      },
+      "emulatorEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-emulator-cleanup.json",
+        "bytes": 5580,
+        "sha256": "33e2227405d7400e5c61f3c7c63b585f2d07fb0952b2b13e683356d3d1a8d741"
+      },
+      "emulatorAuxiliaryEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-final-emulator-auxiliary-cleanup.json",
+        "bytes": 1537,
+        "sha256": "54f5b759d7c5beef73146a3ad6550ac242514aa4c12616601ad145b576770529"
+      },
+      "linuxEvidence": {
+        "path": ".dart_tool/app_review/desktop-polish-linux-cleanup.json",
+        "bytes": 1747,
+        "sha256": "0d3105ee9cbffb1207882f1653a4415a9bb25d47254a22584e8cf6b7c174981b"
+      },
+      "physicalIdleEvidence": {
+        "path": ".dart_tool/camera_audit/physical-av/desktop-polish-final-s22-complete-summary.json",
+        "bytes": 670,
+        "sha256": "d9287265c350a7b865cf3b12a66794788d5c9afea7144646db2d243786e5d4cc"
+      },
+      "physicalPermissionChangeAttemptedInFinalRun": true,
+      "physicalNoForceStopUsed": true
+    },
+    "scrollMotionTests": {
+      "status": "passed",
+      "count": 2,
+      "evidence": {
+        "path": ".dart_tool/app_review/ui-polish-scroll-motion-tests.json",
+        "bytes": 560,
+        "sha256": "bfb058673af28b618de57a1e9e76103c29e11c805c3cab0fd07c63d28cb9c2fd"
+      },
+      "includedInFullSuite": true
+    }
+  },
+  "sourceReferences": [
+    "lib/src/presentation/widgets/action_card.dart",
+    "lib/src/presentation/screens/home_screen.dart",
+    "lib/src/presentation/widgets/app_shell.dart",
+    "lib/src/presentation/navigation/subtle_page_transitions.dart",
+    "lib/src/presentation/screens/send_files_screen.dart",
+    "lib/src/presentation/screens/android_app_picker_screen.dart",
+    "linux/runner/my_application.cc"
+  ],
+  "limits": [
+    "Widget tests inspect layout, typography and animation behavior; they do not establish a measured frame-time or startup-speed improvement.",
+    "Linux controls are environment-dependent; runtime scope must identify the actual compositor/theme and successful final build.",
+    "iOS edge-swipe behavior is covered by a widget test; no physical iOS runtime was available.",
+    "Previous compatibility APK runtime results are historical evidence and do not substitute for final APK installation and verification."
+  ],
+  "updatedAtUtc": "2026-10-22T23:50:34.586349+00:00",
+  "artifactPathNotice": "Historical revision: original build/delivery paths are mutable. Use the retained APK path for this report and its recorded hash; the current delivery APK belongs to settings-sidebar-review.json. Linux bundle paths also describe that historical validation time; the current bundle is recorded in settings-sidebar-review.json."
+}

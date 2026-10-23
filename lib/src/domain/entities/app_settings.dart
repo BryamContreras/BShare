@@ -1,3 +1,6 @@
+import 'screen_capture_settings.dart';
+import 'camera_capture_settings.dart';
+
 class AppSettings {
   const AppSettings({
     required this.deviceId,
@@ -7,6 +10,8 @@ class AppSettings {
     required this.preferredPort,
     required this.themeMode,
     required this.languageCode,
+    this.screenCapture = const ScreenCaptureSettings(),
+    this.cameraCapture = const CameraCaptureSettings(),
   });
 
   final String deviceId;
@@ -16,6 +21,8 @@ class AppSettings {
   final int preferredPort;
   final String themeMode;
   final String languageCode;
+  final ScreenCaptureSettings screenCapture;
+  final CameraCaptureSettings cameraCapture;
 
   AppSettings copyWith({
     String? deviceId,
@@ -25,6 +32,8 @@ class AppSettings {
     int? preferredPort,
     String? themeMode,
     String? languageCode,
+    ScreenCaptureSettings? screenCapture,
+    CameraCaptureSettings? cameraCapture,
   }) {
     return AppSettings(
       deviceId: deviceId ?? this.deviceId,
@@ -34,6 +43,8 @@ class AppSettings {
       preferredPort: preferredPort ?? this.preferredPort,
       themeMode: themeMode ?? this.themeMode,
       languageCode: languageCode ?? this.languageCode,
+      screenCapture: screenCapture ?? this.screenCapture,
+      cameraCapture: cameraCapture ?? this.cameraCapture,
     );
   }
 }

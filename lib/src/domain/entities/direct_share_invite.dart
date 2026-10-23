@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bshare/src/domain/entities/device_info.dart';
 
@@ -48,16 +49,52 @@ class DirectShareInvite {
   });
 
   factory DirectShareInvite.decode(String value) {
-    final json = jsonDecode(value) as Map<String, dynamic>;
+    final decoded = jsonDecode(value);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('A BShare invite must be an object');
+    }
+    final json = decoded;
     if (json['type'] != type) {
       throw const FormatException('Not a BShare direct invite');
     }
+    final version = json['version'] ?? 1;
+    if (version != 1 || version is! int) {
+      throw const FormatException('Unsupported BShare invite version');
+    }
+    final network = json['network'];
+    final device = json['device'];
+    if (network is! Map<String, dynamic> || device is! Map<String, dynamic>) {
+      throw const FormatException('Missing BShare network or device');
+    }
+    final ssid = network['ssid'];
+    final password = network['password'];
+    final security = network['securityType'] ?? 'WPA2';
+    if (ssid is! String ||
+        ssid.isEmpty ||
+        utf8.encode(ssid).length > 32 ||
+        password is! String ||
+        !const ['WPA2', 'WPA3', 'OPEN'].contains(security) ||
+        (security != 'OPEN' && (password.length < 8 || password.length > 63))) {
+      throw const FormatException('Invalid BShare Wi-Fi credentials');
+    }
+    final ip = device['ip'];
+    final port = device['port'];
+    if (device['id'] is! String ||
+        (device['id'] as String).isEmpty ||
+        device['name'] is! String ||
+        device['platform'] is! String ||
+        ip is! String ||
+        InternetAddress.tryParse(ip) == null ||
+        port is! int ||
+        port < 1 ||
+        port > 65535 ||
+        (device['lastSeen'] != null && device['lastSeen'] is! String)) {
+      throw const FormatException('Invalid BShare receiver address');
+    }
     return DirectShareInvite(
-      version: (json['version'] as num?)?.toInt() ?? 1,
-      credentials: DirectNetworkCredentials.fromJson(
-        json['network'] as Map<String, dynamic>,
-      ),
-      device: DeviceInfo.fromJson(json['device'] as Map<String, dynamic>),
+      version: version,
+      credentials: DirectNetworkCredentials.fromJson(network),
+      device: DeviceInfo.fromJson(device),
     );
   }
 }

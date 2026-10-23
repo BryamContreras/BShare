@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:bshare/src/application/providers.dart';
@@ -58,6 +59,60 @@ class _ImmediateFileTransferClient extends FileTransferClient {
       bytesPerSecond: 1,
       status: TransferProgressStatus.sending,
     );
+  }
+}
+
+class _BlockingFileTransferClient extends _ImmediateFileTransferClient {
+  int sendCount = 0;
+  int announcedCount = 0;
+  int? controlPort;
+  final started = Completer<void>();
+  bool finished = false;
+
+  @override
+  Future<void> announceQueue({
+    required DeviceInfo target,
+    required List<SelectedTransferFile> files,
+    required Map<String, String> transferIds,
+    required String senderId,
+    required String senderName,
+    String? controlHost,
+    int? controlPort,
+  }) async {
+    announcedCount += files.length;
+    this.controlPort = controlPort;
+  }
+
+  @override
+  Stream<SendProgress> sendFile({
+    required DeviceInfo target,
+    required SelectedTransferFile file,
+    required String transferId,
+    required String senderId,
+    required String senderName,
+    required TransferControl control,
+    String? controlHost,
+    int? controlPort,
+  }) async* {
+    sendCount++;
+    final cancelled = Completer<void>();
+    final detach = control.onCancel(cancelled.complete);
+    started.complete();
+    try {
+      yield SendProgress(
+        id: file.path,
+        fileName: file.name,
+        sentBytes: 0,
+        totalBytes: file.size,
+        bytesPerSecond: 0,
+        status: TransferProgressStatus.sending,
+      );
+      await cancelled.future;
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    } finally {
+      detach();
+      finished = true;
+    }
   }
 }
 
@@ -133,6 +188,69 @@ void main() {
       expect(container.read(pickedFilesProvider), isEmpty);
       expect(await temporaryFile.exists(), isFalse);
       await controller.dispose();
+    },
+  );
+  test(
+    'duplicates are sent once and dispose waits for the active sender to finish',
+    () async {
+      final receiver = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      receiver.listen((request) async {
+        await request.drain<void>();
+        request.response.statusCode = HttpStatus.ok;
+        await request.response.close();
+      });
+      addTearDown(() => receiver.close(force: true));
+      final directory = await Directory.systemTemp.createTemp(
+        'bshare-send-cleanup-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/shared.bin');
+      await file.writeAsBytes([1, 2, 3]);
+      final selected = SelectedTransferFile(
+        path: file.path,
+        name: 'shared.bin',
+        size: 3,
+        deleteAfterSend: true,
+      );
+      final client = _BlockingFileTransferClient();
+      final container = ProviderContainer(
+        overrides: [
+          settingsProvider.overrideWith(_TestSettingsController.new),
+          fileTransferClientProvider.overrideWithValue(client),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.read(pickedFilesProvider.notifier).set([selected, selected]);
+      container
+          .read(selectedDeviceProvider.notifier)
+          .set(
+            DeviceInfo(
+              id: 'receiver',
+              name: 'Receiver',
+              platform: 'test',
+              ip: '127.0.0.1',
+              port: receiver.port,
+              lastSeen: DateTime.now(),
+            ),
+          );
+      final controller = container.read(sendControllerProvider);
+      await controller.send();
+      await client.started.future;
+      await controller.send();
+      expect(client.sendCount, 1);
+      expect(client.announcedCount, 1);
+      expect(client.finished, isFalse);
+      await controller.dispose(
+        cleanupSelectedFiles: true,
+        selectedFiles: [selected],
+      );
+      expect(client.finished, isTrue);
+      expect(container.read(transferControlProvider), isEmpty);
+      expect(await file.exists(), isFalse);
+      expect(
+        () => Socket.connect('127.0.0.1', client.controlPort!),
+        throwsA(isA<SocketException>()),
+      );
     },
   );
 }

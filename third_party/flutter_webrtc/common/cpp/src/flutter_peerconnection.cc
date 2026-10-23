@@ -392,13 +392,10 @@ void FlutterPeerConnection::RTCPeerConnectionClose(
   auto it2 = base_->peerconnections_.find(uuid);
   if (it2 != base_->peerconnections_.end()) {
     it2->second->Close();
-    base_->peerconnections_.erase(it2);
   }
-
-  auto it = base_->peerconnection_observers_.find(uuid);
-  if (it != base_->peerconnection_observers_.end())
-    base_->peerconnection_observers_.erase(it);
-
+  // Dart cancels the peer's EventChannel subscription in dispose(), after
+  // close(). Keep the observer and its channel alive until that cancellation;
+  // destroying them here leaves the messenger calling a freed stream handler.
   result->Success();
 }
 
@@ -406,6 +403,15 @@ void FlutterPeerConnection::RTCPeerConnectionDispose(
     RTCPeerConnection* pc,
     const std::string& uuid,
     std::unique_ptr<MethodResultProxy> result) {
+  // Close() is idempotent. Do not query peer_connection_state() here: Close()
+  // releases libwebrtc's internal peer, and state getters dereference it.
+  // dispose() must also close peers whose caller did not close them first.
+  pc->Close();
+  pc->DeRegisterRTCPeerConnectionObserver();
+  // The Dart subscription is already cancelled. Destroying its observer now
+  // unregisters the native channel handler before releasing the peer itself.
+  base_->peerconnection_observers_.erase(uuid);
+  base_->peerconnections_.erase(uuid);
   result->Success();
 }
 

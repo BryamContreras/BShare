@@ -4,9 +4,20 @@ class TransferControl {
   bool _paused = false;
   bool _cancelled = false;
   Completer<void>? _resumeCompleter;
+  final Set<void Function()> _cancelListeners = {};
 
   bool get isPaused => _paused;
   bool get isCancelled => _cancelled;
+
+  /// Returns a function that detaches the listener after its operation finishes.
+  void Function() onCancel(void Function() listener) {
+    if (_cancelled) {
+      listener();
+      return () {};
+    }
+    _cancelListeners.add(listener);
+    return () => _cancelListeners.remove(listener);
+  }
 
   void pause() {
     if (_cancelled || _paused) return;
@@ -22,8 +33,14 @@ class TransferControl {
   }
 
   void cancel() {
+    if (_cancelled) return;
     _cancelled = true;
     resume();
+    final listeners = _cancelListeners.toList();
+    _cancelListeners.clear();
+    for (final listener in listeners) {
+      listener();
+    }
   }
 
   Future<void> waitIfPaused() async {

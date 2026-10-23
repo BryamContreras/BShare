@@ -1,0 +1,551 @@
+{
+  "recordedAtUtc": "2026-10-21T22:21:16.308797+00:00",
+  "status": "preliminary_physical_evidence_for_superseded_pre_fix_build",
+  "build": {
+    "package": "com.bshare.bshare.audit",
+    "label": "BShare Optimizada",
+    "mode": "release AOT/R8",
+    "apkSha256": "35113a1d7f7a9103853c83a7c4f1d56c7ce0ccbb3b80583d70c00cec5ec34fee",
+    "apkBytes": 40297411,
+    "identitySource": "Previously installed APK hash verified by the device operator before these probes. The final corrected APK will have separate evidence.",
+    "includesPermissionResumeFix": false
+  },
+  "environment": {
+    "sender": "Samsung Galaxy S22 Ultra SM-S908U, Android 14/API 34",
+    "receivers": [
+      "Native Flutter Linux release viewer",
+      "Headless Brave WebRTC statistics receiver"
+    ],
+    "transport": "Local Wi-Fi",
+    "videoOnly": true,
+    "concurrentWork": "The device operator reports concurrent PC build work during this review. These are observed session samples, not an isolated or controlled CPU benchmark."
+  },
+  "method": {
+    "fps": "Delta framesDecoded / delta inbound-rtp RTCStats.timestamp in milliseconds, excluding startup without counters and camera/profile transitions.",
+    "statsIntervalSecondsApproximate": 5,
+    "latencyMeasured": false,
+    "notes": [
+      "Each probe keeps one RTCPeerConnection while camera tracks are replaced.",
+      "A brief interval above the requested FPS can reflect timestamp/counter sampling and decode scheduling; interval extrema do not measure sustained camera capture cadence.",
+      "A zero framesDropped counter does not establish zero packet loss or zero queued decoder frames.",
+      "Raw camera images, full device dumps and identifiers are retained only in ignored local evidence; this report includes hashes and selected app-specific state."
+    ]
+  },
+  "wifiCameraFirst": {
+    "samples": 48,
+    "firstUtc": "2026-10-21T22:11:33.282Z",
+    "lastUtc": "2026-10-21T22:15:32.085Z",
+    "probeSummaryPassed": true,
+    "groups": [
+      {
+        "cameraId": "0",
+        "requestedFrameRate": 30,
+        "generation": 1,
+        "samples": 9,
+        "firstUtc": "2026-10-21T22:11:33.282Z",
+        "lastUtc": "2026-10-21T22:12:13.815Z",
+        "connectionStates": {
+          "connecting": 1,
+          "connected": 8
+        },
+        "metadataResolutionLimits": [
+          1080
+        ],
+        "videoElementSizes": [
+          {
+            "width": 720,
+            "height": 1280
+          },
+          {
+            "width": 1080,
+            "height": 1920
+          },
+          {
+            "width": 270,
+            "height": 480
+          },
+          {
+            "width": 540,
+            "height": 960
+          }
+        ],
+        "decodedRtpSizes": [
+          {
+            "width": 1920,
+            "height": 1080
+          },
+          {
+            "width": 480,
+            "height": 270
+          },
+          {
+            "width": 960,
+            "height": 540
+          },
+          {
+            "width": 1280,
+            "height": 720
+          }
+        ],
+        "decodedFrameDelta": 1049,
+        "measuredStatsSeconds": 35.484325,
+        "weightedDecodedFps": 29.5623,
+        "minimumIntervalDecodedFps": 28.7586,
+        "maximumIntervalDecodedFps": 30.2131,
+        "validIntervals": 7,
+        "droppedFrames": {
+          "delta": 0,
+          "intervalsWithCounters": 7,
+          "allValidIntervalsHaveCounters": true
+        },
+        "weightedReceivedFps": 29.5905,
+        "shorterEdgeWithinConfiguredResolutionInAllSamples": true
+      },
+      {
+        "cameraId": "1",
+        "requestedFrameRate": 30,
+        "generation": 1,
+        "samples": 39,
+        "firstUtc": "2026-10-21T22:12:18.864Z",
+        "lastUtc": "2026-10-21T22:15:32.085Z",
+        "connectionStates": {
+          "connected": 39
+        },
+        "metadataResolutionLimits": [
+          1080
+        ],
+        "videoElementSizes": [
+          {
+            "width": 1920,
+            "height": 1080
+          },
+          {
+            "width": 1080,
+            "height": 1920
+          }
+        ],
+        "decodedRtpSizes": [
+          {
+            "width": 1920,
+            "height": 1080
+          }
+        ],
+        "decodedFrameDelta": 5442,
+        "measuredStatsSeconds": 193.166818,
+        "weightedDecodedFps": 28.1725,
+        "minimumIntervalDecodedFps": 17.7565,
+        "maximumIntervalDecodedFps": 32.5959,
+        "validIntervals": 38,
+        "droppedFrames": {
+          "delta": 0,
+          "intervalsWithCounters": 38,
+          "allValidIntervalsHaveCounters": true
+        },
+        "weightedReceivedFps": 29.8188,
+        "shorterEdgeWithinConfiguredResolutionInAllSamples": true
+      }
+    ],
+    "cameraTransitions": [
+      {
+        "fromIndex": 8,
+        "toIndex": 9,
+        "fromUtc": "2026-10-21T22:12:13.815Z",
+        "toUtc": "2026-10-21T22:12:18.864Z",
+        "from": {
+          "cameraId": "0",
+          "requestedFrameRate": 30,
+          "generation": 1
+        },
+        "to": {
+          "cameraId": "1",
+          "requestedFrameRate": 30,
+          "generation": 1
+        },
+        "connectionFrom": "connected",
+        "connectionTo": "connected"
+      }
+    ],
+    "observedCodecs": [],
+    "sourceEvidence": [
+      {
+        "path": ".dart_tool/camera_audit/wifi-camera-first/samples.json",
+        "bytes": 43232,
+        "sha256": "80888bb7440e67fff53325e9432b9fa5edf3fc76d2b1954a709b90ba48d2288b"
+      },
+      {
+        "path": ".dart_tool/camera_audit/wifi-camera-first/summary.json",
+        "bytes": 170,
+        "sha256": "ee87f202425ee0f31a5d8d5f759dc51f828c3b4107e987ed583b732aa5018dee"
+      },
+      {
+        "path": ".dart_tool/camera_audit/wifi-camera-first/analysis.json",
+        "bytes": 85562,
+        "sha256": "69ba8ed78cfd14c4159e49362430abb754624eef24f0581016e82349b1f4d01f"
+      }
+    ]
+  },
+  "wifiCameraProfiles": {
+    "samples": 21,
+    "firstUtc": "2026-10-21T22:16:25.215Z",
+    "lastUtc": "2026-10-21T22:18:07.520Z",
+    "probeSummaryPassed": true,
+    "groups": [
+      {
+        "cameraId": "0",
+        "requestedFrameRate": 30,
+        "generation": 1,
+        "samples": 6,
+        "firstUtc": "2026-10-21T22:16:25.215Z",
+        "lastUtc": "2026-10-21T22:16:50.827Z",
+        "connectionStates": {
+          "connecting": 1,
+          "connected": 5
+        },
+        "metadataResolutionLimits": [
+          1080
+        ],
+        "videoElementSizes": [
+          {
+            "width": 720,
+            "height": 1280
+          },
+          {
+            "width": 1080,
+            "height": 1920
+          },
+          {
+            "width": 360,
+            "height": 640
+          },
+          {
+            "width": 540,
+            "height": 960
+          }
+        ],
+        "decodedRtpSizes": [
+          {
+            "width": 1920,
+            "height": 1080
+          },
+          {
+            "width": 640,
+            "height": 360
+          },
+          {
+            "width": 960,
+            "height": 540
+          },
+          {
+            "width": 1280,
+            "height": 720
+          }
+        ],
+        "decodedFrameDelta": 604,
+        "measuredStatsSeconds": 20.500979,
+        "weightedDecodedFps": 29.462,
+        "minimumIntervalDecodedFps": 29.1249,
+        "maximumIntervalDecodedFps": 29.9827,
+        "validIntervals": 4,
+        "droppedFrames": {
+          "delta": 0,
+          "intervalsWithCounters": 4,
+          "allValidIntervalsHaveCounters": true
+        },
+        "weightedReceivedFps": 29.462,
+        "shorterEdgeWithinConfiguredResolutionInAllSamples": true
+      },
+      {
+        "cameraId": "1",
+        "requestedFrameRate": 15,
+        "generation": 1,
+        "samples": 15,
+        "firstUtc": "2026-10-21T22:16:55.900Z",
+        "lastUtc": "2026-10-21T22:18:07.520Z",
+        "connectionStates": {
+          "connected": 15
+        },
+        "metadataResolutionLimits": [
+          720
+        ],
+        "videoElementSizes": [
+          {
+            "width": 720,
+            "height": 1280
+          }
+        ],
+        "decodedRtpSizes": [
+          {
+            "width": 1280,
+            "height": 720
+          }
+        ],
+        "decodedFrameDelta": 1074,
+        "measuredStatsSeconds": 71.577714,
+        "weightedDecodedFps": 15.0047,
+        "minimumIntervalDecodedFps": 14.868,
+        "maximumIntervalDecodedFps": 15.111,
+        "validIntervals": 14,
+        "droppedFrames": {
+          "delta": 0,
+          "intervalsWithCounters": 14,
+          "allValidIntervalsHaveCounters": true
+        },
+        "weightedReceivedFps": 14.9907,
+        "shorterEdgeWithinConfiguredResolutionInAllSamples": true
+      }
+    ],
+    "cameraTransitions": [
+      {
+        "fromIndex": 5,
+        "toIndex": 6,
+        "fromUtc": "2026-10-21T22:16:50.827Z",
+        "toUtc": "2026-10-21T22:16:55.900Z",
+        "from": {
+          "cameraId": "0",
+          "requestedFrameRate": 30,
+          "generation": 1
+        },
+        "to": {
+          "cameraId": "1",
+          "requestedFrameRate": 15,
+          "generation": 1
+        },
+        "connectionFrom": "connected",
+        "connectionTo": "connected"
+      }
+    ],
+    "observedCodecs": [
+      "video/H264"
+    ],
+    "sourceEvidence": [
+      {
+        "path": ".dart_tool/camera_audit/wifi-camera-profiles/samples.json",
+        "bytes": 21338,
+        "sha256": "322a6b0209ce024d298e4ee51ef44db7d6c79bcb722a8d4a8ec34ae434ca20c4"
+      },
+      {
+        "path": ".dart_tool/camera_audit/wifi-camera-profiles/summary.json",
+        "bytes": 170,
+        "sha256": "ded9b56af76483195ed7c383d98246547f2b5149a14bf33f2093eb858247a11b"
+      },
+      {
+        "path": ".dart_tool/camera_audit/wifi-camera-profiles/analysis.json",
+        "bytes": 40860,
+        "sha256": "9c986dca6fd29b8594d65c705e4f4400ff528849d8bb65118595c54eaec7f222"
+      }
+    ]
+  },
+  "cameraSwitch": {
+    "observedCameraIds": [
+      "0",
+      "1"
+    ],
+    "sameGenerationWithinEachProbe": true,
+    "connectionAfterInitialStartup": [
+      "connected"
+    ],
+    "observation": "Both probes changed camera 0 to camera 1 while metadata retained generation 1 and sampled connection state remained connected. No reconnect was observed.",
+    "independentProfilesObserved": {
+      "rear": {
+        "resolutionShorterEdgeLimit": 1080,
+        "requestedFps": 30
+      },
+      "front": {
+        "resolutionShorterEdgeLimit": 720,
+        "requestedFps": 15
+      }
+    },
+    "profileEffectScope": "Front 720p/15 settings took effect on switching to that camera; rear remained 1080p/30."
+  },
+  "orientation": {
+    "portraitUiRotation": "0",
+    "landscapeUiRotation": "1",
+    "frontVideoElementDimensionsObserved": [
+      {
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "width": 1080,
+        "height": 1920
+      }
+    ],
+    "sameGenerationDuringPortraitLandscape": true,
+    "scope": "UI orientation and receiver video-element dimensions changed while generation 1 and connection were retained. No reference-shape geometry or image-distortion metric was measured in these camera probes."
+  },
+  "dimAndAwake": {
+    "recordedAtUtc": "2026-10-21T22:13:22.781328+00:00",
+    "dimOverlayPresent": true,
+    "cameraSharingStatusPresent": true,
+    "window": {
+      "keepScreenOnFlag": true,
+      "brightnessOverride": 0.01,
+      "brightnessOverridePresent": true
+    },
+    "wakefulnessAwake": true,
+    "keyguardShowing": false,
+    "keyguardExplicitlyNotShowing": true,
+    "keyguardInputRestricted": false,
+    "cameraWakeLockActive": true,
+    "decodedIntervalBracketingObservation": {
+      "fromUtc": "2026-10-21T22:13:20.474Z",
+      "toUtc": "2026-10-21T22:13:25.515Z",
+      "statsElapsedSeconds": 5.08956,
+      "fromDecodedFrames": 3140,
+      "toDecodedFrames": 3293,
+      "decodedFrameDelta": 153,
+      "decodedFps": 30.0615,
+      "connectionFrom": "connected",
+      "connectionTo": "connected",
+      "droppedFrameDelta": 0
+    },
+    "tapWakeUi": {
+      "dimOverlayAbsent": true,
+      "sharingStillActive": true
+    },
+    "timingScope": "The device operator waited approximately one minute after the previous interaction. The physical snapshot establishes dim state without a lock and continued decoded frames around the observation; exact 60-second timer boundaries are covered by automated tests, not measured to millisecond precision here."
+  },
+  "normalStop": {
+    "recordedAtUtc": "2026-10-21T22:18:09.163671+00:00",
+    "activeCameraClientListEmpty": true,
+    "appForegroundServicesAbsent": true,
+    "mediaProjectionAbsent": true,
+    "cameraHttpClosed": true,
+    "cameraWakeLockAbsent": true,
+    "window": {
+      "keepScreenOnFlag": false,
+      "brightnessOverride": null,
+      "brightnessOverridePresent": false
+    },
+    "brightnessMatchesBeforeDim": true,
+    "startControlAvailable": true,
+    "sharingStatusAbsent": true,
+    "scope": "Normal in-app stop closed the owned source/receiver and restored window state on the S22. Desktop event-channel closure still logged the separate observation below."
+  },
+  "observationsRequiringFollowup": [
+    {
+      "issue": "First CAMERA permission grant returned before the app lifecycle was resumed; initial start failed and retry worked.",
+      "evidenceMessage": "Camera session could not start: Bad state: Open the app before starting camera capture",
+      "status": "Known in this pre-fix build; corrected build and a fresh-permission physical retest are being prepared separately."
+    },
+    {
+      "issue": "The Linux viewer log recorded PlatformException: No active stream to cancel when closing its EventChannel.",
+      "status": "Observed in preliminary GUI log; not considered evidence of a perfectly clean desktop shutdown."
+    },
+    {
+      "issue": "First probe frontal 1080p/30 decoded cadence varied during concurrent PC build work.",
+      "measuredRangeFps": [
+        17.7565,
+        32.5959
+      ],
+      "weightedDecodedFps": 28.1725,
+      "weightedReceivedFps": 29.8188,
+      "interpretation": "Connection remained connected and framesReceived continued increasing when decoded cadence dipped. Build/CPU load was reported, but this review did not isolate or prove the cause."
+    }
+  ],
+  "pending": [
+    "Final corrected APK installation identity and smoke stream",
+    "Fresh-permission start after lifecycle fix",
+    "Final desktop/device/process cleanup review",
+    "Physical USB transport; user currently can test Wi-Fi only",
+    "iOS compilation and physical-device behavior",
+    "Sustained 60 FPS validation and broad Android device coverage"
+  ],
+  "sourceEvidence": [
+    {
+      "path": ".dart_tool/camera_audit/physical-first/dim-recorded.json",
+      "bytes": 57,
+      "sha256": "4d60decad9d53d7a7518ff5e1afa6c75097c1f4d6bf01853f593a6f75c7c76e9"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-first/dim-window.txt",
+      "bytes": 324467,
+      "sha256": "7b243fc0e07cbe9517f072186ce2a87f327dd4f8f15812ef7c3a71a5a531cbd2"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-first/dim-power.txt",
+      "bytes": 258268,
+      "sha256": "df380bfa727c3be3bdf321df70f78392a36ce2a4c8cf22f173aeeba55cbaf221"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-first/dim-keyguard.txt",
+      "bytes": 4867,
+      "sha256": "bb6844bc07a8d15689c500ce9a226ebda21f8b7cc6326667985c6ffd792a6c14"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-first/front-active-window.txt",
+      "bytes": 324552,
+      "sha256": "c4a0f7fac26e89ea0474fcd528148dc91d9bb28716fc9cf89572d4a1972ca6e4"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-first/stopped-camera.txt",
+      "bytes": 1056173,
+      "sha256": "e33fe278d0a5bed76cf6b9f558cf7296187456593fb5d8b8851fd375e4f54aef"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-first/stopped-http.json",
+      "bytes": 85,
+      "sha256": "132f0a405e8b3193c6e113d30e548641b62105a376b1c631306650d8b3f6f696"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-first/stopped-power.txt",
+      "bytes": 250676,
+      "sha256": "197873480badfe01c075758e4cf57b164d976da6d813d79db82654fe984c5139"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-first/stopped-projection.txt",
+      "bytes": 76,
+      "sha256": "c9984061dea1dafa0730a04035772ed72a9d6d5ee72f1f3c26f2e335005136d4"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-first/stopped-services.txt",
+      "bytes": 66,
+      "sha256": "e9990d2b9ce9e862271712ca1ecd0c280ac8cd7a2fd48fc18fb69623521c33b0"
+    },
+    {
+      "path": ".dart_tool/camera_audit/physical-first/stopped-window.txt",
+      "bytes": 323406,
+      "sha256": "f054a350600ecb25092772b19cb08f3d879644be2fbfe09177cc2c32796f1599"
+    },
+    {
+      "path": ".dart_tool/app_review/wifi-dim-after-minute.xml",
+      "bytes": 9456,
+      "sha256": "2b7aec96a48359d7af73dab2ff1203c50659694c29a884fdcadeeebf821ea64a"
+    },
+    {
+      "path": ".dart_tool/app_review/wifi-dim-tap-awake.xml",
+      "bytes": 9359,
+      "sha256": "e1cf8eaced8bea520ea68e83461190e7bc16856b0ecdaf423bd071e978b7cd6b"
+    },
+    {
+      "path": ".dart_tool/app_review/wifi-landscape-camera.xml",
+      "bytes": 9375,
+      "sha256": "265ee490ef1f9a618c988e89caac5a99f2fd77a12c3358c27ba748abfc819780"
+    },
+    {
+      "path": ".dart_tool/app_review/wifi-first-normal-stop.xml",
+      "bytes": 11782,
+      "sha256": "a7e9697a275165e7a870e4832151d09154fcd9009fdd6e5835c92654918bd7c6"
+    },
+    {
+      "path": ".dart_tool/app_review/wifi-front-720-15.xml",
+      "bytes": 9359,
+      "sha256": "38535197455d78bafa1e8705bc4a9ce2d5cfd06e374bb18b24f65bc3d03f284d"
+    },
+    {
+      "path": ".dart_tool/app_review/wifi-back-switch.xml",
+      "bytes": 9358,
+      "sha256": "99b3702ecedbcca0a146c106873ec3b4aaac16f1bdcb05f022640d51e7f142be"
+    },
+    {
+      "path": ".dart_tool/app_review/camera-desktop-wifi.log",
+      "bytes": 2193,
+      "sha256": "a1508b4f8f701f4cc9696632d0fdad8bcc803b7474f3fec54e630e4e0e6f91bf"
+    },
+    {
+      "path": ".dart_tool/camera_audit/first-permission-app.log",
+      "bytes": 103920,
+      "sha256": "2b48a99c629bc37fb7ecdce9922211f08ffac8459657842b3f64519af04a3284"
+    }
+  ]
+}
