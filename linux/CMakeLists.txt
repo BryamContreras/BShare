@@ -72,6 +72,10 @@ set_target_properties(${BINARY_NAME}
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
+# JNI is pulled in transitively by path_provider_android. Linux uses its native
+# path_provider implementation and must not acquire a JVM dependency from a
+# developer or CI runner that happens to have a JDK installed.
+set(CMAKE_DISABLE_FIND_PACKAGE_JNI TRUE)
 include(flutter/generated_plugins.cmake)
 
 

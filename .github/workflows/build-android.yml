@@ -70,6 +70,14 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+        with:
+          # Version 16 runs on Java 17, also used by the Android Gradle plugin.
+          cmdline-tools-version: '12266719'
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+
       - name: Install Android build tools
         shell: bash
         run: |
