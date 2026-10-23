@@ -33,12 +33,29 @@ $installLog = Join-Path $verificationPath 'install.log'
 $uninstallLog = Join-Path $verificationPath 'uninstall.log'
 $application = $null
 $uninstalled = $false
+$startedAt = Get-Date
+$verification = [ordered]@{
+    installer = $installers[0].Name
+    phase = 'install'
+    passed = $false
+    filesVerified = 0
+    installed = $false
+    launched = $false
+    mainWindowCreated = $false
+    closeRequestAccepted = $false
+    applicationExitCode = $null
+    applicationExitCodeHex = $null
+    uninstalled = $false
+    cleanupForcedApplicationStop = $false
+}
 try {
     $installArguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/TASKS=', "/DIR=`"$installPath`"", "/LOG=`"$installLog`"")
     $installer = Start-Process -FilePath $installers[0].FullName -ArgumentList $installArguments -PassThru -Wait
     if ($installer.ExitCode -ne 0) {
         throw "Silent installation failed with exit code $($installer.ExitCode)."
     }
+    $verification.installed = $true
+    $verification.phase = 'verify-payload'
 
     $payload = Join-Path $repository 'build/installer/windows/payload'
     $files = @(Get-ChildItem -LiteralPath $payload -File -Recurse)
@@ -51,9 +68,13 @@ try {
         if ((Get-FileHash -LiteralPath $source.FullName).Hash -ne (Get-FileHash -LiteralPath $installed).Hash) {
             throw "Installed payload differs from staged file $relative."
         }
+        $verification.filesVerified++
     }
 
-    $application = Start-Process -FilePath (Join-Path $installPath 'BShare.exe') -WorkingDirectory $installPath -PassThru
+    $verification.phase = 'launch'
+    $application = Start-Process -FilePath (Join-Path $installPath 'BShare.exe') -WorkingDirectory $installPath -PassThru -RedirectStandardOutput (Join-Path $verificationPath 'application-stdout.log') -RedirectStandardError (Join-Path $verificationPath 'application-stderr.log')
+    $verification.launched = $true
+    $verification.applicationPid = $application.Id
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     do {
         Start-Sleep -Milliseconds 500
@@ -65,18 +86,24 @@ try {
     if ($application.MainWindowHandle -eq 0) {
         throw 'Installed BShare did not create its main window within 30 seconds.'
     }
+    $verification.mainWindowCreated = $true
+    Write-Host "Installed BShare created its main window (PID $($application.Id))."
     Start-Sleep -Seconds 3
     $application.Refresh()
     if ($application.HasExited) {
         throw "Installed BShare exited unexpectedly with code $($application.ExitCode)."
     }
-    if (-not $application.CloseMainWindow() -or -not $application.WaitForExit(15000)) {
+    $verification.phase = 'close'
+    $verification.closeRequestAccepted = $application.CloseMainWindow()
+    if (-not $verification.closeRequestAccepted -or -not $application.WaitForExit(15000)) {
         throw 'Installed BShare did not close after its main window received a close request.'
     }
     if ($application.ExitCode -ne 0) {
         throw "Installed BShare closed with exit code $($application.ExitCode)."
     }
+    Write-Host 'Installed BShare closed normally with exit code 0.'
 
+    $verification.phase = 'uninstall'
     $uninstallerPath = Join-Path $installPath 'unins000.exe'
     $uninstallArguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=`"$uninstallLog`"")
     $uninstaller = Start-Process -FilePath $uninstallerPath -ArgumentList $uninstallArguments -PassThru -Wait
@@ -87,30 +114,47 @@ try {
     if (Test-Path -LiteralPath (Join-Path $installPath 'BShare.exe')) {
         throw 'The uninstaller left the application executable behind.'
     }
-    [ordered]@{
-        installer = $installers[0].Name
-        filesVerified = $files.Count
-        installed = $true
-        launched = $true
-        mainWindowCreated = $true
-        applicationExitCode = $application.ExitCode
-        uninstalled = $true
-    } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $verificationPath 'result.json') -Encoding utf8NoBOM
+    $verification.uninstalled = $true
+    $verification.phase = 'complete'
+    $verification.passed = $true
+} catch {
+    $verification.error = $_.Exception.Message
+    # Preserve native fault module, offset and exception details when Windows
+    # records an application crash. Diagnostics never replace the exit check.
+    try {
+        $events = @(Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $startedAt } -ErrorAction SilentlyContinue |
+            Where-Object { $_.Id -in @(1000, 1001) -and $_.Message -match '(?i)BShare\.exe' } |
+            ForEach-Object { [ordered]@{ id = $_.Id; time = $_.TimeCreated; message = $_.Message; xml = $_.ToXml() } })
+        ConvertTo-Json -InputObject $events -Depth 5 |
+            Set-Content -LiteralPath (Join-Path $verificationPath 'windows-crash-events.json') -Encoding utf8NoBOM
+    } catch {
+        Write-Warning "Windows crash event collection failed: $($_.Exception.Message)"
+    }
+    throw
 } finally {
     # Only stop the exact process created by this smoke test if normal closing
     # failed. Never target other instances by application name.
     if ($null -ne $application -and -not $application.HasExited) {
+        $verification.cleanupForcedApplicationStop = $true
         Stop-Process -Id $application.Id -Force
         $application.WaitForExit()
+    }
+    if ($null -ne $application -and $application.HasExited) {
+        $verification.applicationExitCode = $application.ExitCode
+        $verification.applicationExitCodeHex = '0x{0:X8}' -f ($application.ExitCode -band [uint32]::MaxValue)
     }
     $uninstallerPath = Join-Path $installPath 'unins000.exe'
     if (-not $uninstalled -and (Test-Path -LiteralPath $uninstallerPath)) {
         $cleanup = Start-Process -FilePath $uninstallerPath -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -PassThru -Wait
         if ($cleanup.ExitCode -ne 0) {
             Write-Warning "Installer test cleanup returned $($cleanup.ExitCode)."
+        } else {
+            $verification.uninstalled = $true
         }
     }
     if (Test-Path -LiteralPath $installPath) {
         Remove-Item -LiteralPath $installPath -Recurse -Force
     }
+    $verification | ConvertTo-Json -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $verificationPath 'result.json') -Encoding utf8NoBOM
 }
