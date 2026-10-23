@@ -32,11 +32,8 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        ndk {
-            // These ABIs have Flutter AOT engines and matching WebRTC/QR/JNI
-            // libraries. x86 (32 bit) has no Flutter release AOT target.
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
-        }
+        // Do not set NDK abiFilters here. Flutter's --split-per-abi adds
+        // Gradle split filters itself; combining both configurations fails.
     }
 
     signingConfigs {
