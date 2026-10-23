@@ -37,13 +37,13 @@ if [[ "$OS" == "Linux" && "$MACOS_ONLY" != "1" ]]; then
 fi
 
 if [[ "$OS" == "Darwin" && "$LINUX_ONLY" != "1" ]]; then
-  flutter build macos --release
-  MACOS_APP="$ROOT/build/macos/Build/Products/Release/bshare.app"
   case "$(uname -m)" in
-    arm64) MACOS_ARCH=arm64; EXPECTED_ARCH=arm64 ;;
-    x86_64) MACOS_ARCH=x64; EXPECTED_ARCH=x86_64 ;;
+    arm64) MACOS_ARCH=arm64; EXPECTED_ARCH=arm64; EXCLUDED_ARCH=x86_64 ;;
+    x86_64) MACOS_ARCH=x64; EXPECTED_ARCH=x86_64; EXCLUDED_ARCH=arm64 ;;
     *) echo "Unsupported macOS host architecture: $(uname -m)" >&2; exit 1 ;;
   esac
+  FLUTTER_XCODE_EXCLUDED_ARCHS="$EXCLUDED_ARCH" flutter build macos --release
+  MACOS_APP="$ROOT/build/macos/Build/Products/Release/bshare.app"
   MACOS_EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$MACOS_APP/Contents/Info.plist")"
   MACOS_BINARY="$MACOS_APP/Contents/MacOS/$MACOS_EXECUTABLE"
   MACOS_ARCHS="$(lipo -archs "$MACOS_BINARY")"

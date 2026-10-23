@@ -28,8 +28,12 @@ jobs:
         include:
           - architecture: arm64
             runner: macos-15
+            expected_architecture: arm64
+            excluded_architecture: x86_64
           - architecture: x64
             runner: macos-15-intel
+            expected_architecture: x86_64
+            excluded_architecture: arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 50
     env:
@@ -38,6 +42,8 @@ jobs:
       BUILD_VERSION: ${{ inputs.version }}
       BUILD_NUMBER: ${{ inputs.build-number }}
       MACOS_ARCH: ${{ matrix.architecture }}
+      MACOS_EXPECTED_ARCH: ${{ matrix.expected_architecture }}
+      FLUTTER_XCODE_EXCLUDED_ARCHS: ${{ matrix.excluded_architecture }}
     steps:
       - name: Check out source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -68,8 +74,8 @@ jobs:
           executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
           binary="$app/Contents/MacOS/$executable"
           architectures="$(lipo -archs "$binary")"
-          [[ " $architectures " == *" $MACOS_ARCH "* ]] || {
-            echo "Expected $MACOS_ARCH binary, found: $architectures" >&2
+          [[ "$architectures" == "$MACOS_EXPECTED_ARCH" ]] || {
+            echo "Expected only $MACOS_EXPECTED_ARCH binary, found: $architectures" >&2
             exit 1
           }
 
@@ -90,8 +96,8 @@ jobs:
           test -d "$mountpoint/BShare.app"
           dmg_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$mountpoint/BShare.app/Contents/Info.plist")"
           dmg_architectures="$(lipo -archs "$mountpoint/BShare.app/Contents/MacOS/$dmg_executable")"
-          [[ " $dmg_architectures " == *" $MACOS_ARCH "* ]] || {
-            echo "DMG lost the $MACOS_ARCH executable: $dmg_architectures" >&2
+          [[ "$dmg_architectures" == "$MACOS_EXPECTED_ARCH" ]] || {
+            echo "Expected only $MACOS_EXPECTED_ARCH in DMG, found: $dmg_architectures" >&2
             exit 1
           }
           cleanup
