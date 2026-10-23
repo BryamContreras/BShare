@@ -1,0 +1,105 @@
+name: macOS installers
+
+on:
+  workflow_call:
+    inputs:
+      flutter-version:
+        description: Pinned Flutter SDK version
+        type: string
+        default: '3.44.8'
+      version:
+        description: Numeric release version; empty uses pubspec.yaml
+        type: string
+        default: ''
+      build-number:
+        description: Numeric build number; empty uses pubspec.yaml
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    name: macOS ${{ matrix.architecture }} DMG
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: arm64
+            runner: macos-15
+          - architecture: x64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 50
+    env:
+      CI: true
+      CMAKE_BUILD_PARALLEL_LEVEL: '2'
+      BUILD_VERSION: ${{ inputs.version }}
+      BUILD_NUMBER: ${{ inputs.build-number }}
+      MACOS_ARCH: ${{ matrix.architecture }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ inputs.flutter-version }}
+          channel: stable
+          cache: true
+
+      - name: Resolve locked dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build and package architecture-specific DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=()
+          if [[ -n "$BUILD_VERSION" ]]; then args+=(--build-name "$BUILD_VERSION"); fi
+          if [[ -n "$BUILD_NUMBER" ]]; then args+=(--build-number "$BUILD_NUMBER"); fi
+          flutter build macos --release --no-pub "${args[@]}"
+
+          app="build/macos/Build/Products/Release/bshare.app"
+          [[ -d "$app" ]] || { echo "Missing macOS app bundle: $app" >&2; exit 1; }
+          executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
+          binary="$app/Contents/MacOS/$executable"
+          architectures="$(lipo -archs "$binary")"
+          [[ " $architectures " == *" $MACOS_ARCH "* ]] || {
+            echo "Expected $MACOS_ARCH binary, found: $architectures" >&2
+            exit 1
+          }
+
+          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' pubspec.yaml | head -n1)"
+          version="${BUILD_VERSION:-$pubspec_version}"
+          output="dist/macos"
+          staging="$RUNNER_TEMP/bshare-dmg-root"
+          mountpoint="$RUNNER_TEMP/bshare-dmg-mount"
+          dmg="$output/BShare-${version}-macos-${MACOS_ARCH}.dmg"
+          mkdir -p "$output" "$staging" "$mountpoint"
+          ditto "$app" "$staging/BShare.app"
+          ln -s /Applications "$staging/Applications"
+          hdiutil create -quiet -volname BShare -srcfolder "$staging" -format UDZO -ov "$dmg"
+
+          hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mountpoint" "$dmg"
+          cleanup() { hdiutil detach -quiet "$mountpoint" || true; }
+          trap cleanup EXIT
+          test -d "$mountpoint/BShare.app"
+          dmg_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$mountpoint/BShare.app/Contents/Info.plist")"
+          dmg_architectures="$(lipo -archs "$mountpoint/BShare.app/Contents/MacOS/$dmg_executable")"
+          [[ " $dmg_architectures " == *" $MACOS_ARCH "* ]] || {
+            echo "DMG lost the $MACOS_ARCH executable: $dmg_architectures" >&2
+            exit 1
+          }
+          cleanup
+          trap - EXIT
+          shasum -a 256 "$dmg" > "$dmg.sha256"
+
+      - name: Upload macOS installer to draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release upload "$RELEASE_TAG" "dist/macos/BShare-"*.dmg --repo "$GITHUB_REPOSITORY" --clobber

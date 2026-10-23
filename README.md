@@ -37,16 +37,18 @@ flutter run
 
 ## Installers from GitHub Actions
 
-The **Build installers** workflow generates a Windows EXE, Linux DEB/RPM and a
-signed universal Android APK on pushes to `main` or a manual run. Its shared
-quality gate finishes before the three platform builds start. Download installers
-from the completed run's **Artifacts** section. This repository is open source
-under the MIT License; dependency licenses remain in their respective third-party
-directories.
+Version tags such as `v1.0.3` build and publish individual installer files in
+[GitHub Releases](https://github.com/BryamContreras/BShare/releases): ARM32 and
+ARM64 Android APKs, a Windows installer, Linux DEB/RPM packages, and macOS ARM64
+and x64 DMGs. The build jobs upload each installer directly to a draft Release;
+after all builds pass, the workflow publishes the individual files and checksums.
+It does not generate ZIP artifacts. Pushes to `main` run the quality gate without
+building installers. This repository is open source under the MIT License;
+dependency licenses remain in their respective third-party directories.
 
 Product and installer metadata use **BShare**. Android uses a permanent signing
 key stored in GitHub Secrets, with private backup kept outside the repository.
-See [docs/RELEASE.md](docs/RELEASE.md) for artifact names, signing and local builds.
+See [docs/RELEASE.md](docs/RELEASE.md) for installer names, signing and local builds.
 
 ## Build
 
@@ -82,46 +84,41 @@ see [docs/LINUX.md](docs/LINUX.md).
 flutter build macos
 ```
 
+GitHub Releases include separate `.dmg` installers for Apple Silicon (`arm64`)
+and Intel (`x64`). Local `scripts/build_releases.sh --macos-only` packages the
+architecture of the Mac where it runs. macOS apps are ad-hoc signed and are not
+notarized; Gatekeeper may require opening the app from Finder's context menu.
+
 ### Android
 
 The Android configuration uses a minimum API of 24 (Android 7) and target API 36
-(Android 16). Available release architectures are ARM32 (`armeabi-v7a`), ARM64
-(`arm64-v8a`) and x64 (`x86_64`). Feature availability still depends on the OS and
-hardware; creating a local hotspot requires Android 8 or newer.
+(Android 16). GitHub Releases provide separate ARM32 (`armeabi-v7a`) and ARM64
+(`arm64-v8a`) APKs. Feature availability still depends on the OS and hardware;
+creating a local hotspot requires Android 8 or newer.
 
-For a universal release APK containing those three architectures:
-
-```bash
-flutter build apk --release --target-platform android-arm,android-arm64,android-x64
-```
-
-For the 64-bit release APK (`arm64-v8a`):
+Build both ARM APKs separately:
 
 ```bash
-flutter build apk --release --target-platform android-arm64 --split-per-abi
+flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
 ```
 
-The generated APK is at
-`build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`.
+The generated files are `app-armeabi-v7a-release.apk` and
+`app-arm64-v8a-release.apk` in `build/app/outputs/flutter-apk/`.
+Each APK contains one ABI and is signed with the release key in CI.
 
-Verify that release optimization retains the constructors used by the Android
-QR scanner:
+Verify either APK's QR scanner constructors and native packaging:
 
 ```bash
 python3 tool/verify_android_qr_release.py build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+python3 tool/verify_android_native_compat.py build/app/outputs/flutter-apk/app-arm64-v8a-release.apk --require-abi arm64-v8a
+python3 tool/verify_android_native_compat.py build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk --require-abi armeabi-v7a
 ```
 
 This inspects the compiled APK; camera behavior still requires a device test.
 See the [QR diagnosis and validation notes](docs/PERFORMANCE.md#android-qr-scanner-release-diagnosis).
 
-Check native ABI coverage and ELF/ZIP packaging for 16 KB page-size devices:
-
-```bash
-python3 tool/verify_android_native_compat.py build/app/outputs/flutter-apk/app-release.apk --require-abi armeabi-v7a --require-abi arm64-v8a --require-abi x86_64
-```
-
-This is a packaging inspection. OS, hardware and 16 KB runtime validation are
-recorded separately in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
+These are static packaging inspections; OS, hardware and 16 KB runtime
+validation are recorded separately in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
 For full release packaging, installers, and store upload notes, see
 [docs/RELEASE.md](docs/RELEASE.md).

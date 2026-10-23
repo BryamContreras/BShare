@@ -62,15 +62,22 @@ flutter pub get
 $artifacts = [System.Collections.Generic.List[string]]::new()
 
 if (-not $SkipAndroid) {
-    flutter build apk --release
-    flutter build appbundle --release
-
-    $apkName = "BShare-$safeVersion-android-release.apk"
-    $aabName = "BShare-$safeVersion-google-play.aab"
-    Copy-ReleaseFile 'build\app\outputs\flutter-apk\app-release.apk' (Join-Path $androidPath $apkName)
-    Copy-ReleaseFile 'build\app\outputs\bundle\release\app-release.aab' (Join-Path $androidPath $aabName)
-    $artifacts.Add("android/$apkName")
-    $artifacts.Add("android/$aabName")
+    flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
+    if ($LASTEXITCODE -ne 0) {
+        throw "Flutter Android APK build failed with exit code $LASTEXITCODE."
+    }
+    foreach ($abi in @(
+        @{ Name = 'armeabi-v7a'; Label = 'armv7a' },
+        @{ Name = 'arm64-v8a'; Label = 'arm64-v8a' }
+    )) {
+        $apkName = "BShare-$safeVersion-android-$($abi.Label).apk"
+        $destination = Join-Path $androidPath $apkName
+        Copy-ReleaseFile "build\app\outputs\flutter-apk\app-$($abi.Name)-release.apk" $destination
+        $hash = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()
+        "$hash  $apkName" | Set-Content -LiteralPath "$destination.sha256" -Encoding utf8NoBOM
+        $artifacts.Add("android/$apkName")
+        $artifacts.Add("android/$apkName.sha256")
+    }
 }
 
 if (-not $SkipWindows) {
@@ -87,13 +94,7 @@ if (-not $SkipWindows) {
     New-Item -ItemType Directory -Path $windowsBundle -Force | Out-Null
     Copy-Item -Path 'build\installer\windows\payload\*' -Destination $windowsBundle -Recurse -Force
 
-    $zipPath = Join-Path $windowsPath "BShare-$safeVersion-windows-x64.zip"
-    if (Test-Path -LiteralPath $zipPath) {
-        Remove-Item -LiteralPath $zipPath -Force
-    }
-    Compress-Archive -Path (Join-Path $windowsBundle '*') -DestinationPath $zipPath -Force
     $artifacts.Add("windows/BShare-windows-x64/")
-    $artifacts.Add("windows/BShare-$safeVersion-windows-x64.zip")
 
     if ($BuildInstaller) {
         $setupName = "BShare-$version-windows-x64-setup.exe"
@@ -109,8 +110,8 @@ $manifest = [ordered]@{
     host = 'windows'
     artifacts = $artifacts
     notes = @(
-        'This Windows script generates Android and Windows release artifacts.',
-        'Linux and macOS releases require their native build scripts on native hosts.',
+        'Android ARM APKs and the Windows x64 installer are separate files; this script does not create ZIP bundles.',
+        'Linux DEB/RPM and macOS ARM64/x64 DMGs require their native build scripts on native hosts.',
         'Google Play upload requires android/key.properties with a real upload key.'
     )
 }

@@ -57,6 +57,17 @@ try {
     $verification.installed = $true
     $verification.phase = 'verify-payload'
 
+    $startMenuPath = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\BShare.lnk'
+    if (-not (Test-Path -LiteralPath $startMenuPath)) {
+        throw 'The default Start Menu shortcut was not installed.'
+    }
+    $desktopPath = [Environment]::GetFolderPath('DesktopDirectory')
+    if (Test-Path -LiteralPath (Join-Path $desktopPath 'BShare.lnk')) {
+        throw 'The optional desktop shortcut must be unchecked by default.'
+    }
+    $verification.startMenuShortcut = $true
+    $verification.desktopShortcutUncheckedByDefault = $true
+
     $payload = Join-Path $repository 'build/installer/windows/payload'
     $files = @(Get-ChildItem -LiteralPath $payload -File -Recurse)
     foreach ($source in $files) {

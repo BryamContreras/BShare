@@ -55,8 +55,10 @@ flutter build windows --release --no-pub
 
 El resultado queda en `dist/windows/`. El identificador de instalación de
 `installer/windows/BShare.iss` permanece estable entre versiones para permitir
-actualizaciones. El script local `scripts/build_releases.ps1` usa este mismo
-empaquetador para Windows y añade un ZIP portátil con el mismo runtime.
+actualizaciones. El instalador crea por defecto un acceso en el menú Inicio y
+ofrece una casilla opcional, desactivada inicialmente, para el escritorio. El
+script local `scripts/build_releases.ps1` usa este mismo empaquetador y no crea
+archivos ZIP.
 
 ## Referencias
 

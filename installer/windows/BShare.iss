@@ -55,7 +55,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#AppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\BShare"; Filename: "{app}\BShare.exe"; WorkingDir: "{app}"
+Name: "{autoprograms}\BShare"; Filename: "{app}\BShare.exe"; WorkingDir: "{app}"
 Name: "{autodesktop}\BShare"; Filename: "{app}\BShare.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]

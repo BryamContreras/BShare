@@ -2,31 +2,39 @@
 
 ## Automated builds
 
-The **Build installers** workflow runs on pushes to `main`, version tags such as
-`v1.0.3`, and **Actions → Build installers → Run workflow**. Pull requests run the
-same quality gate without accessing Android signing secrets or creating installers.
-A newer run for the same branch cancels the previous run.
+The **Build installers** workflow runs the quality gate on pushes and pull
+requests to `main`. A version tag such as `v1.0.3` runs the same gate, builds all
+installers, verifies them, and publishes the files as individual GitHub Release
+assets. To run a release build manually, select a version tag as the ref in
+**Actions → Build installers → Run workflow**. The tag must match `pubspec.yaml`.
+An interrupted run for the same ref is canceled when a newer run starts.
 
 The quality job runs analysis, the Flutter regression suite, verification-tool
-unit tests, and native Linux window-decoration tests. Only after it passes do the
-three reusable platform workflows build in parallel. Linux compiles once and
-packages the same bundle into both formats.
+unit tests, and native Linux window-decoration tests. It must pass before Windows,
+Linux, Android, and two native macOS architecture builds start in parallel. Linux
+compiles once and packages the same bundle into both formats.
 
 All builds use Flutter **3.44.8**, locked Dart dependencies and one shared version.
 The version comes from `pubspec.yaml`; its build number is increased by the parent
 workflow run number. A `v*` tag must match the semantic version in `pubspec.yaml`.
 
-Open a completed run and download these artifacts:
+Download these individual files from the [latest GitHub Release](https://github.com/BryamContreras/BShare/releases/latest):
 
-| Artifact | Contents | Retention |
-| --- | --- | --- |
-| `BShare-Windows-x64` | Windows x64 installer EXE and SHA-256 | 30 days |
-| `bshare-linux-x64` | amd64 DEB, x86_64 RPM and dependency/hash manifest | 14 days |
-| `BShare-Android` | Signed universal APK, SHA-256, signature/native/QR reports | 30 days |
-| `BShare-Windows-verification` | Installation, launch and uninstall logs | 14 days |
+| Release file | Contents |
+| --- | --- |
+| `BShare-<version>-android-armv7a.apk` | Signed ARM32 APK |
+| `BShare-<version>-android-arm64-v8a.apk` | Signed ARM64 APK |
+| `BShare-<version>+<build>-windows-x64-setup.exe` | Windows x64 installer |
+| `bshare_<version>-<build>_amd64.deb` | Debian/Ubuntu x64 package |
+| `bshare-<version>-<build>.x86_64.rpm` | Fedora/RHEL x64 package |
+| `BShare-<version>-macos-arm64.dmg` | Apple Silicon installer |
+| `BShare-<version>-macos-x64.dmg` | Intel Mac installer |
+| `SHA256SUMS.txt` | SHA-256 for every installer |
 
-Artifacts remain attached to the Actions run. This workflow does not publish a
-GitHub Release or upload to an app store.
+Each native build uploads its installer directly to a draft GitHub Release. A
+final job checks that all seven files are present, creates `SHA256SUMS.txt`, and
+publishes the Release only after every build and installer check passes. The
+workflow does not create ZIP-wrapped Actions artifacts.
 
 ## License
 
@@ -52,7 +60,7 @@ The reusable Android workflow requires all four repository Secrets:
 The release certificate subject is `CN=BShare, OU=BShare, O=BShare`. Private
 material is decoded only into the runner temporary directory and ignored
 `android/key.properties`; both files are removed even when a build fails. Neither
-is uploaded as an artifact. Keep an independent private backup of the keystore
+is uploaded to the GitHub Release. Keep an independent private backup of the keystore
 and its passwords: future updates must use the same signing identity.
 
 A fresh debug key is allowed only when another workflow explicitly calls the
@@ -61,18 +69,20 @@ Such files are named **preview**. The normal installer workflow requires release
 signing. An APK signed with a new identity cannot update an older APK signed with
 a different key in place.
 
-The APK includes ARM32, ARM64 and x86_64 AOT builds. CI verifies signatures, complete
-native ABI sets, 64-bit ELF/ZIP alignment, and retained QR scanner constructors.
-These are build/package checks; physical device compatibility is recorded
-separately in [PERFORMANCE.md](PERFORMANCE.md).
+CI produces separate ARM32 and ARM64 APKs. It verifies each APK's signature,
+single-ABI native library set, 16 KB ELF/ZIP alignment where applicable, and QR
+scanner constructor retention. These are build/package checks; physical device
+compatibility is recorded separately in [PERFORMANCE.md](PERFORMANCE.md).
 
 ## Windows
 
 Windows 2022 builds the x64 application and uses Inno Setup to create a per-user
 installer. The required Microsoft C++ runtime DLLs are bundled next to the app;
-installation does not require administrator rights. CI silently installs into an
-isolated directory, opens the installed app, closes it, and uninstalls it. The
-installer retains BShare's existing AppId and is not Authenticode-signed.
+installation does not require administrator rights. The installer creates a
+Start Menu shortcut by default and shows an unchecked option for a desktop
+shortcut. CI verifies both defaults, then installs, opens, closes and uninstalls
+the app in an isolated directory. The installer retains BShare's existing AppId
+and is not Authenticode-signed.
 
 To build locally with Flutter, Visual Studio C++ tools and Inno Setup installed:
 
@@ -117,6 +127,9 @@ requirements see [LINUX.md](LINUX.md).
 
 ## Other native builds
 
-The existing `scripts/build_releases.sh --macos-only` script builds macOS on a
-Mac. iOS signing and store publication remain manual; the installer workflow does
-not build or publish those platforms.
+The installer workflow builds on native Apple Silicon and Intel runners, checks
+the executable architecture inside each DMG, and publishes separate `.dmg`
+assets. Apps are ad-hoc signed but not notarized; Gatekeeper may require an
+explicit user override. The local `scripts/build_releases.sh --macos-only` script
+builds a DMG for the architecture of its host Mac. iOS signing and store
+publication remain manual.

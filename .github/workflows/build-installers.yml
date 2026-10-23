@@ -64,8 +64,10 @@ jobs:
 
   windows:
     name: Windows installer
-    needs: quality
-    if: github.event_name != 'pull_request'
+    needs: [quality, prepare_release]
+    if: github.event_name != 'pull_request' && github.ref_type == 'tag'
+    permissions:
+      contents: write
     uses: ./.github/workflows/build-windows.yml
     with:
       flutter-version: '3.44.8'
@@ -74,8 +76,10 @@ jobs:
 
   linux:
     name: Linux DEB and RPM
-    needs: quality
-    if: github.event_name != 'pull_request'
+    needs: [quality, prepare_release]
+    if: github.event_name != 'pull_request' && github.ref_type == 'tag'
+    permissions:
+      contents: write
     uses: ./.github/workflows/build-linux.yml
     with:
       flutter-version: '3.44.8'
@@ -84,8 +88,10 @@ jobs:
 
   android:
     name: Android signed APK
-    needs: quality
-    if: github.event_name != 'pull_request'
+    needs: [quality, prepare_release]
+    if: github.event_name != 'pull_request' && github.ref_type == 'tag'
+    permissions:
+      contents: write
     uses: ./.github/workflows/build-android.yml
     with:
       flutter-version: '3.44.8'
@@ -98,10 +104,74 @@ jobs:
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
+  macos:
+    name: macOS ARM64 and x64 DMGs
+    needs: [quality, prepare_release]
+    if: github.event_name != 'pull_request' && github.ref_type == 'tag'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build-macos.yml
+    with:
+      flutter-version: '3.44.8'
+      version: ${{ needs.quality.outputs.version }}
+      build-number: ${{ needs.quality.outputs.build-number }}
+
+  prepare_release:
+    name: Prepare draft release
+    needs: quality
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Create draft for this version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.quality.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          lines = Path('CHANGELOG.md').read_text(encoding='utf-8').splitlines()
+          heading = f"## {os.environ['VERSION']}"
+          try:
+              start = lines.index(heading) + 1
+          except ValueError:
+              raise SystemExit(f'Missing changelog section: {heading}') from None
+          end = next((index for index in range(start, len(lines)) if lines[index].startswith('## ')), len(lines))
+          notes = '\n'.join(lines[start:end]).strip()
+          if not notes:
+              raise SystemExit(f'Empty changelog section: {heading}')
+          Path(os.environ['RUNNER_TEMP'], 'bshare-release-notes.md').write_text(notes + '\n', encoding='utf-8')
+          PY
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            is_draft="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)"
+            [[ "$is_draft" == true ]] || { echo "Release $RELEASE_TAG is already published; use a new version tag." >&2; exit 1; }
+            mapfile -t old_assets < <(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+            for asset in "${old_assets[@]}"; do
+              gh release delete-asset "$RELEASE_TAG" "$asset" --repo "$GITHUB_REPOSITORY" --yes
+            done
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --draft --title "BShare $VERSION" --notes-file "$RUNNER_TEMP/bshare-release-notes.md"
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --draft --title "BShare $VERSION" \
+              --notes-file "$RUNNER_TEMP/bshare-release-notes.md"
+          fi
+
   result:
     name: Installer results
-    needs: [quality, windows, linux, android]
-    if: always() && github.event_name != 'pull_request'
+    needs: [quality, prepare_release, windows, linux, android, macos]
+    if: always() && github.ref_type == 'tag'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
@@ -113,11 +183,64 @@ jobs:
           import json, os
           from pathlib import Path
           jobs = json.loads(os.environ['JOB_RESULTS'])
-          lines = ['# BShare installers', '', '| Job | Result |', '| --- | --- |']
+          lines = ['# BShare release builds', '', '| Job | Result |', '| --- | --- |']
           lines += [f"| {name} | {job['result']} |" for name, job in jobs.items()]
-          lines += ['', 'Download the Windows EXE, Linux DEB/RPM and signed Android APK from this run’s artifacts.']
+          lines += ['', 'Individual installer files are uploaded directly to the draft GitHub Release.']
           Path(os.environ['GITHUB_STEP_SUMMARY']).write_text('\n'.join(lines) + '\n')
           failed = [name for name, job in jobs.items() if job['result'] != 'success']
           if failed:
               raise SystemExit('Incomplete or failed jobs: ' + ', '.join(failed))
           PY
+
+  publish:
+    name: Verify and publish release files
+    needs: [quality, windows, linux, android, macos, result]
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Download draft release files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/bshare-release-downloads"
+
+      - name: Collect uncompressed release assets and checksums
+        env:
+          VERSION: ${{ needs.quality.outputs.version }}
+        run: |
+          python3 tool/prepare_release_assets.py \
+            --input "$RUNNER_TEMP/bshare-release-downloads" \
+            --output dist/release-assets \
+            --version "$VERSION" \
+            --changelog CHANGELOG.md \
+            --notes-output "$RUNNER_TEMP/bshare-release-notes.md"
+
+      - name: Add checksums and publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.quality.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t assets < <(find dist/release-assets -maxdepth 1 -type f -print | sort)
+          notes="$RUNNER_TEMP/bshare-release-notes.md"
+          gh release upload "$RELEASE_TAG" dist/release-assets/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --title "BShare $VERSION" --notes-file "$notes" --draft=false
+
+          {
+            echo '## Published files'
+            printf '\n- `%s`\n' "${assets[@]##*/}"
+            echo
+            echo "[Open BShare $VERSION release](https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG)."
+          } >> "$GITHUB_STEP_SUMMARY"

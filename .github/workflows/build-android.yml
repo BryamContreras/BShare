@@ -7,10 +7,6 @@ on:
         description: Flutter SDK version shared by all installers.
         type: string
         default: '3.44.8'
-      artifact-name:
-        description: Name of the uploaded APK artifact.
-        type: string
-        default: BShare-Android
       version:
         description: Optional semantic version; defaults to pubspec.yaml.
         type: string
@@ -33,17 +29,12 @@ on:
         required: false
       ANDROID_KEY_PASSWORD:
         required: false
-    outputs:
-      artifact-name:
-        description: Artifact containing the APK, checksums and verification reports.
-        value: ${{ inputs.artifact-name }}
-
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   android:
-    name: Android universal APK
+    name: Android ARM APKs
     runs-on: ubuntu-24.04
     timeout-minutes: 55
     env:
@@ -170,7 +161,7 @@ jobs:
               output.write(f'mode={mode}\n')
           PY
 
-      - name: Build optimized universal APK
+      - name: Build optimized ARM APKs
         shell: bash
         run: |
           args=()
@@ -182,7 +173,8 @@ jobs:
             [[ "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]] && [ "$BUILD_NUMBER" -le 2100000000 ] || { echo 'Invalid Android build number'; exit 1; }
             args+=(--build-number "$BUILD_NUMBER")
           fi
-          flutter build apk --release --no-pub --target-platform android-arm,android-arm64,android-x64 "${args[@]}"
+          flutter build apk --release --no-pub --split-per-abi \
+            --target-platform android-arm,android-arm64 "${args[@]}"
 
       - name: Prepare installer and signing information
         id: package
@@ -204,8 +196,14 @@ jobs:
               raise SystemExit('Unsupported application version for installer filename.')
           output = Path('dist/android')
           output.mkdir(parents=True, exist_ok=True)
-          apk = output / f'BShare-{version}-android-{os.environ["SIGNING_MODE"]}.apk'
-          shutil.copy2('build/app/outputs/flutter-apk/app-release.apk', apk)
+          apks = []
+          for abi, label in [('armeabi-v7a', 'armv7a'), ('arm64-v8a', 'arm64-v8a')]:
+              source = Path('build/app/outputs/flutter-apk') / f'app-{abi}-release.apk'
+              if not source.is_file():
+                  raise SystemExit(f'Missing split APK for {abi}: {source}')
+              apk = output / f'BShare-{version}-android-{label}.apk'
+              shutil.copy2(source, apk)
+              apks.append({'abi': abi, 'file': apk.name})
           (output / 'signing-info.json').write_text(json.dumps({
               'applicationId': 'com.bshare.bshare',
               'version': version,
@@ -214,24 +212,40 @@ jobs:
               'productionKeyConfigured': os.environ['SIGNING_MODE'] == 'release',
               'previewKeyPersistsBetweenRuns': False,
               'sourceCommit': os.environ['GITHUB_SHA'],
-              'architectures': ['armeabi-v7a', 'arm64-v8a', 'x86_64'],
+              'architectures': apks,
               'minimumAndroidApi': 24,
           }, indent=2) + '\n')
           with open(os.environ['GITHUB_ENV'], 'a') as environment:
-              environment.write(f'APK_PATH={apk}\n')
+              environment.write(f'APK_DIRECTORY={output}\n')
           PY
 
       - name: Verify APK signatures, native libraries and QR registrar retention
         shell: bash
         run: |
-          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK_PATH" > dist/android/signature.txt
-          python3 tool/verify_android_native_compat.py "$APK_PATH" \
-            --require-abi armeabi-v7a --require-abi arm64-v8a --require-abi x86_64 \
-            --aapt2 "${ANDROID_HOME}/build-tools/36.0.0/aapt2" \
-            --output dist/android/native-compatibility.json
-          python3 tool/verify_android_qr_release.py "$APK_PATH" > dist/android/qr-release.json
+          for apk in "$APK_DIRECTORY"/*.apk; do
+            name="$(basename "$apk" .apk)"
+            case "$name" in
+              *-armv7a) abi='armeabi-v7a' ;;
+              *-arm64-v8a) abi='arm64-v8a' ;;
+              *) echo "Unexpected APK name: $name" >&2; exit 1 ;;
+            esac
+            "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk" > "dist/android/$name.signature.txt"
+            report="dist/android/$name.native-compatibility.json"
+            python3 tool/verify_android_native_compat.py "$apk" \
+              --require-abi "$abi" \
+              --aapt2 "${ANDROID_HOME}/build-tools/36.0.0/aapt2" \
+              --output "$report"
+            python3 - "$report" "$abi" <<'PY'
+          import json
+          import sys
+          report = json.load(open(sys.argv[1], encoding='utf-8'))
+          if report['packagedAbis'] != [sys.argv[2]]:
+              raise SystemExit(f"Expected only {sys.argv[2]}, got {report['packagedAbis']}")
+          PY
+            python3 tool/verify_android_qr_release.py "$apk" > "dist/android/$name.qr-release.json"
+          done
           cd dist/android
-          sha256sum ./*.apk > SHA256SUMS
+          sha256sum ./*.apk > SHA256SUMS.txt
 
       - name: Remove private signing material and stop Gradle
         if: always()
@@ -242,33 +256,30 @@ jobs:
             (cd android && ./gradlew --stop)
           fi
 
-      - name: Upload APK and verification reports
+      - name: Upload signed ARM APKs to draft release
         if: success()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ${{ inputs.artifact-name }}
-          path: dist/android/
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 0
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release upload "$RELEASE_TAG" dist/android/*.apk --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Write build summary
         if: success()
         shell: bash
         env:
           SIGNING_MODE: ${{ steps.signing.outputs.mode }}
-          ARTIFACT_NAME: ${{ inputs.artifact-name }}
         run: |
           python3 - <<'PY'
           import os
           from pathlib import Path
 
           mode = os.environ['SIGNING_MODE']
+          apks = sorted(Path('dist/android').glob('*.apk'))
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
               summary.write('## Android\n\n')
-              summary.write(f'Installer: `{Path(os.environ["APK_PATH"]).name}`\n\n')
-              summary.write(f'Artifact: `{os.environ["ARTIFACT_NAME"]}`\n\n')
-              summary.write('Universal APK: ARM32, ARM64 and x86_64; Android API 24+.\n\n')
+              summary.write('ARM installers:\n\n')
+              summary.write(''.join(f'- `{apk.name}`\n' for apk in apks))
+              summary.write('\nAndroid API 24+; each APK contains one ARM ABI.\n\n')
               summary.write('Signature, native 16 KB packaging and QR registrar checks passed. These are static checks, not device tests.\n\n')
               if mode == 'preview':
                   summary.write('**Preview only:** signed with this runner\'s temporary debug key. Configure all four `ANDROID_*` signing secrets for a stable release certificate.\n')

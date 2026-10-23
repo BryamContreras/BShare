@@ -142,15 +142,16 @@ Install it with APT so it resolves dependencies automatically:
 sudo apt install ./bshare_<version>_amd64.deb
 ```
 
-For the complete Linux release (bundle, `.tar.gz`, and `.deb`), run:
+For the DEB and RPM packages, run:
 
 ```bash
 bash scripts/build_releases.sh --linux-only
 ```
 
-GitHub Actions also generates an RPM and checks it on Fedora 44. To package both
-formats from an existing release bundle, use `python3 tool/packaging_linux.py`.
-See [RELEASE.md](RELEASE.md) for required packaging tools and Actions artifacts.
+GitHub Actions also generates an RPM and checks both formats in Ubuntu and Fedora
+containers. To package both formats from an existing release bundle, use
+`python3 tool/packaging_linux.py`.
+See [RELEASE.md](RELEASE.md) for required packaging tools and direct release downloads.
 
 WSL2 is not enough for hotspot testing because it usually exposes only a
 virtual Ethernet interface, not the physical Wi-Fi adapter.

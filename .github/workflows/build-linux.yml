@@ -17,7 +17,7 @@ on:
         default: ''
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   linux:
@@ -106,11 +106,13 @@ jobs:
             test ! -e /usr/bin/bshare
           '
 
-      - name: Upload Linux installers and dependency manifest
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: bshare-linux-x64
-          path: dist/linux/*
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 14
+      - name: Upload DEB and RPM to draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          files=(dist/linux/*.deb dist/linux/*.rpm)
+          for file in "${files[@]}"; do
+            [[ -f "$file" ]] || { echo "Missing package: $file" >&2; exit 1; }
+          done
+          gh release upload "$RELEASE_TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber

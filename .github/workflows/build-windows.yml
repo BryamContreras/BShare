@@ -17,7 +17,7 @@ on:
         default: '3.44.8'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   windows:
@@ -61,22 +61,13 @@ jobs:
       - name: Verify install, launch and uninstall
         run: ./packaging/windows/smoke-test.ps1
 
-      - name: Upload Windows installer
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: BShare-Windows-x64
-          path: |
-            dist/windows/*.exe
-            dist/windows/*.sha256
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 0
-
-      - name: Upload installer verification logs
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: BShare-Windows-verification
-          path: dist/windows/verification/
-          if-no-files-found: ignore
-          retention-days: 14
+      - name: Upload Windows installer to draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $installers = @(Get-ChildItem -LiteralPath 'dist/windows' -Filter '*-windows-x64-setup.exe' -File)
+          if ($installers.Count -ne 1) { throw "Expected one Windows installer, found $($installers.Count)." }
+          $arguments = @('release', 'upload', $env:RELEASE_TAG, $installers[0].FullName, '--repo', $env:GITHUB_REPOSITORY, '--clobber')
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) { throw "GitHub release upload failed with exit code $LASTEXITCODE." }
