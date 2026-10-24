@@ -19,6 +19,7 @@ package com.cloudwebrtc.webrtc;
 import org.webrtc.VideoCodecStatus;
 import org.webrtc.VideoEncoder;
 import org.webrtc.VideoFrame;
+import org.webrtc.Logging;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -42,6 +43,20 @@ final class ThreadedVideoEncoder implements VideoEncoder {
                     new Thread(runnable, "BShareVideoEncoder"));
         }
         return await(executor.submit(operation));
+    }
+
+    private synchronized <T> T query(Callable<T> operation) {
+        if (executor != null) return await(executor.submit(operation));
+        // WebRTC probes both primary and fallback encoders before initEncode,
+        // but never releases an unused fallback. Metadata must not allocate a
+        // worker. Once initialized, keep queries on the encoding thread.
+        try {
+            return operation.call();
+        } catch (RuntimeException | Error error) {
+            throw error;
+        } catch (Exception error) {
+            throw new IllegalStateException("Video encoder query failed", error);
+        }
     }
 
     private static <T> T await(Future<T> future) {
@@ -69,7 +84,28 @@ final class ThreadedVideoEncoder implements VideoEncoder {
     @Override
     public synchronized VideoCodecStatus initEncode(Settings settings, Callback callback) {
         this.settings = settings;
-        return call(() -> encoder.initEncode(settings, callback));
+        try {
+            VideoCodecStatus status = call(() -> encoder.initEncode(settings, callback));
+            if (status != VideoCodecStatus.OK) {
+                // Native fallback can abandon a primary whose init failed.
+                // Release its partial session and worker before returning.
+                try {
+                    release();
+                } catch (RuntimeException releaseError) {
+                    // Preserve the rejected init status so native WebRTC can
+                    // select its fallback even if vendor cleanup throws.
+                    Logging.w("BShareVideoEncoder", "Rejected encoder cleanup failed", releaseError);
+                }
+            }
+            return status;
+        } catch (RuntimeException | Error error) {
+            try {
+                release();
+            } catch (RuntimeException | Error releaseError) {
+                error.addSuppressed(releaseError);
+            }
+            throw error;
+        }
     }
 
     @Override
@@ -113,7 +149,7 @@ final class ThreadedVideoEncoder implements VideoEncoder {
 
     @Override
     public ScalingSettings getScalingSettings() {
-        return call(encoder::getScalingSettings);
+        return query(encoder::getScalingSettings);
     }
 
     @Override
@@ -125,12 +161,12 @@ final class ThreadedVideoEncoder implements VideoEncoder {
 
     @Override
     public long createNative(long webrtcEnvRef) {
-        return call(() -> encoder.createNative(webrtcEnvRef));
+        return query(() -> encoder.createNative(webrtcEnvRef));
     }
 
     @Override
     public boolean isHardwareEncoder() {
-        return call(encoder::isHardwareEncoder);
+        return query(encoder::isHardwareEncoder);
     }
 
     @Override
@@ -140,11 +176,11 @@ final class ThreadedVideoEncoder implements VideoEncoder {
 
     @Override
     public ResolutionBitrateLimits[] getResolutionBitrateLimits() {
-        return call(encoder::getResolutionBitrateLimits);
+        return query(encoder::getResolutionBitrateLimits);
     }
 
     @Override
     public EncoderInfo getEncoderInfo() {
-        return call(encoder::getEncoderInfo);
+        return query(encoder::getEncoderInfo);
     }
 }

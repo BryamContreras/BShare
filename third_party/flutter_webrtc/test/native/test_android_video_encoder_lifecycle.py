@@ -11,6 +11,13 @@ import tempfile
 
 
 STUBS = {
+    "org/webrtc/Logging.java": """
+package org.webrtc;
+public class Logging {
+  public static int warnings;
+  public static void w(String tag,String message,Throwable error){warnings++;}
+}
+""",
     "org/webrtc/VideoCodecStatus.java": """
 package org.webrtc; public enum VideoCodecStatus { OK, ERROR }
 """,
@@ -79,13 +86,17 @@ public class AndroidVideoEncoderLifecycleTest {
   }
   static class Encoder implements VideoEncoder {
     final List<Thread> workers=new ArrayList<>(); Thread worker;
-    boolean failEncode,failRelease;
+    boolean failEncode,failRelease,failInit;
+    VideoCodecStatus initStatus=VideoCodecStatus.OK;
     int releases,frames,width,height;
     CountDownLatch entered,proceed;
     void sameThread(){check(Thread.currentThread()==worker,"encoder thread affinity");}
+    void queryThread(){if(worker!=null)sameThread();}
     public VideoCodecStatus initEncode(Settings settings,Callback callback){
       check(worker==null,"previous session released");
-      worker=Thread.currentThread();workers.add(worker);return VideoCodecStatus.OK;
+      worker=Thread.currentThread();workers.add(worker);
+      if(failInit)throw new IllegalStateException("init failure");
+      return initStatus;
     }
     public VideoCodecStatus release(){sameThread();worker=null;releases++;
       if(failRelease){failRelease=false;throw new IllegalStateException("release failure");}
@@ -99,19 +110,58 @@ public class AndroidVideoEncoderLifecycleTest {
       frames++;return VideoCodecStatus.OK;
     }
     public VideoCodecStatus setRateAllocation(BitrateAllocation a,int f){sameThread();return VideoCodecStatus.OK;}
-    public ScalingSettings getScalingSettings(){sameThread();return new ScalingSettings();}
+    public ScalingSettings getScalingSettings(){queryThread();return new ScalingSettings();}
     public String getImplementationName(){return "test encoder";}
-    public long createNative(long ref){sameThread();return 0;}
-    public boolean isHardwareEncoder(){sameThread();return true;}
+    public long createNative(long ref){queryThread();return 0;}
+    public boolean isHardwareEncoder(){queryThread();return true;}
     public VideoCodecStatus setRates(RateControlParameters p){sameThread();return VideoCodecStatus.OK;}
-    public ResolutionBitrateLimits[] getResolutionBitrateLimits(){sameThread();return new ResolutionBitrateLimits[0];}
-    public EncoderInfo getEncoderInfo(){sameThread();return new EncoderInfo();}
+    public ResolutionBitrateLimits[] getResolutionBitrateLimits(){queryThread();return new ResolutionBitrateLimits[0];}
+    public EncoderInfo getEncoderInfo(){queryThread();return new EncoderInfo();}
   }
   static void retired(Encoder encoder)throws Exception {
     for(Thread worker:encoder.workers){worker.join(2000);check(!worker.isAlive(),"encoder worker terminated");}
   }
   static VideoFrame frame(Buffer b){return new VideoFrame(b,90,123);}
+  static void noWorker(ThreadedVideoEncoder wrapper)throws Exception {
+    java.lang.reflect.Field field=ThreadedVideoEncoder.class.getDeclaredField("executor");
+    field.setAccessible(true);check(field.get(wrapper)==null,"unused encoder must not retain a worker");
+  }
+  static void query(ThreadedVideoEncoder wrapper){
+    wrapper.createNative(0);wrapper.isHardwareEncoder();wrapper.getImplementationName();
+    wrapper.getScalingSettings();wrapper.getResolutionBitrateLimits();wrapper.getEncoderInfo();
+  }
   public static void main(String[] args)throws Exception {
+    // Native SimulcastEncoderAdapter queries primary and fallback before init,
+    // but Release only reaches the encoder that was actually used.
+    for(int i=0;i<12;i++){
+      Encoder unused=new Encoder();ThreadedVideoEncoder fallback=new ThreadedVideoEncoder(unused);
+      query(fallback);noWorker(fallback);
+      check(unused.workers.isEmpty(),"metadata did not start an encoding session");
+      // Deliberately no release(): match the native unused-fallback lifecycle.
+    }
+    for(boolean throwFailure:new boolean[]{false,true}){
+     for(boolean cleanupFailure:new boolean[]{false,true}){
+      Encoder rejected=new Encoder();ThreadedVideoEncoder failed=new ThreadedVideoEncoder(rejected);
+      rejected.failInit=throwFailure;rejected.initStatus=VideoCodecStatus.ERROR;
+      rejected.failRelease=cleanupFailure;
+      int warnings=Logging.warnings;
+      if(throwFailure){
+        try{failed.initEncode(new VideoEncoder.Settings(640,480),null);throw new AssertionError("expected init failure");}
+        catch(IllegalStateException expected){
+          check(expected.getMessage().equals("init failure"),"preserve init failure");
+          check(expected.getSuppressed().length==(cleanupFailure?1:0),"retain cleanup failure as suppressed");
+        }
+      }else{
+        check(failed.initEncode(new VideoEncoder.Settings(640,480),null)==VideoCodecStatus.ERROR,"preserve init status");
+        check(Logging.warnings==warnings+(cleanupFailure?1:0),"report cleanup error without preventing fallback");
+      }
+      retired(rejected);noWorker(failed);
+      check(rejected.releases==1,"failed init releases partial encoder state");
+      query(failed);noWorker(failed);
+      rejected.failInit=false;rejected.initStatus=VideoCodecStatus.OK;
+      failed.initEncode(new VideoEncoder.Settings(640,480),null);failed.release();retired(rejected);
+     }
+    }
     Encoder nativeEncoder=new Encoder();ThreadedVideoEncoder wrapper=new ThreadedVideoEncoder(nativeEncoder);
     wrapper.release();check(nativeEncoder.releases==0,"unused wrapper needs no native release");
     wrapper.initEncode(new VideoEncoder.Settings(640,480),null);
@@ -129,7 +179,7 @@ public class AndroidVideoEncoderLifecycleTest {
     wrapper.isHardwareEncoder();wrapper.setRates(null);wrapper.getResolutionBitrateLimits();wrapper.getEncoderInfo();
     wrapper.release();retired(nativeEncoder);wrapper.release();
     check(nativeEncoder.releases==1,"release idempotent");
-    wrapper.getImplementationName();retired(nativeEncoder);
+    query(wrapper);noWorker(wrapper);retired(nativeEncoder);
     for(int i=0;i<8;i++){
       wrapper.initEncode(new VideoEncoder.Settings(320,240),null);
       wrapper.encode(frame(new Buffer(640,480)),null);
