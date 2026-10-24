@@ -1,7 +1,12 @@
 import unittest
 from unittest.mock import patch
+import io
+import os
+import threading
+import time
 
 from webrtc_interop_probe import find_browser, native_video_has_multiple_frames
+from webrtc_native_sender_probe import launch_xvfb
 from webrtc_receive_probe import video_evidence
 
 
@@ -12,6 +17,37 @@ def sample(time, frames, codec='video/VP8', state='connected'):
 
 
 class VideoEvidenceTest(unittest.TestCase):
+    @unittest.skipIf(os.name == 'nt', 'Xvfb uses Unix pipe readiness')
+    def test_xvfb_waits_for_complete_display_number_line(self):
+        writers, failures = [], []
+
+        def launch(_arguments, **options):
+            writer = os.dup(options['pass_fds'][0])
+
+            def write_in_chunks():
+                try:
+                    os.write(writer, b'91')
+                    time.sleep(.05)
+                    os.write(writer, b'\n')
+                except OSError as error:
+                    failures.append(error)
+                finally:
+                    os.close(writer)
+
+            thread = threading.Thread(target=write_in_chunks)
+            writers.append(thread)
+            thread.start()
+            return object()
+
+        try:
+            with patch('webrtc_native_sender_probe.subprocess.Popen', side_effect=launch):
+                _, display = launch_xvfb('unused', io.StringIO(), {})
+            self.assertEqual(display, ':91')
+        finally:
+            for writer in writers:
+                writer.join(timeout=2)
+        self.assertFalse(failures)
+
     def test_native_receiver_rejects_single_decoded_frame(self):
         self.assertFalse(native_video_has_multiple_frames(0))
         self.assertFalse(native_video_has_multiple_frames(1))

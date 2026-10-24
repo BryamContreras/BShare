@@ -418,9 +418,11 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
                             result['nativeCleanupResponse'] = json.load(response)
                     except (OSError, ValueError) as error:
                         result['nativeCleanupError'] = str(error)
-                    graceful = result.get('nativeCleanupResponse', {}).get('cleanupComplete') is True
-                    if not graceful and native is not None:
-                        close_native_window(native.pid)
+                    # HTTP confirms that media/servers are disposed. Close the
+                    # owned native window through the production runner path;
+                    # the diagnostic target deliberately does not tear down
+                    # Flutter from inside its HTTP request handler.
+                    graceful = native is not None and close_native_window(native.pid)
                 else:
                     graceful = native is not None and close_native_window(native.pid)
                 result['nativeCloseRequested'] = graceful
@@ -457,7 +459,8 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
                 {codec.lower() for codec in fixture.offers[1]['codecs']} == {'vp8', 'rtx'})
             result['passed'] = result['passed'] and result['boundedCompatibilityRetry']
         result['durationSeconds'] = round(time.monotonic() - started, 2)
-        result['cleanupPassed'] = (result['nativeExitCode'] == 0 and result['browserMediaClosed']
+        result['cleanupPassed'] = (result['nativeCloseRequested'] and
+            result['nativeExitCode'] == 0 and result['browserMediaClosed']
             and source is not None and source.poll() is not None and not serving.is_alive()
             and (not native_probe or result.get('nativeCleanupResponse', {}).get('cleanupComplete') is True))
         result['passed'] = result['passed'] and result['cleanupPassed']

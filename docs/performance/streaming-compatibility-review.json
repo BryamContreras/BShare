@@ -1,0 +1,269 @@
+{
+  "date": "2026-10-24",
+  "sourceRevision": "adf223d",
+  "automated": {
+    "flutterTests": 440,
+    "flutterPassed": true,
+    "dartAnalysis": "No issues",
+    "pythonToolTests": 42,
+    "nativeRegressions": [
+      "Android codec factories",
+      "Android encoder lifecycle",
+      "Android screen capturer and static refresh across simulated API24/29/30/31/34/36",
+      "desktop capture startup including hostile Windows min macro"
+    ]
+  },
+  "linux": {
+    "reports": {
+      "interop-final-production": {
+        "passed": true,
+        "binarySha256": "a7b44e138630a869b69ec2d53de16f7187d37257775935c9cdde614864452019",
+        "aotSha256": "140e93147d622a7d4d0ac68888ec2f1dd9556480377fd42cb7e8d8bc64197495",
+        "cases": 4
+      },
+      "interop-final-diagnostic-receiver": {
+        "passed": true,
+        "binarySha256": "a7b44e138630a869b69ec2d53de16f7187d37257775935c9cdde614864452019",
+        "aotSha256": "32f8168164f4b14cce1bbcf1533831fd14f60cc78c2988a06c064f18dfc510be",
+        "cases": 4
+      },
+      "interop-final-diagnostic-sender": {
+        "passed": true,
+        "binarySha256": "a7b44e138630a869b69ec2d53de16f7187d37257775935c9cdde614864452019",
+        "aotSha256": "32f8168164f4b14cce1bbcf1533831fd14f60cc78c2988a06c064f18dfc510be",
+        "cases": 3
+      },
+      "interop-verified-startup-production": {
+        "passed": true,
+        "binarySha256": "a7b44e138630a869b69ec2d53de16f7187d37257775935c9cdde614864452019",
+        "aotSha256": "140e93147d622a7d4d0ac68888ec2f1dd9556480377fd42cb7e8d8bc64197495",
+        "cases": 2
+      },
+      "interop-verified-failure-diagnostic": {
+        "passed": true,
+        "binarySha256": "a7b44e138630a869b69ec2d53de16f7187d37257775935c9cdde614864452019",
+        "aotSha256": "32f8168164f4b14cce1bbcf1533831fd14f60cc78c2988a06c064f18dfc510be",
+        "cases": 1
+      }
+    },
+    "remainingProbeProcesses": [],
+    "normalBundleIsProduction": true
+  },
+  "androidPhysicalBeforeStaticRefresh": {
+    "apkSha256": "37f631c3604871cd5e268ce757cbf19bb32b8e3c2a4c047c88b9fa86c723d72a",
+    "package": "com.bshare.bshare",
+    "versionCode": 14,
+    "device": "SM-S908U",
+    "androidApi": 34,
+    "network": "Wi-Fi LAN",
+    "receiver": "Brave155 on Linux",
+    "noImagesOrAudioRecorded": true,
+    "cases": [
+      {
+        "kind": "screen",
+        "requestedCodec": "H264",
+        "compatibilityMode": false,
+        "passed": true,
+        "remoteViewerStopStatus": 200,
+        "continuousVideo": false,
+        "observedFramesPerSecond": 0.61,
+        "decodedFrames": 28,
+        "audioSamplesReceived": 0,
+        "cleanupPassed": true,
+        "name": "screen-h264",
+        "dimensions": [
+          "1544x720",
+          "720x1544"
+        ],
+        "firstFrameSeconds": 3.091
+      },
+      {
+        "kind": "screen",
+        "requestedCodec": "VP8",
+        "compatibilityMode": true,
+        "passed": true,
+        "remoteViewerStopStatus": 200,
+        "continuousVideo": false,
+        "observedFramesPerSecond": 0.93,
+        "decodedFrames": 34,
+        "audioSamplesReceived": 0,
+        "cleanupPassed": true,
+        "name": "screen-vp8",
+        "dimensions": [
+          "1280x597",
+          "597x1280"
+        ],
+        "firstFrameSeconds": 11.779
+      },
+      {
+        "kind": "camera",
+        "requestedCodec": "H264",
+        "compatibilityMode": false,
+        "passed": true,
+        "remoteViewerStopStatus": 200,
+        "continuousVideo": true,
+        "observedFramesPerSecond": 29.38,
+        "decodedFrames": 1291,
+        "audioSamplesReceived": 0,
+        "cleanupPassed": true,
+        "name": "camera-h264",
+        "dimensions": [
+          "1920x1080",
+          "640x360"
+        ],
+        "firstFrameSeconds": 2.331
+      },
+      {
+        "kind": "camera",
+        "requestedCodec": "VP8",
+        "compatibilityMode": true,
+        "passed": true,
+        "remoteViewerStopStatus": 200,
+        "continuousVideo": true,
+        "observedFramesPerSecond": 29.27,
+        "decodedFrames": 996,
+        "audioSamplesReceived": 0,
+        "cleanupPassed": true,
+        "name": "camera-vp8",
+        "dimensions": [
+          "1280x720",
+          "640x360",
+          "960x540"
+        ],
+        "firstFrameSeconds": 1.215
+      },
+      {
+        "kind": "camera",
+        "requestedCodec": "H264",
+        "compatibilityMode": false,
+        "passed": true,
+        "remoteViewerStopStatus": 200,
+        "continuousVideo": true,
+        "observedFramesPerSecond": 29.7,
+        "decodedFrames": 569,
+        "audioSamplesReceived": 922560,
+        "cleanupPassed": true,
+        "name": "camera-audio-h264",
+        "dimensions": [
+          "640x360"
+        ],
+        "firstFrameSeconds": 1.438
+      },
+      {
+        "kind": "screen",
+        "requestedCodec": "VP8",
+        "compatibilityMode": true,
+        "passed": false,
+        "remoteViewerStopStatus": 200,
+        "continuousVideo": false,
+        "observedFramesPerSecond": 0.0,
+        "decodedFrames": 6,
+        "audioSamplesReceived": 0,
+        "cleanupPassed": true,
+        "name": "screen-static-vp8",
+        "dimensions": [
+          "597x1280"
+        ],
+        "firstFrameSeconds": 3.311,
+        "diagnosticNote": "Idle-screen diagnostic: advancing-frame requirement is not the pass criterion; firstFrameSeconds indicates whether a late viewer can display any picture."
+      },
+      {
+        "kind": "screen",
+        "requestedCodec": "H264",
+        "compatibilityMode": false,
+        "passed": false,
+        "remoteViewerStopStatus": 200,
+        "continuousVideo": false,
+        "observedFramesPerSecond": 0.0,
+        "decodedFrames": 2,
+        "audioSamplesReceived": 0,
+        "cleanupPassed": true,
+        "name": "screen-static-second-h264",
+        "dimensions": [
+          "720x1544"
+        ],
+        "firstFrameSeconds": 25.654,
+        "diagnosticNote": "Idle-screen diagnostic: advancing-frame requirement is not the pass criterion; firstFrameSeconds indicates whether a late viewer can display any picture."
+      }
+    ],
+    "nativeLinux": {
+      "passed": true,
+      "decodedFrames": 10,
+      "firstFrameSeconds": 40.91,
+      "nativeCloseRequested": true,
+      "exitCode": 0,
+      "cleanupPassed": true,
+      "durationSeconds": 41.19,
+      "temporaryProfileRemoved": true
+    },
+    "cleanup": {
+      "recordedAtUtc": "2026-10-24T04:07:53.389298+00:00",
+      "package": "com.bshare.bshare",
+      "appForegroundServices": [],
+      "activeCameraClients": "[]",
+      "appProjectionActive": false,
+      "appWakeLocks": [],
+      "appMulticastLocks": [],
+      "accelerometerRotation": "0",
+      "userRotation": "0",
+      "version": [
+        "versionCode=14 minSdk=24 targetSdk=36",
+        "versionName=1.0.3"
+      ],
+      "screenEndpoint": {
+        "closed": true,
+        "errorType": "URLError"
+      },
+      "cameraEndpoint": {
+        "closed": true,
+        "errorType": "URLError"
+      }
+    },
+    "inbound": [
+      {
+        "codec": "H264",
+        "discovery": {
+          "announcements": 25,
+          "queries": 1,
+          "unicastReplies": 1
+        },
+        "stopRequests": 1,
+        "browserMediaClosed": true,
+        "networkHelpersStopped": true,
+        "inboundEvidence": "Remote screen inbound video: bytes=34622, packets=91, frames=30, decoded=29, dropped=1, codec=video/H264, decoder=c2.qti.avc.decoder"
+      },
+      {
+        "codec": "VP8",
+        "discovery": {
+          "announcements": 8,
+          "queries": 0,
+          "unicastReplies": 0
+        },
+        "stopRequests": 1,
+        "browserMediaClosed": true,
+        "networkHelpersStopped": true,
+        "inboundEvidence": "Remote screen inbound video: bytes=68268, packets=103, frames=29, decoded=29, dropped=0, codec=video/VP8, decoder=libvpx"
+      }
+    ]
+  },
+  "androidCandidate": {
+    "apkSha256": "76ae3b6d86f8a33f2ee11f44f3175dae55a3e331c31fe2e99341ef6e45e030f7",
+    "abis": [
+      "arm64-v8a"
+    ],
+    "bytes": 40494223,
+    "staticApkInspectionPassed": true,
+    "installed": false,
+    "staticScreenPhysicalVerification": "pending ADB reconnection"
+  },
+  "windows": {
+    "validation": "in progress",
+    "workflowUrl": "https://github.com/BryamContreras/BShare/actions/runs/40061583277"
+  },
+  "limits": [
+    "Honor MagicOS 8 and the reported low-resource Windows PC are unavailable.",
+    "Native API fixtures simulate platform behavior; they are not physical tests on every Android version.",
+    "An idle screen frame count is not a video FPS benchmark. Camera FPS and audio counters describe this Wi-Fi session only.",
+    "Audio sample receipt was verified without recording or assessing acoustic quality."
+  ]
+}

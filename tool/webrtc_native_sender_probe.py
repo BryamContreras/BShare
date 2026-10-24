@@ -30,7 +30,7 @@ import tempfile
 import time
 import urllib.request
 
-from webrtc_interop_probe import find_browser, stop_process
+from webrtc_interop_probe import close_native_window, find_browser, stop_process
 from webrtc_receive_probe import main as receive_media
 
 
@@ -88,9 +88,20 @@ def launch_xvfb(executable, output, env):
             pass_fds=(write_fd,), stdout=output, stderr=subprocess.STDOUT, env=env)
         os.close(write_fd)
         write_fd = None
-        if not select.select([read_fd], [], [], 15)[0]:
-            raise RuntimeError('Xvfb did not allocate an isolated display')
-        number = os.read(read_fd, 100).decode().strip()
+        # Xorg may write the digits and newline separately. Keep the read end
+        # open until the complete line arrives; closing after the digits can
+        # give Xvfb EPIPE and terminate a display that looked ready.
+        line = b''
+        deadline = time.monotonic() + 15
+        while b'\n' not in line:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not select.select([read_fd], [], [], remaining)[0]:
+                raise RuntimeError('Xvfb did not allocate an isolated display')
+            chunk = os.read(read_fd, 100)
+            if not chunk:
+                raise RuntimeError('Xvfb closed its startup pipe before readiness')
+            line += chunk
+        number = line.decode().strip()
         if not number.isdigit():
             raise RuntimeError(f'Xvfb display startup failed: {number!r}')
         return display, f':{number}'
@@ -211,6 +222,7 @@ def main():
                     report['cleanupResponse'] = json_request(f'{control_origin}/stop', {}, timeout=20)
                 except (OSError, ValueError) as error:
                     report['cleanupError'] = str(error)
+                report['nativeCloseRequested'] = native is not None and close_native_window(native.pid)
                 report['nativeExitCode'] = stop_process(native, timeout=20)
                 report['sourcePortClosed'] = port_closed(source_port)
                 report['controlPortClosed'] = port_closed(control_port)
@@ -220,7 +232,8 @@ def main():
         report['nativeLog'] = native_log.read_text(errors='replace')
         report['displayLog'] = display_log.read_text(errors='replace')
         report['cleanupPassed'] = (report.get('cleanupResponse', {}).get('cleanupComplete') is True and
-            report['nativeExitCode'] == 0 and report['sourcePortClosed'] and report['controlPortClosed'] and
+            report['nativeCloseRequested'] and report['nativeExitCode'] == 0 and
+            report['sourcePortClosed'] and report['controlPortClosed'] and
             (display is None or display.poll() is not None))
         report['passed'] = report['passed'] and report['cleanupPassed']
     report['temporaryProfileRemoved'] = not temp.exists()

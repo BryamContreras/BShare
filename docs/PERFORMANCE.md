@@ -1,5 +1,34 @@
 # Performance and lifecycle checks
 
+## Streaming compatibility investigation (unreleased)
+
+The final Dart revision passes 440 Flutter tests and static analysis. Regression
+coverage includes discovery without a default route, session cancellation,
+exclusive HTTP listeners, SDP negotiation and native encoder/capturer cleanup.
+The local Linux production receiver passes H.264, VP8, one successful recovery
+from missing frames and bounded failure after both attempts. A separate diagnostic
+entrypoint also passes four receiver cases and three native capture/encoder cases
+on an isolated Xvfb display. Diagnostic binaries are not installer payloads.
+
+On a physical S22 Ultra running Android 14, the initial candidate receives both
+codecs and sends rotated screen content, rear/front camera video and microphone
+audio over Wi-Fi. Camera decoding measured about 29 FPS in these short sessions.
+These results do not measure the reported low-resource Windows PC or Honor.
+
+Physical tests exposed an additional idle-screen defect: a later viewer waited
+25.654 seconds for its first frame; the native Linux viewer waited 40.91 seconds
+and retried the codec. The updated Android capturer refreshes an unchanged valid
+texture at most once per second, preserves monotonic timestamps, and cancels its
+task on Stop, rotation/helper replacement and projection revocation. Its native
+regressions pass. The corrected APK is built, but physical revalidation is pending
+because the phone disconnected from ADB before installation. Windows verification
+is running in Actions. These pending checks are not recorded as passes.
+
+Binary hashes, measurements, cleanup and hardware limits are recorded in
+[streaming-compatibility-review.json](performance/streaming-compatibility-review.json).
+Connection diagnosis and reproduction guidance are in
+[STREAMING_COMPATIBILITY.md](STREAMING_COMPATIBILITY.md).
+
 ## Linux window decorations (1.0.3)
 
 The Linux runner no longer installs a custom GTK header bar or draws its own

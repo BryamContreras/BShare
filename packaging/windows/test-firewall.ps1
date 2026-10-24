@@ -5,6 +5,45 @@ param([Parameter(Mandatory = $true)][string]$ProgramPath)
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+
+function Assert-LocalSubnetScope($AddressFilter, $PortFilter) {
+    # CIM/remoting may unwrap a one-element property into a string. Normalize
+    # before indexing; indexing the original string reads only its first char.
+    $remoteAddresses = @($AddressFilter.RemoteAddress)
+    $localPorts = @($PortFilter.LocalPort)
+    # NetSecurity also represents address keywords by their IPv4/IPv6 forms.
+    # Accept only the full equivalent pair, never Any or an additional address.
+    $localSubnet = ($remoteAddresses.Count -eq 1 -and $remoteAddresses[0] -eq 'LocalSubnet') -or
+        ($remoteAddresses.Count -eq 2 -and $remoteAddresses -contains 'LocalSubnet4' -and $remoteAddresses -contains 'LocalSubnet6')
+    if (-not $localSubnet) {
+        throw "A firewall rule is not limited to the local subnet: $($remoteAddresses | ConvertTo-Json -Compress)."
+    }
+    if ($localPorts.Count -ne 1 -or $localPorts[0] -ne 'Any') {
+        throw "BShare must support negotiated media ports and configurable HTTP ports: $($localPorts | ConvertTo-Json -Compress)."
+    }
+}
+
+# Both CIM value shapes must satisfy the same strict scope, while public/extra
+# addresses and restricted media ports must still fail verification.
+Assert-LocalSubnetScope ([pscustomobject]@{ RemoteAddress = 'LocalSubnet' }) ([pscustomobject]@{ LocalPort = 'Any' })
+Assert-LocalSubnetScope ([pscustomobject]@{ RemoteAddress = [string[]]@('LocalSubnet') }) ([pscustomobject]@{ LocalPort = [string[]]@('Any') })
+Assert-LocalSubnetScope ([pscustomobject]@{ RemoteAddress = @('LocalSubnet4', 'LocalSubnet6') }) ([pscustomobject]@{ LocalPort = 'Any' })
+foreach ($invalid in @(
+    @{ RemoteAddress = 'Any'; LocalPort = 'Any' },
+    @{ RemoteAddress = 'LocalSubnet4'; LocalPort = 'Any' },
+    @{ RemoteAddress = @('LocalSubnet4', 'LocalSubnet6', '203.0.113.1'); LocalPort = 'Any' },
+    @{ RemoteAddress = @('LocalSubnet', '203.0.113.1'); LocalPort = 'Any' },
+    @{ RemoteAddress = 'LocalSubnet'; LocalPort = '53317' }
+)) {
+    $rejectedScope = $false
+    try {
+        Assert-LocalSubnetScope ([pscustomobject]$invalid) ([pscustomobject]$invalid)
+    } catch {
+        $rejectedScope = $true
+    }
+    if (-not $rejectedScope) { throw 'The firewall scope assertion accepted an invalid filter.' }
+}
+
 $configure = Join-Path ([System.IO.Path]::GetDirectoryName($ProgramPath)) 'configure-firewall.ps1'
 $marker = Join-Path ([System.IO.Path]::GetDirectoryName($ProgramPath)) 'bshare-firewall.json'
 $unrelatedName = "BShare-firewall-verification-$([guid]::NewGuid())"
@@ -31,13 +70,14 @@ try {
         $application = $rule | Get-NetFirewallApplicationFilter
         if ($application.Program -ine $ProgramPath) { throw 'A firewall rule permits another executable.' }
         $address = $rule | Get-NetFirewallAddressFilter
-        if (@($address.RemoteAddress).Count -ne 1 -or $address.RemoteAddress[0] -ne 'LocalSubnet') {
-            throw 'A firewall rule is not limited to the local subnet.'
-        }
         $port = $rule | Get-NetFirewallPortFilter
-        if (@($port.LocalPort).Count -ne 1 -or $port.LocalPort[0] -ne 'Any') {
-            throw 'BShare must support negotiated media ports and configurable HTTP ports.'
-        }
+        Write-Host ('Firewall filters: ' + ([ordered]@{
+            rule = $rule.Name
+            remoteAddress = @($address.RemoteAddress)
+            localPort = @($port.LocalPort)
+            protocol = $port.Protocol.ToString()
+        } | ConvertTo-Json -Compress))
+        Assert-LocalSubnetScope $address $port
         $protocols += $port.Protocol.ToString()
     }
     # Windows versions may expose the protocols as names or IANA numbers.

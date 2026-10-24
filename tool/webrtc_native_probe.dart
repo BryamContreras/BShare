@@ -6,11 +6,13 @@
 // Android can use corresponding BSHARE_PROBE_* --dart-define values.
 // Only run desktop screen capture on an isolated synthetic display (Xvfb/CI).
 // GET /status reports progress; POST /stop awaits native media/server cleanup.
+// The desktop harness then closes its owned native window (WM_CLOSE/X11), using
+// the same runner shutdown path as the production app. Missing that final step
+// is a test failure and triggers a bounded, nonzero process exit.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui' show AppExitType;
 
 import 'package:args/args.dart';
 import 'package:bshare/src/domain/entities/device_info.dart';
@@ -90,6 +92,10 @@ Future<void> main(List<String> arguments) async {
   var ready = false;
   Future<void> stop() => stopping ??= () async {
     deadline?.cancel();
+    // Dispose the preview and synthetic ticker before their native texture/view
+    // disappears. No UI callbacks should keep using a disposed renderer.
+    runApp(const SizedBox.shrink());
+    await WidgetsBinding.instance.endOfFrame;
     await service.dispose();
     await fileServer.stop();
     await directory.delete(recursive: true);
@@ -111,15 +117,18 @@ Future<void> main(List<String> arguments) async {
     'negotiatedCodec': logger.negotiatedCodec,
     'cleanupComplete': logger.cleanupComplete,
   };
-  Future<void> quit({int exitCode = 0}) async {
+  Future<void> finish({int? failedExitCode}) async {
     await control.close(force: true);
     if (Platform.isAndroid || Platform.isIOS) {
       await SystemNavigator.pop();
+    } else if (failedExitCode != null) {
+      exit(failedExitCode);
     } else {
-      await ServicesBinding.instance.exitApplication(
-        AppExitType.required,
-        exitCode,
-      );
+      // Keep engine shutdown outside this diagnostic control callback. The
+      // owner requests native window closure after receiving cleanupComplete,
+      // exercising the same WM_CLOSE handler as the production app. A lost
+      // owner must never leave this process running.
+      Timer(const Duration(seconds: 10), () => exit(2));
     }
   }
 
@@ -130,7 +139,7 @@ Future<void> main(List<String> arguments) async {
         request.response.headers.contentType = ContentType.json;
         request.response.write(jsonEncode({'cleanupComplete': true}));
         await request.response.close();
-        await quit();
+        await finish();
         break;
       }
       request.response.headers.contentType = ContentType.json;
@@ -201,13 +210,13 @@ Future<void> main(List<String> arguments) async {
       Duration(seconds: int.parse(options['probe-seconds'] as String)),
       () async {
         await stop();
-        await quit();
+        await finish(failedExitCode: 2);
       },
     );
   } catch (error) {
     logger.error('BSHARE_PROBE_START_FAILED', error);
     await stop();
-    await quit(exitCode: 1);
+    await finish(failedExitCode: 1);
   }
 }
 
