@@ -89,6 +89,7 @@ def main(arguments=None):
     measurement_events = []
     report = {'scope': 'Real BShare sender to browser receiver; stats only, muted playout',
         'kind': options.kind, 'requestedCodec': options.codec,
+        'browser': str(options.browser),
         'compatibilityMode': options.compatibility, 'passed': False}
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix='bshare-receiver-') as directory:
@@ -161,6 +162,8 @@ def main(arguments=None):
         report['audioSamplesReceived'] = max((sample.get('audioSamplesReceived', 0) for sample in samples), default=0)
         report['cleanupPassed'] = report['browserMediaClosed'] and browser is not None and browser.poll() is not None and not serving.is_alive()
         report['passed'] = evidence.get('passed', False) and report['cleanupPassed'] and 'error' not in report
+        if not report['passed']:
+            report['browserLog'] = log.read_text(errors='replace')
         report['durationSeconds'] = round(time.monotonic() - started, 2)
     report['temporaryProfileRemoved'] = not temp.exists()
     options.output.parent.mkdir(parents=True, exist_ok=True)

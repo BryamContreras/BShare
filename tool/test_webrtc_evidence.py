@@ -1,5 +1,7 @@
 import unittest
+from unittest.mock import patch
 
+from webrtc_interop_probe import find_browser, native_video_has_advanced
 from webrtc_receive_probe import video_evidence
 
 
@@ -10,6 +12,18 @@ def sample(time, frames, codec='video/VP8', state='connected'):
 
 
 class VideoEvidenceTest(unittest.TestCase):
+    def test_native_receiver_requires_advancing_frames_over_time(self):
+        self.assertFalse(native_video_has_advanced(None, 0, 2))
+        self.assertFalse(native_video_has_advanced((1, 1), 1, 4))
+        self.assertFalse(native_video_has_advanced((1, 1), 10, 1.5))
+        self.assertTrue(native_video_has_advanced((1, 29), 59, 3))
+
+    def test_browser_discovery_prefers_branded_h264_build(self):
+        installed = {'google-chrome': '/usr/bin/google-chrome',
+            'chromium': '/usr/bin/chromium'}
+        with patch('webrtc_interop_probe.shutil.which', side_effect=installed.get):
+            self.assertEqual(find_browser(), '/usr/bin/google-chrome')
+
     def test_single_frame_or_frozen_decoder_does_not_prove_streaming(self):
         for samples in [[sample(0, 1)], [sample(0, 1), sample(3000, 1)]]:
             with self.subTest(samples=samples):

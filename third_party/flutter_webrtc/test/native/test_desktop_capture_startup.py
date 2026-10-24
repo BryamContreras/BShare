@@ -22,6 +22,7 @@ def definition(source, signature):
 
 
 HARNESS = r"""
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -29,6 +30,12 @@ HARNESS = r"""
 #include <memory>
 #include <string>
 #include <vector>
+// Mirror Windows.h: qualification with std:: alone does not suppress macros.
+#define min(a,b) WINDOWS_MIN_MACRO_MUST_NOT_EXPAND
+double ClampFrameRate(double fps) {
+  // FPS_CLAMP
+  return fps;
+}
 template<class T> using scoped_refptr=std::shared_ptr<T>;
 struct String { std::string value; std::string std_string()const{return value;} };
 struct Track { String id()const{return {name};} std::string name; };
@@ -82,6 +89,9 @@ void Audio(FlutterScreenCapture& owner,RTCDesktopCapturer* capturer,int& stops){
   owner.loopback_owner_=capturer;owner.loopback_audio_source_=std::make_shared<int>(1);
 }
 int main(){
+  assert(ClampFrameRate(30)==30);
+  assert(ClampFrameRate(60)==60);
+  assert(ClampFrameRate(120)==60);
   for(auto state:{RTCDesktopCapturer::CS_FAILED,RTCDesktopCapturer::CS_STOPPED}){
     FlutterScreenCapture capture;auto capturer=std::make_shared<RTCDesktopCapturer>();
     capturer->outcome=state;capturer->observer=&capture;
@@ -122,9 +132,12 @@ def main():
     plugin = Path(__file__).resolve().parents[2]
     source = (plugin / "common/cpp/src/flutter_screen_capture.cc").read_text()
     startup = definition(source, "void FlutterScreenCapture::GetDisplayMedia(")
+    fps_clamp = next(line.strip() for line in startup.splitlines()
+                     if "fps =" in line and "std::min" in line)
     startup = startup[startup.index("  // Do not publish a stream"):].rsplit("}", 1)[0]
     on_stop = definition(source, "void FlutterScreenCapture::OnStop(")
     harness = HARNESS.replace("// STARTUP", startup).replace("// ON_STOP", on_stop)
+    harness = harness.replace("// FPS_CLAMP", fps_clamp)
     with tempfile.TemporaryDirectory(prefix="bshare-desktop-capture-") as directory:
         work = Path(directory)
         (work / "test.cc").write_text(harness)

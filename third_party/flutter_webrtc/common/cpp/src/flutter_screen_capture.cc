@@ -221,7 +221,8 @@ void FlutterScreenCapture::GetDisplayMedia(
     result->Error("Bad Arguments", "Screen capture frame rate must be positive");
     return;
   }
-  fps = std::min(fps, 60.0);
+  // Windows headers may define min as a macro even when std:: is qualified.
+  fps = (std::min)(fps, 60.0);
 
   // Validate the source before opening loopback audio or retaining any tracks.
   scoped_refptr<MediaSource> source;

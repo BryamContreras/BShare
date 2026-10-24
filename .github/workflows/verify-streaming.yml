@@ -111,6 +111,7 @@ jobs:
       LIBGL_ALWAYS_SOFTWARE: '1'
       GDK_BACKEND: x11
       XDG_SESSION_TYPE: x11
+      NO_AT_BRIDGE: '1'
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -121,7 +122,13 @@ jobs:
           sudo apt-get install --no-install-recommends -y clang cmake ninja-build pkg-config \
             libgtk-3-dev liblzma-dev libstdc++-12-dev libasound2-dev libpulse-dev \
             libgbm-dev libdrm-dev libgl1-mesa-dev libegl1-mesa-dev \
-            libgl1-mesa-dri libglx-mesa0 xvfb xauth
+            libgl1-mesa-dri libglx-mesa0 xvfb xauth pulseaudio pulseaudio-utils
+      - name: Start isolated audio device for WebRTC
+        run: |
+          pulseaudio --start --exit-idle-time=-1 --load='module-null-sink sink_name=bshare_ci'
+          pactl set-default-sink bshare_ci
+          pactl info
+          google-chrome --version
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.44.8'
@@ -155,3 +162,6 @@ jobs:
           python3 tool/summarize_streaming_evidence.py
           streaming-linux.json streaming-native-receiver-linux.json
           streaming-native-sender-linux.json
+      - name: Stop isolated audio device
+        if: always()
+        run: pulseaudio --kill || true

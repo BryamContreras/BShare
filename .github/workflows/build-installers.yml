@@ -72,6 +72,7 @@ jobs:
         run: |
           python3 third_party/flutter_webrtc/test/native/test_android_video_codec_factories.py
           python3 third_party/flutter_webrtc/test/native/test_android_video_encoder_lifecycle.py
+          python3 third_party/flutter_webrtc/test/native/test_screen_capturer.py
 
   windows:
     name: Windows installer

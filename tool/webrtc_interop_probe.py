@@ -63,7 +63,10 @@ def close_native_window(pid: int) -> bool:
 
 
 def find_browser():
-    for name in ['brave-browser', 'chromium', 'chromium-browser', 'google-chrome', 'chrome', 'msedge']:
+    # Branded desktop builds include the H264 software codec. Some unbranded
+    # Chromium distributions intentionally omit it, so prefer Chrome when both
+    # are installed (including on GitHub's Linux runners).
+    for name in ['brave-browser', 'google-chrome', 'google-chrome-stable', 'chrome', 'msedge', 'chromium', 'chromium-browser']:
         found = shutil.which(name)
         if found:
             return found
@@ -174,6 +177,11 @@ def stop_process(process, timeout=10):
         except subprocess.TimeoutExpired:
             process.kill()
             return process.wait(timeout=5)
+
+
+def native_video_has_advanced(first_sample, decoded_count, now):
+    return (first_sample is not None and decoded_count > first_sample[1]
+        and now - first_sample[0] >= 1)
 
 
 class Fixture:
@@ -356,6 +364,7 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
                 native = subprocess.Popen(arguments,
                     stdout=native_output, stderr=subprocess.STDOUT, env=env)
                 deadline = time.monotonic() + seconds
+                first_decoded = None
                 while time.monotonic() < deadline:
                     text = native_log.read_text(errors='replace')
                     if control_origin:
@@ -369,18 +378,32 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
                                       'No decoded video after the compatibility retry' in failure):
                         metadata_before = fixture.metadata_count
                         time.sleep(1.5)
+                        if control_origin:
+                            with urllib.request.urlopen(f'{control_origin}/status', timeout=2) as response:
+                                native_state = json.load(response)
+                            result['nativeFailureStateReported'] = (
+                                native_state.get('mode') == 'idle' and
+                                'No decoded video after the compatibility retry' in (native_state.get('error') or ''))
                         result.update({'passed': fixture.offer_count == 2 and metadata_before == fixture.metadata_count,
                             'boundedFailureReported': True, 'metadataPollingStopped': metadata_before == fixture.metadata_count})
+                        result['passed'] = result['passed'] and result.get('nativeFailureStateReported', True)
                         break
                     decoded = [int(value) for value in re.findall(r'decoded=(\d+)', text)]
                     decoded.append((native_state or {}).get('decodedFrames', 0))
+                    decoded_count = max(decoded, default=0)
+                    if decoded_count > 0 and first_decoded is None:
+                        first_decoded = (time.monotonic(), decoded_count)
+                    advancing = native_video_has_advanced(first_decoded, decoded_count, time.monotonic())
                     first_frame = 'renderer received its first frame' in text or (native_state or {}).get('firstFrameRendered') is True
                     stats = [value for value in fixture.reports if value['event'] == 'stats']
                     outgoing = next((value for value in reversed(stats) if value.get('framesEncoded', 0) > 0), None)
-                    if first_frame and any(decoded) and outgoing:
+                    if first_frame and advancing and outgoing:
                         matched_codec = outgoing.get('codec', '').lower() == f'video/{codec.lower()}'
                         result.update({'passed': not stall_first or fixture.offer_count == 2,
-                            'firstFrameRendered': True, 'decodedFrames': max(decoded),
+                            'firstFrameRendered': True, 'decodedFrames': decoded_count,
+                            'nativeDecodingAdvanced': True,
+                            'firstDecodedFrames': first_decoded[1],
+                            'decodedObservationSeconds': round(time.monotonic() - first_decoded[0], 2),
                             'sender': outgoing, 'requestedCodecUsed': matched_codec})
                         result['passed'] = result['passed'] and matched_codec
                         break
@@ -425,6 +448,8 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
                 server.server_close()
                 serving.join(timeout=5)
         result['nativeLog'] = native_log.read_text(errors='replace')
+        if not result['passed']:
+            result['browserLog'] = browser_log.read_text(errors='replace')
         if native_probe:
             result['nativeStatus'] = native_state
         result['browserEvents'] = [value for value in fixture.reports if value['event'] != 'stats']
@@ -464,6 +489,7 @@ def main():
     aot = args.binary.parent / ('data/app.so' if os.name == 'nt' else 'lib/libapp.so')
     report = {'scope': 'Native receiver; browser synthetic sender over loopback',
         'platform': platform.system(), 'binary': str(args.binary.resolve()),
+        'browser': str(args.browser),
         'binarySha256': hashlib.sha256(args.binary.read_bytes()).hexdigest(),
         'aotSha256': hashlib.sha256(aot.read_bytes()).hexdigest(),
         'cases': []}
