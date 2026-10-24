@@ -1,5 +1,8 @@
 #include "flutter_screen_capture.h"
 
+#include <algorithm>
+#include <cmath>
+
 namespace flutter_webrtc_plugin {
 
 FlutterScreenCapture::FlutterScreenCapture(FlutterWebRTCBase* base)
@@ -148,6 +151,8 @@ void FlutterScreenCapture::OnPaused(
 void FlutterScreenCapture::OnStop(scoped_refptr<RTCDesktopCapturer> capturer) {
   // std::cout << " OnStop: " << capturer->source()->id().std_string()
   //          << std::endl;
+  if (loopback_owner_ != capturer.get()) return;
+  loopback_owner_ = nullptr;
   if (loopback_capturer_) {
     loopback_capturer_->Stop();
     loopback_capturer_.reset();
@@ -212,10 +217,52 @@ void FlutterScreenCapture::GetDisplayMedia(
     }
   }
 
+  if (!std::isfinite(fps) || fps < 1.0) {
+    result->Error("Bad Arguments", "Screen capture frame rate must be positive");
+    return;
+  }
+  fps = std::min(fps, 60.0);
+
+  // Validate the source before opening loopback audio or retaining any tracks.
+  scoped_refptr<MediaSource> source;
+  for (auto src : sources_) {
+    if (src->id().std_string() == source_id) source = src;
+  }
+  if (!source.get()) {
+    result->Error("Bad Arguments", "source not found!");
+    return;
+  }
+  scoped_refptr<RTCDesktopCapturer> desktop_capturer =
+      base_->desktop_device_->CreateDesktopCapturer(source);
+  if (!desktop_capturer.get()) {
+    result->Error("Bad Arguments", "CreateDesktopCapturer failed!");
+    return;
+  }
+
+  scoped_refptr<RTCVideoSource> video_source =
+      base_->factory_->CreateDesktopSource(
+          desktop_capturer, "screen_capture_input",
+          base_->ParseMediaConstraints(video));
+  if (!video_source.get()) {
+    result->Error("GetDisplayMediaFailed", "Could not create desktop video source");
+    return;
+  }
+
   std::string uuid = base_->GenerateUUID();
+
+  scoped_refptr<RTCVideoTrack> track =
+      base_->factory_->CreateVideoTrack(video_source, uuid.c_str());
+  if (!track.get()) {
+    result->Error("GetDisplayMediaFailed", "Could not create desktop video track");
+    return;
+  }
 
   scoped_refptr<RTCMediaStream> stream =
       base_->factory_->CreateStream(uuid.c_str());
+  if (!stream.get()) {
+    result->Error("GetDisplayMediaFailed", "Could not create desktop media stream");
+    return;
+  }
 
   EncodableMap params;
   params[EncodableValue("streamId")] = EncodableValue(uuid);
@@ -240,6 +287,7 @@ void FlutterScreenCapture::GetDisplayMedia(
       loopback_capturer_->Stop();
       loopback_capturer_.reset();
     }
+    loopback_owner_ = nullptr;
 
     // Disable all audio processing for loopback capture.  Echo cancellation,
     // AGC, and noise suppression are designed for microphone input; applied to
@@ -262,6 +310,7 @@ void FlutterScreenCapture::GetDisplayMedia(
     loopback_capturer_ = CreateLoopbackCapturer(source_id);
 
     if (loopback_capturer_ && loopback_capturer_->Start(loopback_audio_source_)) {
+      loopback_owner_ = desktop_capturer.get();
       EncodableMap audio_info;
       audio_info[EncodableValue("id")] =
           EncodableValue(audio_track->id().std_string());
@@ -277,7 +326,6 @@ void FlutterScreenCapture::GetDisplayMedia(
       params[EncodableValue("audioTracks")] = EncodableValue(audioTracks);
 
       stream->AddTrack(audio_track);
-      base_->local_tracks_[audio_track->id().std_string()] = audio_track;
     } else {
       // Loopback init failed or not supported — continue without audio.
       loopback_capturer_.reset();
@@ -290,45 +338,7 @@ void FlutterScreenCapture::GetDisplayMedia(
 
   // VIDEO
 
-  EncodableMap video_constraints;
-  auto it = constraints.find(EncodableValue("video"));
-  if (it != constraints.end() && TypeIs<EncodableMap>(it->second)) {
-    video_constraints = GetValue<EncodableMap>(it->second);
-  }
-
-  scoped_refptr<MediaSource> source;
-  for (auto src : sources_) {
-    if (src->id().std_string() == source_id) {
-      source = src;
-    }
-  }
-
-  if (!source.get()) {
-    result->Error("Bad Arguments", "source not found!");
-    return;
-  }
-
-  scoped_refptr<RTCDesktopCapturer> desktop_capturer =
-      base_->desktop_device_->CreateDesktopCapturer(source);
-
-  if (!desktop_capturer.get()) {
-    result->Error("Bad Arguments", "CreateDesktopCapturer failed!");
-    return;
-  }
-
   desktop_capturer->RegisterDesktopCapturerObserver(this);
-
-  const char* video_source_label = "screen_capture_input";
-
-  scoped_refptr<RTCVideoSource> video_source =
-      base_->factory_->CreateDesktopSource(
-          desktop_capturer, video_source_label,
-          base_->ParseMediaConstraints(video_constraints));
-
-  // TODO: RTCVideoSource -> RTCVideoTrack
-
-  scoped_refptr<RTCVideoTrack> track =
-      base_->factory_->CreateVideoTrack(video_source, uuid.c_str());
 
   EncodableList videoTracks;
   EncodableMap info;
@@ -341,11 +351,20 @@ void FlutterScreenCapture::GetDisplayMedia(
 
   stream->AddTrack(track);
 
-  base_->local_tracks_[track->id().std_string()] = track;
+  // Do not publish a stream when the native capturer could not start. Windows
+  // may reject a vanished/locked source before a first frame is available.
+  if (desktop_capturer->Start(uint32_t(fps)) != RTCDesktopCapturer::CS_RUNNING) {
+    desktop_capturer->DeRegisterDesktopCapturerObserver();
+    desktop_capturer->Stop();
+    OnStop(desktop_capturer);
+    result->Error("GetDisplayMediaFailed", "Desktop capture could not start");
+    return;
+  }
 
+  for (auto owned_track : stream->tracks().std_vector()) {
+    base_->local_tracks_[owned_track->id().std_string()] = owned_track;
+  }
   base_->local_streams_[uuid] = stream;
-
-  desktop_capturer->Start(uint32_t(fps));
 
   result->Success(EncodableValue(params));
 }

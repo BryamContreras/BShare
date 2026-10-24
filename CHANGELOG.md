@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Fix LAN discovery across Wi-Fi/Ethernet adapters and Android multicast filtering; refresh now queries peers directly and stopped receivers withdraw their announcements.
+- Use exclusive HTTP listeners and show the actual destination and actionable connection errors instead of raw socket messages.
+- Add an optional Windows installer task for private LAN firewall access, scoped to BShare and the local subnet, with cleanup on uninstall.
+- Preserve real Android H.264 capabilities, prefer constrained baseline and recover once with bounded VP8 video when no frames arrive.
+- Apply encoder limits after negotiation, close replaced/abandoned peers, and stop the remote sender explicitly when closing a viewer.
+- Fix Android encoder worker/buffer cleanup and desktop capture startup failure reporting.
+- Add native H.264/VP8 streaming, failed-startup recovery, Android codec lifecycle and Windows firewall regression checks. Hardware coverage is recorded separately in `docs/STREAMING_COMPATIBILITY.md`.
+
 ## 1.0.3
 
 - Use GTK and the Linux desktop environment's standard window title bar and controls.

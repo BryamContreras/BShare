@@ -26,7 +26,7 @@ Current version: **1.0.3**
 - Flutter stable with Dart 3.12 or newer.
 - Platform toolchains for the targets you want to build.
 - Devices must be on the same LAN/WiFi.
-- Firewalls must allow the chosen BShare port, default `53317`, and multicast discovery on `53318`.
+- Firewalls must allow BShare's inbound TCP listener (default `53317`), UDP discovery on `53318`, and negotiated UDP ports for screen/camera video. The Windows installer offers optional access limited to private local networks; see [network troubleshooting](docs/STREAMING_COMPATIBILITY.md) and [firewall setup](docs/RELEASE.md#windows).
 
 ## Run
 
@@ -42,8 +42,9 @@ Version tags such as `v1.0.3` build and publish individual installer files in
 ARM64 Android APKs, a Windows installer, Linux DEB/RPM packages, and macOS ARM64
 and x64 DMGs. The build jobs upload each installer directly to a draft Release;
 after all builds pass, the workflow publishes the individual files and checksums.
-It does not generate ZIP artifacts. Pushes to `main` run the quality gate without
-building installers. This repository is open source under the MIT License;
+It does not generate ZIP installer artifacts. Pushes and pull requests run the
+quality gate plus native streaming verification on Windows and Linux and an
+Android release compilation. These verification builds do not publish installers. This repository is open source under the MIT License;
 dependency licenses remain in their respective third-party directories.
 
 Product and installer metadata use **BShare**. Android uses a permanent signing

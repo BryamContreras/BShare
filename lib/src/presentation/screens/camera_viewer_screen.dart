@@ -7,6 +7,7 @@ import 'package:bshare/src/infrastructure/services/android_screen_awake_service.
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
+import 'package:bshare/src/presentation/localization/video_connection_localizations.dart';
 import 'package:bshare/src/presentation/localization/camera_viewer_localizations.dart';
 import 'package:bshare/src/presentation/navigation/app_navigation.dart';
 import 'package:bshare/src/presentation/widgets/orientation_aware_video_view.dart';
@@ -71,7 +72,8 @@ class _FocusedCameraViewerState extends ConsumerState<FocusedCameraViewer> {
       _closing == null &&
       _service.source == VideoShareSource.camera &&
       _service.state.value.mode == ScreenShareMode.watching &&
-      _service.state.value.error == null;
+      _service.state.value.error == null &&
+      !_service.state.value.awaitingVideo;
 
   @override
   void initState() {
@@ -240,9 +242,10 @@ class _FocusedCameraViewerState extends ConsumerState<FocusedCameraViewer> {
                       valueListenable: _service.state,
                       builder: (context, state, _) {
                         final failed = _failed || state.error != null;
+                        final connecting = _opening || state.awaitingVideo;
                         final ended =
                             !_opening && state.mode != ScreenShareMode.watching;
-                        if (!failed && !ended && !_opening) {
+                        if (!failed && !ended && !connecting) {
                           return const SizedBox.shrink();
                         }
                         return Center(
@@ -251,7 +254,7 @@ class _FocusedCameraViewerState extends ConsumerState<FocusedCameraViewer> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (_opening && !failed)
+                                if (connecting && !failed)
                                   const CircularProgressIndicator(
                                     color: Colors.white,
                                   )
@@ -263,13 +266,15 @@ class _FocusedCameraViewerState extends ConsumerState<FocusedCameraViewer> {
                                   ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  l10n.cameraViewerText(
-                                    failed
-                                        ? 'failed'
-                                        : _opening
-                                        ? 'connecting'
-                                        : 'ended',
-                                  ),
+                                  state.failure != null
+                                      ? l10n.videoConnectionError(state)
+                                      : l10n.cameraViewerText(
+                                          failed
+                                              ? 'failed'
+                                              : connecting
+                                              ? 'connecting'
+                                              : 'ended',
+                                        ),
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     color: Colors.white,

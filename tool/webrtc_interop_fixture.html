@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>BShare WebRTC interoperability fixture</title>
+<canvas id="pattern" width="640" height="360"></canvas>
+<script>
+// Synthetic media only: this fixture never opens a camera or microphone.
+const canvas = document.getElementById('pattern');
+const context = canvas.getContext('2d');
+let animation;
+let stream;
+let peer;
+let stopped = false;
+let offerCount = 0;
+let receiving = false;
+let remoteVideo;
+let verifySyntheticPattern = false;
+let analysisCanvas;
+const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+async function report(value) {
+  await fetch('/report', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(value),
+  });
+}
+
+function draw() {
+  context.fillStyle = '#12324a';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = '#efb841';
+  context.beginPath();
+  context.arc(320 + Math.sin(performance.now() / 600) * 180, 180, 50, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = 'white';
+  context.font = '24px sans-serif';
+  context.fillText('BShare synthetic interoperability fixture', 25, 35);
+  animation = requestAnimationFrame(draw);
+}
+
+async function answer(job) {
+  offerCount++;
+  if (peer) peer.close();
+  if (stream) stream.getTracks().forEach(track => track.stop());
+  peer = new RTCPeerConnection({iceServers: []});
+  stream = canvas.captureStream(15);
+  for (const track of stream.getTracks()) peer.addTrack(track, stream);
+  // Model a peer supporting only this codec. An answerer's preferences alone
+  // may leave the sender using the remote offer's first mutually supported
+  // codec, so preserve only the requested video payloads in its remote offer.
+  const lines = job.offer.sdp.split(/\r?\n/);
+  const allowed = new Set(lines.flatMap(line => {
+    const match = line.match(/^a=rtpmap:(\d+)\s+([^/]+)\//);
+    return match && match[2].toLowerCase() === job.codec.toLowerCase() ? [match[1]] : [];
+  }));
+  if (!allowed.size) throw new Error(`Native viewer did not offer ${job.codec}`);
+  let video = false;
+  const filtered = lines.flatMap(line => {
+    if (line.startsWith('m=')) video = line.startsWith('m=video ');
+    if (!video) return [line];
+    if (line.startsWith('m=video ')) {
+      const parts = line.split(' ');
+      return [[...parts.slice(0, 3), ...parts.slice(3).filter(value => allowed.has(value))].join(' ')];
+    }
+    const payload = line.match(/^a=(?:rtpmap|fmtp|rtcp-fb):(\d+)/);
+    return payload && !allowed.has(payload[1]) ? [] : [line];
+  });
+  await peer.setRemoteDescription({...job.offer, sdp: filtered.join('\r\n')});
+  const transceiver = peer.getTransceivers().find(value => value.receiver.track.kind === 'video');
+  const codecs = RTCRtpSender.getCapabilities('video').codecs;
+  const selected = codecs.filter(codec => codec.mimeType.toLowerCase() === `video/${job.codec.toLowerCase()}`);
+  if (!selected.length) throw new Error(`Browser does not support ${job.codec}`);
+  transceiver.setCodecPreferences(selected);
+  if (job.stall) await transceiver.sender.replaceTrack(null);
+  await peer.setLocalDescription(await peer.createAnswer());
+  const deadline = performance.now() + 8000;
+  while (peer.iceGatheringState !== 'complete' && performance.now() < deadline) await pause(20);
+  await fetch(`/answer/${job.id}`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({answer: peer.localDescription.toJSON()}),
+  });
+  await report({event: 'answered', offerCount, codec: job.codec, stall: job.stall});
+}
+
+async function monitor() {
+  while (!stopped) {
+    if (peer) {
+      const observedPeer = peer;
+      let reports;
+      try { reports = [...(await observedPeer.getStats()).values()]; }
+      catch (error) {
+        if (!stopped && observedPeer === peer) await report({event: 'stats-error', message: String(error)});
+        await pause(100);
+        continue;
+      }
+      if (stopped || observedPeer !== peer) continue;
+      const video = reports.find(value => value.type === (receiving ? 'inbound-rtp' : 'outbound-rtp') && value.kind === 'video');
+      const audio = reports.find(value => value.type === 'inbound-rtp' && value.kind === 'audio');
+      const remote = reports.find(value => value.type === 'remote-inbound-rtp' && value.kind === 'video');
+      const codec = reports.find(value => value.id === video?.codecId);
+      await report({event: 'stats', timestampMs: performance.now(), offerCount, connectionState: peer.connectionState,
+        framesEncoded: video?.framesEncoded ?? 0, packetsSent: video?.packetsSent ?? 0,
+        bytesSent: video?.bytesSent ?? 0, remotePacketsLost: remote?.packetsLost,
+        codec: codec?.mimeType, frameWidth: video?.frameWidth, frameHeight: video?.frameHeight,
+        ...(receiving ? {framesDecoded: video?.framesDecoded ?? 0,
+          bytesReceived: video?.bytesReceived ?? 0, packetsReceived: video?.packetsReceived ?? 0,
+          firstFrameRendered: remoteVideo.videoWidth > 0 && remoteVideo.readyState >= 2,
+          audioPacketsReceived: audio?.packetsReceived ?? 0,
+          audioSamplesReceived: audio?.totalSamplesReceived ?? 0,
+          audioEnergy: audio?.totalAudioEnergy ?? 0,
+          ...(verifySyntheticPattern ? {syntheticPatternPresent: hasSyntheticPattern()} : {})} : {})});
+    }
+    await pause(500);
+  }
+}
+
+function hasSyntheticPattern() {
+  if (!remoteVideo || remoteVideo.readyState < 2) return false;
+  if (!analysisCanvas) {
+    analysisCanvas = document.createElement('canvas');
+    analysisCanvas.width = 64;
+    analysisCanvas.height = 36;
+  }
+  const pixels = analysisCanvas.getContext('2d', {willReadFrequently: true});
+  pixels.drawImage(remoteVideo, 0, 0, 64, 36);
+  const data = pixels.getImageData(0, 0, 64, 36).data;
+  let yellow = 0, blue = 0;
+  for (let offset = 0; offset < data.length; offset += 4) {
+    const [red, green, blueChannel] = data.subarray(offset, offset + 3);
+    if (red > 160 && green > 90 && green < 230 && blueChannel < 120 && red > green * 1.05) yellow++;
+    if (blueChannel > 35 && blueChannel < 130 && red < 80 && green >= 25 && green < 110 && blueChannel > red * 1.2) blue++;
+  }
+  // Only retain a boolean; no captured frame or pixel array is sent or saved.
+  return yellow >= 3 && blue >= 230;
+}
+
+async function receive(configuration) {
+  receiving = true;
+  verifySyntheticPattern = configuration.verifySyntheticPattern === true;
+  remoteVideo = document.createElement('video');
+  remoteVideo.autoplay = true;
+  remoteVideo.muted = true;
+  remoteVideo.playsInline = true;
+  document.body.appendChild(remoteVideo);
+  peer = new RTCPeerConnection({iceServers: []});
+  peer.ontrack = event => {
+    if (event.track.kind !== 'video') return;
+    remoteVideo.srcObject = event.streams[0] || new MediaStream([event.track]);
+    remoteVideo.play().catch(error => report({event: 'playback-error', message: String(error)}));
+  };
+  const video = peer.addTransceiver('video', {direction: 'recvonly'});
+  const codecs = RTCRtpReceiver.getCapabilities('video').codecs.filter(value =>
+    value.mimeType.toLowerCase() === `video/${configuration.codec.toLowerCase()}`);
+  if (!codecs.length) throw new Error(`Browser does not support ${configuration.codec}`);
+  video.setCodecPreferences(codecs);
+  if (configuration.audio) peer.addTransceiver('audio', {direction: 'recvonly'});
+  await peer.setLocalDescription(await peer.createOffer());
+  const deadline = performance.now() + 8000;
+  while (peer.iceGatheringState !== 'complete' && performance.now() < deadline) await pause(20);
+  const response = await fetch('/source-offer', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(peer.localDescription.toJSON())});
+  const payload = await response.json();
+  if (!response.ok || !payload.answer) throw new Error(`Source offer failed: ${JSON.stringify(payload)}`);
+  await peer.setRemoteDescription(payload.answer);
+  offerCount++;
+  await report({event: 'receiving', codec: configuration.codec});
+}
+
+async function main() {
+  const configuration = await (await fetch('/configuration')).json();
+  if (configuration.role !== 'receiver') draw();
+  await report({event: 'ready', userAgent: navigator.userAgent,
+    codecs: RTCRtpSender.getCapabilities('video').codecs.map(value => value.mimeType)});
+  const monitoring = monitor();
+  try {
+    if (configuration.role === 'receiver') await receive(configuration);
+    while (!stopped) {
+      const job = await (await fetch('/next-offer')).json();
+      if (job.stop) break;
+      if (job.closeViewer) {
+        if (peer) peer.close();
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        peer = null;
+        stream = null;
+        await report({event: 'viewer-closed'});
+      }
+      if (job.offer) {
+        try { await answer(job); }
+        catch (error) {
+          await fetch(`/answer/${job.id}`, {method: 'POST',
+            body: JSON.stringify({error: String(error)})});
+          await report({event: 'error', message: String(error)});
+        }
+      }
+      await pause(80);
+    }
+  } finally {
+    stopped = true;
+    cancelAnimationFrame(animation);
+    if (peer) peer.close();
+    if (stream) stream.getTracks().forEach(track => track.stop());
+    await monitoring;
+    await report({event: 'closed', offerCount});
+  }
+}
+main().catch(error => report({event: 'fatal', message: String(error)}));
+</script>
+</html>

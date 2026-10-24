@@ -11,7 +11,8 @@ $installers = @(Get-ChildItem -LiteralPath $outputPath -Filter '*-windows-x64-se
 if ($installers.Count -ne 1) {
     throw "Expected one Windows installer, found $($installers.Count)."
 }
-$installPath = Join-Path ([System.IO.Path]::GetTempPath()) "bshare-installer-check-$([guid]::NewGuid())"
+# Spaces and apostrophes exercise the embedded helper's literal path handling.
+$installPath = Join-Path ([System.IO.Path]::GetTempPath()) "bshare installer 'quoted'-$([guid]::NewGuid())"
 # A stable AppId makes normal upgrades work. Do not let a local smoke test
 # upgrade and uninstall an existing installation belonging to its operator.
 $uninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B7BB9A02-7C54-4DD3-A239-3FA13514A93F}_is1'
@@ -33,6 +34,7 @@ $installLog = Join-Path $verificationPath 'install.log'
 $uninstallLog = Join-Path $verificationPath 'uninstall.log'
 $application = $null
 $uninstalled = $false
+$firewallNames = @()
 $startedAt = Get-Date
 $verification = [ordered]@{
     installer = $installers[0].Name
@@ -82,6 +84,10 @@ try {
         $verification.filesVerified++
     }
 
+    $verification.phase = 'verify-firewall'
+    & (Join-Path $PSScriptRoot 'test-firewall.ps1') -ProgramPath (Join-Path $installPath 'BShare.exe')
+    $verification.privateLanFirewallVerified = $true
+
     $verification.phase = 'launch'
     $application = Start-Process -FilePath (Join-Path $installPath 'BShare.exe') -WorkingDirectory $installPath -PassThru -RedirectStandardOutput (Join-Path $verificationPath 'application-stdout.log') -RedirectStandardError (Join-Path $verificationPath 'application-stderr.log')
     $verification.launched = $true
@@ -114,6 +120,15 @@ try {
     }
     Write-Host 'Installed BShare closed normally with exit code 0.'
 
+    $verification.phase = 'verify-trusted-uninstall-helper'
+    $configuration = & (Join-Path $installPath 'configure-firewall.ps1') -Mode Add -ProgramPath (Join-Path $installPath 'BShare.exe')
+    $firewallNames = @($configuration.rules)
+    '{"configured":true}' | Set-Content -LiteralPath (Join-Path $installPath 'bshare-firewall.json')
+    # The installed helper is writable by the current user. Uninstall must use
+    # its compiled payload, even if the standalone manual helper was modified.
+    "throw 'The uninstaller executed a mutable user script.'" |
+        Set-Content -LiteralPath (Join-Path $installPath 'configure-firewall.ps1')
+
     $verification.phase = 'uninstall'
     $uninstallerPath = Join-Path $installPath 'unins000.exe'
     $uninstallArguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=`"$uninstallLog`"")
@@ -125,6 +140,10 @@ try {
     if (Test-Path -LiteralPath (Join-Path $installPath 'BShare.exe')) {
         throw 'The uninstaller left the application executable behind.'
     }
+    if (@(Get-NetFirewallRule -Name $firewallNames -ErrorAction SilentlyContinue).Count -ne 0) {
+        throw 'The uninstaller left its firewall rules behind.'
+    }
+    $verification.uninstallerUsedEmbeddedFirewallPayload = $true
     $verification.uninstalled = $true
     $verification.phase = 'complete'
     $verification.passed = $true
@@ -143,6 +162,9 @@ try {
     }
     throw
 } finally {
+    if ($firewallNames.Count -gt 0) {
+        Get-NetFirewallRule -Name $firewallNames -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+    }
     # Only stop the exact process created by this smoke test if normal closing
     # failed. Never target other instances by application name.
     if ($null -ne $application -and -not $application.HasExited) {

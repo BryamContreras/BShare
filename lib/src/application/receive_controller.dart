@@ -421,8 +421,8 @@ class ReceiveController extends AsyncNotifier<ReceiveState> {
     server.fileReceptionEnabled = false;
     server.fileAccessHandler = null;
     server.onIdle = null;
-    await server.stop();
     await ref.read(discoveryProvider.notifier).stop();
+    await server.stop();
     await ref.read(directNetworkServiceProvider).stopLocalOnlyHotspot();
     await ref
         .read(androidBackgroundExecutionProvider)

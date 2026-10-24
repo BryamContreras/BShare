@@ -84,6 +84,43 @@ shortcut. CI verifies both defaults, then installs, opens, closes and uninstalls
 the app in an isolated directory. The installer retains BShare's existing AppId
 and is not Authenticode-signed.
 
+An additional unchecked option allows BShare on **private local networks**. It
+asks Windows for administrator approval only to configure the firewall; BShare
+itself continues to run as the current user. The rules apply only to that
+installation's `BShare.exe`, inbound TCP and UDP, and `LocalSubnet`. TCP covers
+the configurable HTTP listener; UDP covers discovery and negotiated WebRTC media
+ports. They do not apply on public networks, disable the firewall or override
+existing Block rules. A denied elevation or an explicit Block rule covering
+Private networks is reported instead of being treated as successful setup.
+Public-only Block rules are preserved and allow Private LAN setup to proceed.
+`network-setup.log` records the result in the installation folder.
+
+The elevated operation executes a payload embedded in the installer/uninstaller,
+not the editable `configure-firewall.ps1` in the user's installation directory.
+Its Windows firewall module is loaded from the system directory explicitly.
+The helper writes no files with elevated rights; the installer records its own
+state and status log with its original permissions.
+
+CI verifies the rules' program/profile/address/protocol filters, repeat setup,
+removal, Private block detection, and preservation of Public-only and unrelated
+restrictions. It also
+replaces the standalone helper before uninstall and checks that the embedded
+payload still removes its rules. Normal uninstall asks for
+administrator approval to remove rules when the option was configured. Silent
+installation leaves firewall setup to the administrator, who can run this from
+an elevated Windows PowerShell terminal (adjust the installation path):
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\BShare\configure-firewall.ps1" -Mode Add -ProgramPath "$env:LOCALAPPDATA\Programs\BShare\BShare.exe"
+```
+
+For manual setup, run `-Mode Remove` with the same path before uninstalling to
+remove only that installation's rules. The standalone helper does not create
+installer state files.
+On a trusted home LAN, select the Windows **Private** network profile; the
+installer does not change network classifications. If an existing Block rule is
+reported, review BShare's entries in Windows Defender Firewall before retrying.
+
 To build locally with Flutter, Visual Studio C++ tools and Inno Setup installed:
 
 ```powershell

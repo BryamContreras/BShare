@@ -71,10 +71,17 @@ class _Execution extends AndroidBackgroundExecutionService {
 }
 
 class _Discovery extends DiscoveryController {
+  final stopping = Completer<void>();
+  Completer<void>? stopGate;
+  int stops = 0;
   @override
   Future<void> start({bool advertise = false, String? ipOverride}) async {}
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async {
+    stops++;
+    if (!stopping.isCompleted) stopping.complete();
+    await stopGate?.future;
+  }
 }
 
 class _Server extends FileServer {
@@ -129,11 +136,13 @@ void main() {
   late ProviderContainer container;
   late _Storage storage;
   late _Execution execution;
+  late _Discovery discovery;
   late String directory;
   setUp(() {
     server = _Server();
     storage = _Storage();
     execution = _Execution();
+    discovery = _Discovery();
     directory = '/tmp';
     container = ProviderContainer(
       overrides: [
@@ -144,11 +153,24 @@ void main() {
           (ref) async => const NetworkSnapshot(ip: '127.0.0.1'),
         ),
         fileServerProvider.overrideWithValue(server),
-        discoveryProvider.overrideWith(_Discovery.new),
+        discoveryProvider.overrideWith(() => discovery),
       ],
     );
   });
   tearDown(() => container.dispose());
+
+  test('receiver withdraws its advertisement before closing HTTP', () async {
+    await container.read(receiveControllerProvider.future);
+    final controller = container.read(receiveControllerProvider.notifier);
+    await controller.startForVideoShare();
+    discovery.stopGate = Completer<void>();
+    final stopping = controller.stopIfScreenShareOnly();
+    await discovery.stopping.future;
+    expect(server.stops, 0);
+    discovery.stopGate!.complete();
+    expect(await stopping, isTrue);
+    expect(server.stops, 1);
+  });
 
   test(
     'denied storage never creates the destination or starts file reception',
@@ -252,6 +274,7 @@ void main() {
       expect(server.starts, 1);
       expect(execution.acquisitions, [BackgroundExecutionOwner.fileReceiving]);
       expect(await controller.stopIfScreenShareOnly(), isFalse);
+      expect(discovery.stops, 0);
       await controller.stop(force: true);
     },
   );

@@ -61,6 +61,17 @@ jobs:
         run: xvfb-run -a python3 test/native/test_linux_native_decorations.py
       - name: Windows messenger shutdown ownership
         run: python3 third_party/flutter_webrtc/test/native/test_windows_messenger_lifecycle.py
+      - name: Desktop screen capture startup and cleanup
+        run: python3 third_party/flutter_webrtc/test/native/test_desktop_capture_startup.py
+      - name: Set up Java for Android native regression checks
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android video codec and encoder lifecycle
+        run: |
+          python3 third_party/flutter_webrtc/test/native/test_android_video_codec_factories.py
+          python3 third_party/flutter_webrtc/test/native/test_android_video_encoder_lifecycle.py
 
   windows:
     name: Windows installer

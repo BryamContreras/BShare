@@ -38,24 +38,19 @@ public class CustomVideoEncoderFactory implements VideoEncoderFactory {
     @Nullable
     @Override
     public VideoEncoder createEncoder(VideoCodecInfo videoCodecInfo) {
-        if(forceSWCodec) {
+        if (forceSWCodec || VideoCodecSupport.requiresSoftware(videoCodecInfo, forceSWCodecs)) {
             return softwareVideoEncoderFactory.createEncoder(videoCodecInfo);
         }
-
-        if(!forceSWCodecs.isEmpty()) {
-            if(forceSWCodecs.contains(videoCodecInfo.name)) {
-                return softwareVideoEncoderFactory.createEncoder(videoCodecInfo);
-            }
-        }
-
         return simulcastVideoEncoderFactoryWrapper.createEncoder(videoCodecInfo);
     }
 
     @Override
     public VideoCodecInfo[] getSupportedCodecs() {
-        if(forceSWCodec && forceSWCodecs.isEmpty()) {
+        if (forceSWCodec) {
             return softwareVideoEncoderFactory.getSupportedCodecs();
         }
-        return simulcastVideoEncoderFactoryWrapper.getSupportedCodecs();
+        return VideoCodecSupport.filterSoftwareOnlyFormats(
+                simulcastVideoEncoderFactoryWrapper.getSupportedCodecs(),
+                softwareVideoEncoderFactory.getSupportedCodecs(), forceSWCodecs);
     }
 }

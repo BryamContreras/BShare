@@ -11,26 +11,42 @@ import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/camera_capture_lifecycle_gate.dart';
 import 'package:bshare/src/infrastructure/services/file_server.dart';
 import 'package:bshare/src/infrastructure/services/permission_request_coordinator.dart';
+import 'package:bshare/src/infrastructure/services/video_sdp_policy.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:uuid/uuid.dart';
 
 enum ScreenShareMode { idle, sharing, watching }
 
 enum VideoShareSource { screen, camera }
+
+enum VideoConnectionFailure {
+  connectionRefused,
+  connectionTimeout,
+  signaling,
+  network,
+  video,
+}
 
 class ScreenShareState {
   const ScreenShareState({
     required this.mode,
     this.status = 'Idle',
     this.error,
+    this.awaitingVideo = false,
+    this.failure,
+    this.endpoint,
   });
 
   final ScreenShareMode mode;
   final String status;
   final String? error;
+  final bool awaitingVideo;
+  final VideoConnectionFailure? failure;
+  final String? endpoint;
 }
 
 class ScreenShareService with WidgetsBindingObserver {
@@ -44,13 +60,15 @@ class ScreenShareService with WidgetsBindingObserver {
     AndroidCameraExecutionService? cameraExecution,
     PermissionRequestCoordinator? permissionCoordinator,
     Future<void> Function(bool enabled)? audioRecordingGate,
+    this.videoStartupTimeout = const Duration(seconds: 25),
+    this.iceGatheringTimeout = const Duration(seconds: 10),
     this.onSharingStopped,
   }) : _dio =
            signalingClient ??
            Dio(
              BaseOptions(
                connectTimeout: const Duration(seconds: 15),
-               receiveTimeout: const Duration(seconds: 20),
+               receiveTimeout: const Duration(seconds: 35),
              ),
            ),
        localRenderer = localRenderer ?? RTCVideoRenderer(),
@@ -62,13 +80,14 @@ class ScreenShareService with WidgetsBindingObserver {
            audioRecordingGate ?? Helper.setAndroidAudioRecording,
        _peerConnectionFactory = peerConnectionFactory ?? _createLanPeer;
 
-  static const String _screenCodec = 'H264';
   static const Duration _metadataPollInterval = Duration(milliseconds: 500);
   static const Duration _androidForegroundServiceSettleDelay = Duration(
     milliseconds: 650,
   );
 
   final AppLogger _logger;
+  final Duration videoStartupTimeout;
+  final Duration iceGatheringTimeout;
   final AndroidScreenShareExecutionService _screenShareExecution;
   final AndroidCameraExecutionService _cameraExecution;
   final PermissionRequestCoordinator _permissions;
@@ -94,6 +113,9 @@ class ScreenShareService with WidgetsBindingObserver {
   ScreenCaptureSettings _captureSettings = const ScreenCaptureSettings();
   ScreenCaptureSettings get captureSettings => _captureSettings;
   final Map<RTCPeerConnection, RTCRtpSender> _videoSenders = {};
+  final Set<RTCRtpSender> _compatibilitySenders = {};
+  final Map<String, RTCPeerConnection> _remoteViewers = {};
+  final Map<String, Future<void>> _remoteViewerOperations = {};
   final Map<RTCPeerConnection, RTCRtpSender> _cameraAudioSenders = {};
   MediaStream? _cameraAudioStream;
   bool _cameraMicrophoneEnabled = false;
@@ -121,12 +143,19 @@ class ScreenShareService with WidgetsBindingObserver {
   RTCPeerConnection? _viewerPeer;
   Timer? _metadataPollTimer;
   Timer? _viewerStatsTimer;
+  Timer? _viewerStartupTimer;
+  bool _viewerHasVideo = false;
+  bool _viewerCompatibility = false;
+  RTCIceConnectionState? _viewerIceState;
+  String? _viewerId;
+  Uri? _viewerStopUri;
   CancelToken? _viewerRequests;
   Future<void>? _initializing;
   Future<void>? _startingShare;
   Future<void>? _watching;
   DeviceInfo? _watchedDevice;
   Future<void>? _stoppingFuture;
+  Future<void>? _viewerStopping;
   Future<void>? _disposing;
   final Expando<Future<void>> _closingPeers = Expando<Future<void>>();
   final Map<RTCPeerConnection, void Function()> _iceWaitCancellations = {};
@@ -142,12 +171,38 @@ class ScreenShareService with WidgetsBindingObserver {
   ui.Size? _lastAndroidViewSize;
   int _screenGeneration = 0;
   bool _initialized = false;
-  bool _reconnectingViewer = false;
+  int? _viewerReconnectSession;
+  bool get _reconnectingViewer => _viewerReconnectSession == _session;
   bool _stopping = false;
 
   void _setState(ScreenShareMode mode, String status, [String? error]) {
     if (_disposed) return;
     state.value = ScreenShareState(mode: mode, status: status, error: error);
+  }
+
+  void _setViewerConnecting({bool compatibility = false}) {
+    if (_disposed) return;
+    state.value = ScreenShareState(
+      mode: ScreenShareMode.watching,
+      status: compatibility
+          ? 'Retrying compatible video...'
+          : 'Connecting to ${_source.name} share...',
+      awaitingVideo: true,
+    );
+  }
+
+  void _markViewerVideoReady() {
+    if (_viewerPeer == null ||
+        remoteRenderer.srcObject == null ||
+        _viewerHasVideo ||
+        _disposed ||
+        _stopping) {
+      return;
+    }
+    _viewerHasVideo = true;
+    _viewerStartupTimer?.cancel();
+    _viewerStartupTimer = null;
+    _setState(ScreenShareMode.watching, 'Watching remote ${_source.name}');
   }
 
   /// Indicates that the compact preview has been replaced by the focused view.
@@ -180,6 +235,7 @@ class ScreenShareService with WidgetsBindingObserver {
         'Remote screen renderer received its first frame '
         '(${value.width.toInt()}x${value.height.toInt()})',
       );
+      _markViewerVideoReady();
     };
     remoteRenderer.onResize = () {
       final value = remoteRenderer.value;
@@ -187,6 +243,12 @@ class ScreenShareService with WidgetsBindingObserver {
         'Remote screen renderer size: '
         '${value.width.toInt()}x${value.height.toInt()}',
       );
+      // Some native renderers emit first-frame only once per texture lifetime.
+      if (value.width > 0 &&
+          value.height > 0 &&
+          remoteRenderer.srcObject != null) {
+        _markViewerVideoReady();
+      }
     };
     _initialized = true;
   }
@@ -376,12 +438,14 @@ class ScreenShareService with WidgetsBindingObserver {
           });
         };
         server.cameraMetadataHandler = _screenMetadata;
+        server.cameraViewerStopHandler = _stopRemoteViewer;
         server.cameraAllowedRemoteSubnets = allowedRemoteSubnets == null
             ? null
             : List.unmodifiable(allowedRemoteSubnets);
       } else {
         server.screenOfferHandler = _answerOffer;
         server.screenMetadataHandler = _screenMetadata;
+        server.screenViewerStopHandler = _stopRemoteViewer;
         _startAndroidMetricsObserver();
       }
       _screenGeneration++;
@@ -879,7 +943,52 @@ class ScreenShareService with WidgetsBindingObserver {
         message.contains('mediaProjection');
   }
 
-  Future<Map<String, dynamic>> _answerOffer(Map<String, dynamic> offer) async {
+  String? _remoteViewerId(Map<String, dynamic> offer) {
+    final id = offer['viewerId'];
+    return id is String && RegExp(r'^[a-zA-Z0-9-]{16,64}$').hasMatch(id)
+        ? id
+        : null;
+  }
+
+  Future<T> _serializeRemoteViewer<T>(String id, Future<T> Function() action) {
+    final previous = _remoteViewerOperations[id] ?? Future<void>.value();
+    final result = previous.then((_) => action());
+    late final Future<void> settled;
+    settled = result
+        .then<void>((_) {}, onError: (Object error) {})
+        .whenComplete(() {
+          if (_remoteViewerOperations[id] == settled) {
+            _remoteViewerOperations.remove(id);
+          }
+        });
+    _remoteViewerOperations[id] = settled;
+    return result;
+  }
+
+  Future<void> _stopRemoteViewer(String id) =>
+      _serializeRemoteViewer(id, () async {
+        final peer = _remoteViewers[id];
+        if (peer != null) await _releaseSharingPeer(peer);
+      });
+
+  Future<Map<String, dynamic>> _answerOffer(Map<String, dynamic> offer) {
+    final id = _remoteViewerId(offer);
+    final session = _session;
+    Future<Map<String, dynamic>> answer() async {
+      _checkSession(session);
+      final previous = _remoteViewers[id];
+      if (previous != null) await _releaseSharingPeer(previous);
+      _checkSession(session);
+      return _answerOfferNow(offer, id);
+    }
+
+    return id == null ? answer() : _serializeRemoteViewer(id, answer);
+  }
+
+  Future<Map<String, dynamic>> _answerOfferNow(
+    Map<String, dynamic> offer,
+    String? viewerId,
+  ) async {
     final session = _session;
     final stream = _localStream;
     if (stream == null || _stopping || _sharingServer == null) {
@@ -888,6 +997,13 @@ class ScreenShareService with WidgetsBindingObserver {
 
     final peer = await _createPeer();
     _peers.add(peer);
+    if (viewerId != null) _remoteViewers[viewerId] = peer;
+    // An abandoned HTTP offer has no remote answer/ICE handshake. Dispose it
+    // even if the SDK never leaves the `new` peer state.
+    _sharingPeerDisconnectTimers[peer] = Timer(
+      const Duration(seconds: 50),
+      () => unawaited(_releaseSharingPeer(peer)),
+    );
     peer.onIceConnectionState = (state) {
       _logger.info('Screen share sender ICE state: $state');
     };
@@ -902,7 +1018,9 @@ class ScreenShareService with WidgetsBindingObserver {
         _checkSession(session);
         if (track.kind == 'video') {
           _videoSenders[peer] = sender;
-          await _configureLowLatencyVideoSender(sender);
+          if (offer['compatibilityMode'] == true) {
+            _compatibilitySenders.add(sender);
+          }
         }
       }
 
@@ -939,9 +1057,15 @@ class ScreenShareService with WidgetsBindingObserver {
       }
       final answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
+      _checkSession(session);
+      // Native senders may have no encodings before SDP is negotiated. Limits
+      // applied then are silently ignored by the desktop implementation.
+      final sender = _videoSenders[peer];
+      if (sender != null) await _configureLowLatencyVideoSender(sender);
       await _waitForIceGatheringComplete(peer);
       final local = await peer.getLocalDescription();
       _checkSession(session);
+      _requireLocalCandidates(local?.sdp ?? answer.sdp ?? '');
       return {
         'type': local?.type ?? answer.type,
         'sdp': _restrictLocalCandidates(local?.sdp ?? answer.sdp ?? ''),
@@ -977,7 +1101,7 @@ class ScreenShareService with WidgetsBindingObserver {
 
     _sharingPeerDisconnectTimers.remove(peer)?.cancel();
     _sharingPeerDisconnectTimers[peer] = Timer(
-      const Duration(seconds: 4),
+      const Duration(seconds: 15),
       () async {
         if (!_peers.contains(peer)) return;
         RTCPeerConnectionState? currentState;
@@ -1066,15 +1190,17 @@ class ScreenShareService with WidgetsBindingObserver {
     List<String>? allowedLocalIps,
   ) async {
     final session = ++_session;
-    _setState(
-      ScreenShareMode.watching,
-      'Connecting to ${source.name} share...',
-    );
+    _setViewerConnecting();
     await _stoppingFuture;
     if (!_isCurrentSession(session)) return;
     await _stopViewer();
     if (!_isCurrentSession(session)) return;
     _source = source;
+    _viewerCompatibility = false;
+    _viewerId = const Uuid().v4();
+    _viewerStopUri = device.baseUri.replace(
+      path: '/api/${source.name}/stop-viewer',
+    );
     _allowedLocalIps = allowedLocalIps;
     _configureBoundSignaling(allowedLocalIps, device.ip);
     _viewerRequests = CancelToken();
@@ -1082,15 +1208,15 @@ class ScreenShareService with WidgetsBindingObserver {
       await initialize();
       _checkSession(session);
       _startMetadataPolling(device, session);
-      final peer = await _connectViewerPeer(device, session);
+      final peer = await _connectViewerWithFallback(device, session);
       _checkSession(session);
-      _monitorViewerDecode(peer, session);
-      _setState(ScreenShareMode.watching, 'Watching remote ${source.name}');
+      _monitorViewerDecode(peer, device, session);
     } catch (error) {
-      if (!_isCurrentSession(session)) return;
-      await _stopViewer();
-      if (!_isCurrentSession(session)) return;
-      _setState(ScreenShareMode.idle, 'Could not connect', error.toString());
+      if (!_isCurrentSession(session)) {
+        await _viewerStopping;
+        return;
+      }
+      await _failViewer(session, _connectionFailure(error), error);
       rethrow;
     }
   }
@@ -1121,6 +1247,8 @@ class ScreenShareService with WidgetsBindingObserver {
     try {
       _checkSession(session);
       _viewerPeer = peer;
+      _viewerHasVideo = false;
+      _viewerIceState = null;
       await peer.addTransceiver(
         kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
         init: RTCRtpTransceiverInit(direction: TransceiverDirection.RecvOnly),
@@ -1134,9 +1262,16 @@ class ScreenShareService with WidgetsBindingObserver {
       peer.onIceConnectionState = (state) {
         _logger.info('Screen share viewer ICE state: $state');
         if (!_isCurrentSession(session) || _viewerPeer != peer) return;
+        _viewerIceState = state;
         if (state == RTCIceConnectionState.RTCIceConnectionStateClosed ||
             state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
-          unawaited(_handleRemoteEnded(_endedStatus));
+          unawaited(
+            _failViewer(
+              session,
+              VideoConnectionFailure.network,
+              StateError('WebRTC media connection failed: $state'),
+            ),
+          );
         }
       };
       peer.onTrack = (event) async {
@@ -1181,7 +1316,10 @@ class ScreenShareService with WidgetsBindingObserver {
         'offerToReceiveAudio': _source == VideoShareSource.camera ? 1 : 0,
       });
       final preferredOffer = RTCSessionDescription(
-        _preferVideoCodec(offer.sdp ?? '', _screenCodec),
+        VideoSdpPolicy.offer(
+          offer.sdp ?? '',
+          compatibility: _viewerCompatibility,
+        ),
         offer.type,
       );
       await peer.setLocalDescription(preferredOffer);
@@ -1189,16 +1327,19 @@ class ScreenShareService with WidgetsBindingObserver {
       final local = await peer.getLocalDescription();
 
       _checkSession(session);
+      _requireLocalCandidates(local?.sdp ?? preferredOffer.sdp ?? '');
       final response = await (_boundSignalingClient ?? _dio)
           .postUri<Map<String, dynamic>>(
             device.baseUri.replace(path: '/api/${_source.name}/offer'),
             cancelToken: _viewerRequests,
             data: {
               'type': local?.type ?? preferredOffer.type,
+              'viewerId': _viewerId,
+              if (_viewerCompatibility) 'compatibilityMode': true,
               'sdp': _restrictLocalCandidates(
-                _preferVideoCodec(
+                VideoSdpPolicy.offer(
                   local?.sdp ?? preferredOffer.sdp ?? '',
-                  _screenCodec,
+                  compatibility: _viewerCompatibility,
                 ),
               ),
             },
@@ -1214,11 +1355,18 @@ class ScreenShareService with WidgetsBindingObserver {
       final answerSdp = answer['sdp'] as String;
       _logger.info(
         'Screen share negotiated codec: '
-        '${_firstVideoCodec(answerSdp) ?? 'automatic'}',
+        '${VideoSdpPolicy.firstVideoCodec(answerSdp) ?? 'rejected'}',
       );
-      await peer.setRemoteDescription(
-        RTCSessionDescription(answerSdp, answer['type'] as String),
-      );
+      try {
+        if (VideoSdpPolicy.firstVideoCodec(answerSdp) == null) {
+          throw StateError('The sender rejected video negotiation');
+        }
+        await peer.setRemoteDescription(
+          RTCSessionDescription(answerSdp, answer['type'] as String),
+        );
+      } catch (error) {
+        throw _VideoNegotiationFailure(error);
+      }
       _checkSession(session);
       return peer;
     } catch (_) {
@@ -1228,22 +1376,78 @@ class ScreenShareService with WidgetsBindingObserver {
     }
   }
 
-  void _monitorViewerDecode(RTCPeerConnection peer, int session) {
+  Future<RTCPeerConnection> _connectViewerWithFallback(
+    DeviceInfo device,
+    int session,
+  ) async {
+    try {
+      return await _connectViewerPeer(device, session);
+    } catch (error) {
+      _checkSession(session);
+      final remoteCodecFailure =
+          error is DioException &&
+          error.response?.statusCode == HttpStatus.internalServerError &&
+          RegExp(
+            r'codec|video|m-line|media section|rtp',
+            caseSensitive: false,
+          ).hasMatch(error.response?.data.toString() ?? '');
+      if (_viewerCompatibility ||
+          (error is! _VideoNegotiationFailure && !remoteCodecFailure)) {
+        rethrow;
+      }
+      _logger.warn('Video negotiation failed; retrying VP8: $error');
+      _viewerCompatibility = true;
+      _setViewerConnecting(compatibility: true);
+      return _connectViewerPeer(device, session);
+    }
+  }
+
+  void _monitorViewerDecode(
+    RTCPeerConnection peer,
+    DeviceInfo device,
+    int session,
+  ) {
+    if (!_isCurrentSession(session) || _viewerPeer != peer) return;
     _viewerStatsTimer?.cancel();
-    var attempt = 0;
+    _viewerStartupTimer?.cancel();
+    if (!_viewerHasVideo) {
+      _viewerStartupTimer = Timer(videoStartupTimeout, () {
+        if (!_isCurrentSession(session) ||
+            _viewerPeer != peer ||
+            _viewerHasVideo) {
+          return;
+        }
+        final ice = _viewerIceState;
+        if (ice == RTCIceConnectionState.RTCIceConnectionStateChecking ||
+            ice == RTCIceConnectionState.RTCIceConnectionStateFailed) {
+          unawaited(
+            _failViewer(
+              session,
+              VideoConnectionFailure.network,
+              TimeoutException('No media connection; check the LAN firewall'),
+            ),
+          );
+        } else {
+          unawaited(_retryViewerVideo(device, session));
+        }
+      });
+    }
+    var samples = 0;
     Future<void> sample() async {
       if (!_isCurrentSession(session) || _viewerPeer != peer) return;
-      attempt++;
+      samples++;
       try {
-        final reports = await peer.getStats();
+        final reports = await peer.getStats().timeout(
+          const Duration(seconds: 5),
+        );
         if (!_isCurrentSession(session) || _viewerPeer != peer) return;
-        var foundInboundVideo = false;
         for (final report in reports) {
           if (report.type != 'inbound-rtp') continue;
           final values = report.values;
           final kind = values['kind'] ?? values['mediaType'];
           if (kind == 'audio') continue;
-          foundInboundVideo = true;
+          final codecId = values['codecId'];
+          final codec = reports.where((r) => r.id == codecId).firstOrNull;
           _logger.info(
             'Remote screen inbound video: '
             'bytes=${values['bytesReceived'] ?? '-'}, '
@@ -1251,20 +1455,84 @@ class ScreenShareService with WidgetsBindingObserver {
             'frames=${values['framesReceived'] ?? '-'}, '
             'decoded=${values['framesDecoded'] ?? '-'}, '
             'dropped=${values['framesDropped'] ?? '-'}, '
-            'codec=${values['codecId'] ?? '-'}',
+            'codec=${codec?.values['mimeType'] ?? codecId ?? '-'}, '
+            'decoder=${values['decoderImplementation'] ?? '-'}',
           );
+          if ((num.tryParse('${values['framesDecoded']}') ?? 0) > 0 &&
+              remoteRenderer.srcObject != null) {
+            _markViewerVideoReady();
+          }
         }
-        if (foundInboundVideo) return;
       } catch (error) {
         _logger.warn('Could not read screen viewer stats: $error');
-        return;
       }
-      if (attempt < 5 && _isCurrentSession(session) && _viewerPeer == peer) {
+      // A report with zero decoded frames is not a successful stream.
+      if (!_viewerHasVideo &&
+          samples < 12 &&
+          _isCurrentSession(session) &&
+          _viewerPeer == peer) {
         _viewerStatsTimer = Timer(const Duration(seconds: 2), sample);
       }
     }
 
-    _viewerStatsTimer = Timer(const Duration(seconds: 4), sample);
+    _viewerStatsTimer = Timer(const Duration(seconds: 2), sample);
+  }
+
+  Future<void> _retryViewerVideo(DeviceInfo device, int session) async {
+    if (!_isCurrentSession(session) || _reconnectingViewer) return;
+    if (_viewerCompatibility) {
+      await _failViewer(
+        session,
+        VideoConnectionFailure.video,
+        TimeoutException('No decoded video after the compatibility retry'),
+      );
+      return;
+    }
+    _viewerCompatibility = true;
+    _logger.warn('No video frames; retrying VP8 at up to 720p / 30 FPS');
+    await _reconnectViewer(device, session);
+  }
+
+  Future<void> _failViewer(
+    int session,
+    VideoConnectionFailure failure,
+    Object error,
+  ) async {
+    if (!_isCurrentSession(session)) return;
+    _logger.warn('Video viewer failed ($failure): $error');
+    final endpoint = error is DioException
+        ? error.requestOptions.uri.authority
+        : _watchedDevice?.baseUri.authority;
+    final stoppedSession = ++_session;
+    _watching = null;
+    _watchedDevice = null;
+    await _stopViewer();
+    if (!_isCurrentSession(stoppedSession)) return;
+    state.value = ScreenShareState(
+      mode: ScreenShareMode.idle,
+      status: 'Could not connect',
+      error: error.toString(),
+      failure: failure,
+      endpoint: endpoint,
+    );
+  }
+
+  VideoConnectionFailure _connectionFailure(Object error) {
+    if (error is DioException) {
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.sendTimeout) {
+        return VideoConnectionFailure.connectionTimeout;
+      }
+      if (error.type == DioExceptionType.connectionError) {
+        final cause = error.error;
+        return cause is SocketException &&
+                const [111, 61, 10061].contains(cause.osError?.errorCode)
+            ? VideoConnectionFailure.connectionRefused
+            : VideoConnectionFailure.network;
+      }
+    }
+    return VideoConnectionFailure.signaling;
   }
 
   void updateLocalScreenMetrics(double width, double height) {
@@ -1383,8 +1651,14 @@ class ScreenShareService with WidgetsBindingObserver {
       final generation = (metadata?['generation'] as num?)?.toInt();
       if (generation != null) {
         final previous = _lastRemoteGeneration;
-        _lastRemoteGeneration = generation;
-        if (previous != null && generation != previous) {
+        if (previous == null) {
+          _lastRemoteGeneration = generation;
+        } else if (generation != previous &&
+            _watching == null &&
+            !_reconnectingViewer) {
+          // Keep the old generation during startup. The next poll will pick
+          // it up after that offer finishes, without racing a second peer.
+          _lastRemoteGeneration = generation;
           await _reconnectViewer(device, session);
         }
       }
@@ -1415,21 +1689,28 @@ class ScreenShareService with WidgetsBindingObserver {
 
   Future<void> _reconnectViewer(DeviceInfo device, int session) async {
     if (_reconnectingViewer || !_isCurrentSession(session)) return;
-    _reconnectingViewer = true;
+    _viewerReconnectSession = session;
     try {
-      _logger.info('Reconnecting screen viewer after stream restart');
+      _logger.info('Reconnecting viewer (compatibility=$_viewerCompatibility)');
+      _setViewerConnecting(compatibility: _viewerCompatibility);
       await _stopViewer(keepMetadataPolling: true);
       _checkSession(session);
-      final peer = await _connectViewerPeer(device, session);
+      final peer = await _connectViewerWithFallback(device, session);
       _checkSession(session);
-      _monitorViewerDecode(peer, session);
+      _monitorViewerDecode(peer, device, session);
     } catch (error) {
       if (_isCurrentSession(session)) {
         _logger.warn('Screen viewer reconnect failed: $error');
-        await _handleRemoteEnded(_endedStatus);
+        await _failViewer(
+          session,
+          error is DioException
+              ? _connectionFailure(error)
+              : VideoConnectionFailure.video,
+          error,
+        );
       }
     } finally {
-      _reconnectingViewer = false;
+      if (_viewerReconnectSession == session) _viewerReconnectSession = null;
     }
   }
 
@@ -1551,17 +1832,33 @@ class ScreenShareService with WidgetsBindingObserver {
     try {
       final options = _captureSettings;
       final size = localRenderer.value;
-      final scale = options.scaleFor(size.width, size.height);
+      final compatibility = _compatibilitySenders.contains(sender);
+      var scale = options.scaleFor(size.width, size.height);
+      final maxFps = compatibility
+          ? options.frameRate.clamp(1, 30)
+          : options.frameRate;
+      final maxBitrate = compatibility
+          ? options.maxBitrate.clamp(1, 2500000)
+          : options.maxBitrate;
+      if (compatibility) {
+        final width = size.width;
+        final height = size.height;
+        final shorter = width < height ? width : height;
+        final longer = width > height ? width : height;
+        // Tall phone screens also need a long-edge cap; 720x1760 is heavier
+        // than 1280x720 despite both being called "720p" in settings.
+        for (final limit in [shorter / 720, longer / 1280]) {
+          if (limit.isFinite && limit > scale) scale = limit;
+        }
+      }
       final parameters = sender.parameters;
-      parameters.degradationPreference = WebRTC.platformIsAndroid
-          ? RTCDegradationPreference.MAINTAIN_FRAMERATE
-          : RTCDegradationPreference.MAINTAIN_RESOLUTION;
+      parameters.degradationPreference = RTCDegradationPreference.BALANCED;
       final encodings = parameters.encodings;
       if (encodings == null || encodings.isEmpty) {
         parameters.encodings = [
           RTCRtpEncoding(
-            maxBitrate: options.maxBitrate,
-            maxFramerate: options.frameRate,
+            maxBitrate: maxBitrate,
+            maxFramerate: maxFps,
             scaleResolutionDownBy: scale,
             priority: RTCPriorityType.high,
             networkPriority: RTCPriorityType.high,
@@ -1569,9 +1866,9 @@ class ScreenShareService with WidgetsBindingObserver {
         ];
       } else {
         for (final encoding in encodings) {
-          encoding.maxBitrate = options.maxBitrate;
+          encoding.maxBitrate = maxBitrate;
           encoding.minBitrate = null;
-          encoding.maxFramerate = options.frameRate;
+          encoding.maxFramerate = maxFps;
           encoding.scaleResolutionDownBy = scale;
           encoding.priority = RTCPriorityType.high;
           encoding.networkPriority = RTCPriorityType.high;
@@ -1584,56 +1881,6 @@ class ScreenShareService with WidgetsBindingObserver {
     } catch (error) {
       _logger.warn('Screen share sender tuning failed: $error');
     }
-  }
-
-  String _preferVideoCodec(String sdp, String codec) {
-    if (sdp.isEmpty) return sdp;
-    final lines = sdp.split(RegExp(r'\r?\n'));
-    final videoIndex = lines.indexWhere((line) => line.startsWith('m=video '));
-    if (videoIndex == -1) return sdp;
-
-    final codecPattern = RegExp(
-      '^a=rtpmap:(\\d+)\\s+$codec/',
-      caseSensitive: false,
-    );
-    final preferredPayloads = <String>[];
-    for (final line in lines) {
-      final match = codecPattern.firstMatch(line);
-      if (match != null) preferredPayloads.add(match.group(1)!);
-    }
-    if (preferredPayloads.isEmpty) return sdp;
-
-    final videoParts = lines[videoIndex].split(' ');
-    if (videoParts.length <= 3) return sdp;
-    final header = videoParts.take(3);
-    final payloads = videoParts.skip(3).toList();
-    final orderedPayloads = [
-      ...preferredPayloads.where(payloads.contains),
-      ...payloads.where((payload) => !preferredPayloads.contains(payload)),
-    ];
-    lines[videoIndex] = [...header, ...orderedPayloads].join(' ');
-    return lines.join('\r\n');
-  }
-
-  String? _firstVideoCodec(String sdp) {
-    if (sdp.isEmpty) return null;
-    final lines = sdp.split(RegExp(r'\r?\n'));
-    final videoLine = lines
-        .where((line) => line.startsWith('m=video '))
-        .firstOrNull;
-    if (videoLine == null) return null;
-    final parts = videoLine.split(' ');
-    if (parts.length <= 3) return null;
-    final firstPayload = parts[3];
-    final codecPattern = RegExp(
-      '^a=rtpmap:${RegExp.escape(firstPayload)}\\s+([^/]+)/',
-      caseSensitive: false,
-    );
-    for (final line in lines) {
-      final match = codecPattern.firstMatch(line);
-      if (match != null) return match.group(1)?.toUpperCase();
-    }
-    return null;
   }
 
   Future<void> _prepareCapture(int session) async {
@@ -1725,7 +1972,7 @@ class ScreenShareService with WidgetsBindingObserver {
     peer.onIceGatheringState = (state) {
       if (state == RTCIceGatheringState.RTCIceGatheringStateComplete) finish();
     };
-    timeout = Timer(const Duration(seconds: 4), finish);
+    timeout = Timer(iceGatheringTimeout, finish);
     // Recheck after installing the callback in case gathering just completed.
     if (peer.iceGatheringState ==
         RTCIceGatheringState.RTCIceGatheringStateComplete) {
@@ -1737,6 +1984,12 @@ class ScreenShareService with WidgetsBindingObserver {
       timeout.cancel();
       _iceWaitCancellations.remove(peer);
       peer.onIceGatheringState = null;
+    }
+  }
+
+  void _requireLocalCandidates(String sdp) {
+    if (!RegExp(r'^a=candidate:', multiLine: true).hasMatch(sdp)) {
+      throw StateError('WebRTC found no local network address for video');
     }
   }
 
@@ -1856,7 +2109,8 @@ class ScreenShareService with WidgetsBindingObserver {
   }
 
   Future<void> _disposePeer(RTCPeerConnection peer) async {
-    _videoSenders.remove(peer);
+    _remoteViewers.removeWhere((_, value) => value == peer);
+    _compatibilitySenders.remove(_videoSenders.remove(peer));
     _cameraAudioSenders.remove(peer);
     peer.onConnectionState = null;
     peer.onIceConnectionState = null;
@@ -1879,6 +2133,8 @@ class ScreenShareService with WidgetsBindingObserver {
   void _cancelViewerRequests() {
     _metadataPollTimer?.cancel();
     _metadataPollTimer = null;
+    _viewerStartupTimer?.cancel();
+    _viewerStartupTimer = null;
     _viewerStatsTimer?.cancel();
     _viewerStatsTimer = null;
     _viewerRequests?.cancel('Screen viewer stopped');
@@ -1894,20 +2150,57 @@ class ScreenShareService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _stopViewer({bool keepMetadataPolling = false}) async {
+  Future<void> _stopViewer({bool keepMetadataPolling = false}) {
+    final previous = _viewerStopping ?? Future<void>.value();
+    late final Future<void> operation;
+    operation = previous
+        .then((_) => _disposeViewer(keepMetadataPolling: keepMetadataPolling))
+        .whenComplete(() {
+          if (_viewerStopping == operation) _viewerStopping = null;
+        });
+    _viewerStopping = operation;
+    return operation;
+  }
+
+  Future<void> _disposeViewer({required bool keepMetadataPolling}) async {
+    _viewerStartupTimer?.cancel();
+    _viewerStartupTimer = null;
     _viewerStatsTimer?.cancel();
     _viewerStatsTimer = null;
     if (!keepMetadataPolling) {
       _cancelViewerRequests();
       _lastRemoteGeneration = null;
       remoteAspectRatio.value = null;
-      _boundSignalingClient?.close(force: true);
-      _boundSignalingClient = null;
     }
     final peer = _viewerPeer;
     _viewerPeer = null;
     await _detachRenderer(remoteRenderer);
     if (peer != null) await _closePeer(peer);
+    if (!keepMetadataPolling) {
+      final id = _viewerId;
+      final uri = _viewerStopUri;
+      _viewerId = null;
+      _viewerStopUri = null;
+      if (id != null && uri != null) {
+        try {
+          // Older releases have no stop endpoint; their ICE timeout still
+          // releases the sender. Stop must remain bounded on an offline LAN.
+          await (_boundSignalingClient ?? _dio).postUri<void>(
+            uri,
+            data: {'viewerId': id},
+            options: Options(
+              connectTimeout: const Duration(seconds: 2),
+              sendTimeout: const Duration(seconds: 2),
+              receiveTimeout: const Duration(seconds: 2),
+            ),
+          );
+        } catch (error) {
+          _logger.info('Remote viewer cleanup unavailable: $error');
+        }
+      }
+      _boundSignalingClient?.close(force: true);
+      _boundSignalingClient = null;
+    }
   }
 
   Future<void> _stopLocalStream() async {
@@ -1959,8 +2252,17 @@ class ScreenShareService with WidgetsBindingObserver {
   void _clearVideoHandlers(FileServer server) {
     server.screenOfferHandler = null;
     server.screenMetadataHandler = null;
+    server.screenViewerStopHandler = null;
     server.cameraOfferHandler = null;
     server.cameraMetadataHandler = null;
+    server.cameraViewerStopHandler = null;
     server.cameraAllowedRemoteSubnets = null;
   }
+}
+
+class _VideoNegotiationFailure implements Exception {
+  const _VideoNegotiationFailure(this.cause);
+  final Object cause;
+  @override
+  String toString() => 'Video negotiation failed: $cause';
 }

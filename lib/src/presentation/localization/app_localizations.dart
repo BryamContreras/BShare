@@ -212,6 +212,9 @@ class AppLocalizations {
           'Connecting to screen share...',
       'screenStatus.Watching remote screen': 'Watching remote screen',
       'screenStatus.Could not connect': 'Could not connect',
+      'screenStatus.Retrying compatible video...': 'Retrying compatible video…',
+      'screenStatus.Connecting to camera share...': 'Connecting to camera…',
+      'screenStatus.Watching remote camera': 'Watching camera',
     },
     'es': {
       'home': 'Inicio',
@@ -393,6 +396,10 @@ class AppLocalizations {
           'Conectando a la pantalla compartida...',
       'screenStatus.Watching remote screen': 'Viendo pantalla remota',
       'screenStatus.Could not connect': 'No se pudo conectar',
+      'screenStatus.Retrying compatible video...':
+          'Reintentando con video compatible…',
+      'screenStatus.Connecting to camera share...': 'Conectando con la cámara…',
+      'screenStatus.Watching remote camera': 'Viendo cámara',
     },
   };
 }

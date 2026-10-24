@@ -24,6 +24,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.content.pm.PackageManager
 import android.util.Base64
+import android.util.Log
 import android.view.WindowManager
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.FlutterEngine
@@ -49,6 +50,7 @@ class MainActivity : FlutterActivity() {
     private var viewerKeepsScreenOn = false
     private var cameraKeepsScreenOn = false
     private var cameraOriginalBrightness: Float? = null
+    private var discoveryMulticastLock: WifiManager.MulticastLock? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -65,6 +67,29 @@ class MainActivity : FlutterActivity() {
             }
         }
         handleSharedIntent(intent, notifyFlutter = false)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bshare/discovery").setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "acquireMulticast" -> {
+                        if (discoveryMulticastLock?.isHeld != true) {
+                            val wifi = applicationContext.getSystemService(WifiManager::class.java)
+                            val lock = wifi.createMulticastLock("BShare:discovery")
+                            lock.setReferenceCounted(false)
+                            lock.acquire()
+                            discoveryMulticastLock = lock
+                        }
+                        result.success(null)
+                    }
+                    "releaseMulticast" -> {
+                        releaseDiscoveryMulticast()
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            } catch (error: Exception) {
+                result.error("discovery_multicast_error", error.message, null)
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bshare/device").setMethodCallHandler { call, result ->
             when (call.method) {
                 "getDeviceName" -> result.success(deviceName())
@@ -212,6 +237,12 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun releaseDiscoveryMulticast() {
+        val lock = discoveryMulticastLock
+        discoveryMulticastLock = null
+        if (lock?.isHeld == true) lock.release()
+    }
+
     private fun usbNetworkAddresses(): List<Map<String, Any>> {
         val names = mutableSetOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -265,6 +296,11 @@ class MainActivity : FlutterActivity() {
             window.attributes = attributes
         }
         cameraOriginalBrightness = null
+        try {
+            releaseDiscoveryMulticast()
+        } catch (error: Exception) {
+            Log.w("BShare", "Could not release discovery multicast during shutdown", error)
+        }
         stopLocalOnlyHotspot()
         disconnectWifi()
         super.onDestroy()
