@@ -5,7 +5,7 @@ import os
 import threading
 import time
 
-from webrtc_interop_probe import find_browser, native_video_has_multiple_frames
+from webrtc_interop_probe import close_native_window, find_browser, native_video_has_multiple_frames
 from webrtc_native_sender_probe import launch_xvfb
 from webrtc_receive_probe import video_evidence
 
@@ -17,6 +17,12 @@ def sample(time, frames, codec='video/VP8', state='connected'):
 
 
 class VideoEvidenceTest(unittest.TestCase):
+    @unittest.skipIf(os.name == 'nt', 'X11 display selection is Linux-specific')
+    def test_native_close_uses_the_owned_capture_display(self):
+        with patch('webrtc_interop_probe.close_x11_window', return_value=True) as close:
+            self.assertTrue(close_native_window(1234, display_name=':91'))
+        close.assert_called_once_with(1234, ':91')
+
     @unittest.skipIf(os.name == 'nt', 'Xvfb uses Unix pipe readiness')
     def test_xvfb_waits_for_complete_display_number_line(self):
         writers, failures = [], []

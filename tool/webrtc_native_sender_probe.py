@@ -222,7 +222,8 @@ def main():
                     report['cleanupResponse'] = json_request(f'{control_origin}/stop', {}, timeout=20)
                 except (OSError, ValueError) as error:
                     report['cleanupError'] = str(error)
-                report['nativeCloseRequested'] = native is not None and close_native_window(native.pid)
+                report['nativeCloseRequested'] = native is not None and close_native_window(
+                    native.pid, display_name=env.get('DISPLAY'))
                 report['nativeExitCode'] = stop_process(native, timeout=20)
                 report['sourcePortClosed'] = port_closed(source_port)
                 report['controlPortClosed'] = port_closed(control_port)

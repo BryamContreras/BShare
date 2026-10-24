@@ -38,9 +38,9 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def close_native_window(pid: int) -> bool:
+def close_native_window(pid: int, display_name: str | None = None) -> bool:
     if os.name != 'nt':
-        return close_x11_window(pid)
+        return close_x11_window(pid, display_name)
     from ctypes import wintypes
     user32 = ctypes.WinDLL('user32', use_last_error=True)
     callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
@@ -78,7 +78,7 @@ def find_browser():
     return None
 
 
-def close_x11_window(pid: int) -> bool:
+def close_x11_window(pid: int, display_name: str | None = None) -> bool:
     """Request WM_DELETE_WINDOW only for windows owned by the fixture PID."""
     c = ctypes
     library = ctypes.util.find_library('X11')
@@ -88,7 +88,7 @@ def close_x11_window(pid: int) -> bool:
     display_type, window_type = c.c_void_p, c.c_ulong
     x.XOpenDisplay.argtypes = [c.c_char_p]
     x.XOpenDisplay.restype = display_type
-    display = x.XOpenDisplay(None)
+    display = x.XOpenDisplay(display_name.encode() if display_name else None)
     if not display:
         return False
     x.XDefaultRootWindow.argtypes = [display_type]
