@@ -7,6 +7,7 @@
 - Add an optional Windows installer task for private LAN firewall access, scoped to BShare and the local subnet, with cleanup on uninstall.
 - Preserve real Android H.264 capabilities, prefer constrained baseline and recover once with bounded VP8 video when no frames arrive.
 - Apply encoder limits after negotiation, close replaced/abandoned peers, and stop the remote sender explicitly when closing a viewer.
+- Refresh an unchanged Android screen at most once per second so a later viewer can receive its first frame without touching the phone; cancel idle refreshes when capture stops or rotates.
 - Fix Android encoder worker/buffer cleanup and desktop capture startup failure reporting.
 - Add native H.264/VP8 streaming, failed-startup recovery, Android codec lifecycle and Windows firewall regression checks. Hardware coverage is recorded separately in `docs/STREAMING_COMPATIBILITY.md`.
 

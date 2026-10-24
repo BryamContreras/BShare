@@ -20,9 +20,32 @@ Physical tests exposed an additional idle-screen defect: a later viewer waited
 and retried the codec. The updated Android capturer refreshes an unchanged valid
 texture at most once per second, preserves monotonic timestamps, and cancels its
 task on Stop, rotation/helper replacement and projection revocation. Its native
-regressions pass. The corrected APK is built, but physical revalidation is pending
-because the phone disconnected from ADB before installation. Windows verification
-is running in Actions. These pending checks are not recorded as passes.
+regressions pass. After installing the correction, three consecutive viewers of
+the untouched S22 screen received their first frame in 3.281, 2.757 and 2.280
+seconds. The native Linux receiver received its first frame in 3.31 seconds,
+without a codec retry. Portrait/landscape rotation also passed.
+
+The resource audit found three Java encoder workers surviving Stop after repeated
+viewers. WebRTC queries unused fallback encoders without necessarily releasing
+them. Metadata queries now avoid creating a worker before initialization or after
+release; rejected initialization also retires partial encoder state and its
+worker. The native regression has 224 checks and reproduces the old leak. On the
+updated APK, three H.264/VP8/H.264 viewers at 1080p/30 FPS left zero encoder workers
+after each viewer closed, in the same Android process. First frames arrived in
+4.314, 3.268 and 2.869 seconds. A subsequent camera session decoded about 30 FPS
+at an adapted 640×360 and also left zero encoder workers after its viewer closed.
+Normal source Stop removed the camera/projection services, capture textures,
+CPU/Wi-Fi locks and signaling listeners without force-stopping the app. Screen and
+camera preferences were restored to 1080p/30 FPS, with microphone and flash off.
+
+Windows Actions passes four production receiver cases, four diagnostic receiver
+cases and three native capture/encoder cases, with normal process exits and
+closed media/control ports. Installation, private LAN firewall scope, shortcuts
+and uninstallation also pass. The hosted Windows VM measured about 21 FPS with
+H.264 and 10 FPS with VP8 in these short synthetic capture tests; these are not
+measurements of the user's PC. Linux's final diagnostic close helper targets its
+own Xvfb display and passes the local receiver, failure and sender checks. The
+streaming workflow repeats native media and cleanup verification on each update.
 
 Binary hashes, measurements, cleanup and hardware limits are recorded in
 [streaming-compatibility-review.json](performance/streaming-compatibility-review.json).

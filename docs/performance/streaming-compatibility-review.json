@@ -1,17 +1,18 @@
 {
   "date": "2026-10-24",
-  "sourceRevision": "adf223d",
+  "sourceRevision": "ba9102f",
   "automated": {
     "flutterTests": 440,
     "flutterPassed": true,
     "dartAnalysis": "No issues",
-    "pythonToolTests": 42,
+    "pythonToolTests": 43,
     "nativeRegressions": [
       "Android codec factories",
       "Android encoder lifecycle",
       "Android screen capturer and static refresh across simulated API24/29/30/31/34/36",
       "desktop capture startup including hostile Windows min macro"
-    ]
+    ],
+    "androidEncoderLifecycleChecks": 224
   },
   "linux": {
     "reports": {
@@ -44,6 +45,24 @@
         "binarySha256": "a7b44e138630a869b69ec2d53de16f7187d37257775935c9cdde614864452019",
         "aotSha256": "32f8168164f4b14cce1bbcf1533831fd14f60cc78c2988a06c064f18dfc510be",
         "cases": 1
+      },
+      "interop-final-nativeclose-receiver": {
+        "passed": true,
+        "binarySha256": "a7b44e138630a869b69ec2d53de16f7187d37257775935c9cdde614864452019",
+        "aotSha256": "bfa4e02966036a9ea48d2e83a964a185bcc0a6359bfd402713a0c48f38d9d285",
+        "cases": 2
+      },
+      "interop-final-nativeclose-failure": {
+        "passed": true,
+        "binarySha256": "a7b44e138630a869b69ec2d53de16f7187d37257775935c9cdde614864452019",
+        "aotSha256": "bfa4e02966036a9ea48d2e83a964a185bcc0a6359bfd402713a0c48f38d9d285",
+        "cases": 1
+      },
+      "interop-final-nativeclose-sender-fixed": {
+        "passed": true,
+        "binarySha256": "a7b44e138630a869b69ec2d53de16f7187d37257775935c9cdde614864452019",
+        "aotSha256": "bfa4e02966036a9ea48d2e83a964a185bcc0a6359bfd402713a0c48f38d9d285",
+        "cases": 3
       }
     },
     "remainingProbeProcesses": [],
@@ -247,23 +266,553 @@
     ]
   },
   "androidCandidate": {
-    "apkSha256": "76ae3b6d86f8a33f2ee11f44f3175dae55a3e331c31fe2e99341ef6e45e030f7",
+    "apkSha256": "cf28db1d4a4ac5be139645f4a2976e24d00f2dbb23055bb48e0bd0042af217da",
     "abis": [
       "arm64-v8a"
     ],
     "bytes": 40494223,
+    "package": "com.bshare.bshare",
+    "versionCode": 2014,
+    "requestedFlutterBuildNumber": 14,
     "staticApkInspectionPassed": true,
-    "installed": false,
-    "staticScreenPhysicalVerification": "pending ADB reconnection"
+    "installed": true,
+    "physicalVerification": "Passed screen H264/VP8/H264 and camera H264; encoder workers returned to zero after each viewer and Stop without restarting the Android process."
   },
   "windows": {
-    "validation": "in progress",
-    "workflowUrl": "https://github.com/BryamContreras/BShare/actions/runs/40061583277"
+    "commit": "24bfc032eed34d648be553d71f205ec08bcd3e21",
+    "runId": 40062534594,
+    "jobId": 120778931129,
+    "url": "https://github.com/BryamContreras/BShare/actions/runs/40062534594/job/120778931129",
+    "conclusion": "success",
+    "firewallFilters": [
+      {
+        "rule": "BShare-LAN-3C02A386F187F65795B5F1DF-TCP",
+        "remoteAddress": [
+          "LocalSubnet"
+        ],
+        "localPort": [
+          "Any"
+        ],
+        "protocol": "TCP"
+      },
+      {
+        "rule": "BShare-LAN-3C02A386F187F65795B5F1DF-UDP",
+        "remoteAddress": [
+          "LocalSubnet"
+        ],
+        "localPort": [
+          "Any"
+        ],
+        "protocol": "UDP"
+      }
+    ],
+    "reports": {
+      "streaming-windows.json": {
+        "passed": true,
+        "binarySha256": "d0043299b8271f156c6b3c71671e6ad9e52c4cfd5fd482e57c3a41344a6f1825",
+        "cases": [
+          {
+            "codec": "H264",
+            "passed": true,
+            "decodedFrames": 30,
+            "firstFrameRendered": true,
+            "offerCount": 1,
+            "cleanupPassed": true,
+            "nativeExitCode": 0,
+            "durationSeconds": 12.14
+          },
+          {
+            "codec": "VP8",
+            "passed": true,
+            "decodedFrames": 30,
+            "firstFrameRendered": true,
+            "offerCount": 1,
+            "cleanupPassed": true,
+            "nativeExitCode": 0,
+            "durationSeconds": 5.03
+          },
+          {
+            "codec": "VP8",
+            "passed": true,
+            "decodedFrames": 30,
+            "firstFrameRendered": true,
+            "offerCount": 2,
+            "boundedCompatibilityRetry": true,
+            "cleanupPassed": true,
+            "nativeExitCode": 0,
+            "durationSeconds": 37.98
+          },
+          {
+            "codec": "VP8",
+            "passed": true,
+            "offerCount": 2,
+            "boundedCompatibilityRetry": true,
+            "boundedFailureReported": true,
+            "cleanupPassed": true,
+            "nativeExitCode": 0,
+            "durationSeconds": 55.14
+          }
+        ],
+        "aotSha256": "7dc5220418713a560d9d1deb5aa123583c577c75ace8a0382215aa7a0f5f0d8b"
+      },
+      "dist/windows/verification/result.json": {
+        "passed": true,
+        "binarySha256": null,
+        "installer": "BShare-1.0.3+3-windows-x64-setup.exe",
+        "phase": "complete",
+        "filesVerified": 28,
+        "installed": true,
+        "launched": true,
+        "mainWindowCreated": true,
+        "closeRequestAccepted": true,
+        "applicationExitCode": 0,
+        "applicationExitCodeHex": "0x00000000",
+        "uninstalled": true,
+        "cleanupForcedApplicationStop": false,
+        "startMenuShortcut": true,
+        "desktopShortcutUncheckedByDefault": true,
+        "privateLanFirewallVerified": true,
+        "applicationPid": 7616,
+        "uninstallerUsedEmbeddedFirewallPayload": true
+      },
+      "streaming-native-receiver-windows.json": {
+        "passed": true,
+        "binarySha256": "d0043299b8271f156c6b3c71671e6ad9e52c4cfd5fd482e57c3a41344a6f1825",
+        "cases": [
+          {
+            "codec": "H264",
+            "passed": true,
+            "decodedFrames": 29,
+            "firstFrameRendered": true,
+            "offerCount": 1,
+            "cleanupPassed": true,
+            "nativeExitCode": 0,
+            "durationSeconds": 4.88
+          },
+          {
+            "codec": "VP8",
+            "passed": true,
+            "decodedFrames": 30,
+            "firstFrameRendered": true,
+            "offerCount": 1,
+            "cleanupPassed": true,
+            "nativeExitCode": 0,
+            "durationSeconds": 4.39
+          },
+          {
+            "codec": "VP8",
+            "passed": true,
+            "decodedFrames": 30,
+            "firstFrameRendered": true,
+            "offerCount": 2,
+            "boundedCompatibilityRetry": true,
+            "cleanupPassed": true,
+            "nativeExitCode": 0,
+            "durationSeconds": 29.91
+          },
+          {
+            "codec": "VP8",
+            "passed": true,
+            "offerCount": 2,
+            "boundedCompatibilityRetry": true,
+            "boundedFailureReported": true,
+            "cleanupPassed": true,
+            "nativeExitCode": 0,
+            "durationSeconds": 53.98
+          }
+        ],
+        "aotSha256": "155f636f1cd39ef60ff6ab5ef3d8d3f6176d349f2d6a9ebad9bb74a8de8e4736"
+      },
+      "streaming-native-sender-windows.json": {
+        "passed": true,
+        "binarySha256": "d0043299b8271f156c6b3c71671e6ad9e52c4cfd5fd482e57c3a41344a6f1825",
+        "cases": [
+          {
+            "compatibilityMode": false,
+            "passed": true,
+            "decodedFrames": 240,
+            "cleanupPassed": true,
+            "durationSeconds": 14.11,
+            "requestedCodec": "H264",
+            "observedFramesPerSecond": 21.16,
+            "syntheticPatternObserved": true,
+            "probeExitCode": 0
+          },
+          {
+            "compatibilityMode": false,
+            "passed": true,
+            "decodedFrames": 112,
+            "cleanupPassed": true,
+            "durationSeconds": 14.28,
+            "requestedCodec": "VP8",
+            "observedFramesPerSecond": 9.91,
+            "syntheticPatternObserved": true,
+            "probeExitCode": 0
+          },
+          {
+            "compatibilityMode": true,
+            "passed": true,
+            "decodedFrames": 113,
+            "cleanupPassed": true,
+            "durationSeconds": 14.38,
+            "requestedCodec": "VP8",
+            "observedFramesPerSecond": 10.09,
+            "syntheticPatternObserved": true,
+            "compatibilitySizeWithinLimit": true,
+            "probeExitCode": 0
+          }
+        ],
+        "aotSha256": "155f636f1cd39ef60ff6ab5ef3d8d3f6176d349f2d6a9ebad9bb74a8de8e4736",
+        "nativeExitCode": 0,
+        "cleanupPassed": true,
+        "sourcePortClosed": true,
+        "controlPortClosed": true,
+        "temporaryProfileRemoved": true
+      }
+    }
   },
   "limits": [
     "Honor MagicOS 8 and the reported low-resource Windows PC are unavailable.",
     "Native API fixtures simulate platform behavior; they are not physical tests on every Android version.",
     "An idle screen frame count is not a video FPS benchmark. Camera FPS and audio counters describe this Wi-Fi session only.",
     "Audio sample receipt was verified without recording or assessing acoustic quality."
-  ]
+  ],
+  "androidStaticRefreshPhysical": {
+    "apkSha256": "76ae3b6d86f8a33f2ee11f44f3175dae55a3e331c31fe2e99341ef6e45e030f7",
+    "versionCode": 2014,
+    "screenSettingDuringCapture": "720p30",
+    "screenSettingRestored": "1080p30",
+    "cases": [
+      {
+        "scope": "Real BShare sender to browser receiver; stats only, muted playout",
+        "kind": "screen",
+        "requestedCodec": "H264",
+        "browser": "/usr/bin/brave-browser",
+        "compatibilityMode": false,
+        "passed": true,
+        "remoteViewerStopStatus": 200,
+        "browserMediaClosed": true,
+        "browserExitCode": -15,
+        "advancingVideo": true,
+        "continuousVideo": true,
+        "observedFramesPerSecond": 2.65,
+        "decodedFrames": 34,
+        "audioSamplesReceived": 0,
+        "cleanupPassed": true,
+        "durationSeconds": 17.02,
+        "temporaryProfileRemoved": true,
+        "case": "final-static-first-h264",
+        "firstFrameSeconds": 3.281,
+        "dimensions": [
+          "720x1544"
+        ]
+      },
+      {
+        "scope": "Real BShare sender to browser receiver; stats only, muted playout",
+        "kind": "screen",
+        "requestedCodec": "VP8",
+        "browser": "/usr/bin/brave-browser",
+        "compatibilityMode": true,
+        "passed": true,
+        "remoteViewerStopStatus": 200,
+        "browserMediaClosed": true,
+        "browserExitCode": -15,
+        "advancingVideo": true,
+        "continuousVideo": true,
+        "observedFramesPerSecond": 5.08,
+        "decodedFrames": 64,
+        "audioSamplesReceived": 0,
+        "cleanupPassed": true,
+        "durationSeconds": 16.47,
+        "temporaryProfileRemoved": true,
+        "case": "final-static-second-vp8",
+        "firstFrameSeconds": 2.757,
+        "dimensions": [
+          "597x1280"
+        ]
+      },
+      {
+        "scope": "Real BShare sender to browser receiver; stats only, muted playout",
+        "kind": "screen",
+        "requestedCodec": "H264",
+        "browser": "/usr/bin/brave-browser",
+        "compatibilityMode": false,
+        "passed": true,
+        "remoteViewerStopStatus": 200,
+        "browserMediaClosed": true,
+        "browserExitCode": -15,
+        "advancingVideo": true,
+        "continuousVideo": true,
+        "observedFramesPerSecond": 2.12,
+        "decodedFrames": 28,
+        "audioSamplesReceived": 0,
+        "cleanupPassed": true,
+        "durationSeconds": 17.03,
+        "temporaryProfileRemoved": true,
+        "case": "final-static-third-h264",
+        "firstFrameSeconds": 2.28,
+        "dimensions": [
+          "720x1544"
+        ]
+      },
+      {
+        "scope": "Real BShare sender to browser receiver; stats only, muted playout",
+        "kind": "screen",
+        "requestedCodec": "H264",
+        "browser": "/usr/bin/brave-browser",
+        "compatibilityMode": false,
+        "passed": true,
+        "remoteViewerStopError": "<urlopen error timed out>",
+        "browserMediaClosed": true,
+        "browserExitCode": -15,
+        "advancingVideo": true,
+        "continuousVideo": false,
+        "observedFramesPerSecond": 2.31,
+        "decodedFrames": 56,
+        "audioSamplesReceived": 0,
+        "cleanupPassed": true,
+        "durationSeconds": 31.77,
+        "temporaryProfileRemoved": true,
+        "case": "final-rotation-h264",
+        "firstFrameSeconds": 2.254,
+        "dimensions": [
+          "1544x720",
+          "720x1544"
+        ]
+      }
+    ],
+    "nativeLinux": {
+      "passed": true,
+      "decodedFrames": 4,
+      "firstFrameSeconds": 3.31,
+      "nativeCloseRequested": true,
+      "exitCode": 0,
+      "cleanupPassed": true,
+      "durationSeconds": 3.64,
+      "temporaryProfileRemoved": true
+    },
+    "cleanup": {
+      "recordedAtUtc": "2026-10-24T04:41:14.902039+00:00",
+      "package": "com.bshare.bshare",
+      "appForegroundServices": [],
+      "activeCameraClients": "[]",
+      "appProjectionActive": false,
+      "appWakeLocks": [],
+      "appMulticastLocks": [],
+      "accelerometerRotation": "0",
+      "userRotation": "0",
+      "version": [
+        "versionCode=2014 minSdk=24 targetSdk=36",
+        "versionName=1.0.3"
+      ],
+      "screenEndpoint": {
+        "closed": true,
+        "errorType": "URLError"
+      },
+      "cameraEndpoint": {
+        "closed": true,
+        "errorType": "URLError"
+      }
+    },
+    "workerLeakBeforeFix": {
+      "pid": "27130",
+      "threadCount": 47,
+      "mediaThreads": [
+        "27130 27786 CCodecWatchdog",
+        "27130 27787 CodecLooper",
+        "27130 27788 CodecLooper",
+        "27130 28166 BShareVideoEnco",
+        "27130 28399 BShareVideoEnco",
+        "27130 28599 BShareVideoEnco"
+      ]
+    }
+  },
+  "androidFinalPhysical": {
+    "recordedAtUtc": "2026-10-24T04:58:13.363267+00:00",
+    "nativeSourceCommit": "ba9102f",
+    "apkSha256": "cf28db1d4a4ac5be139645f4a2976e24d00f2dbb23055bb48e0bd0042af217da",
+    "package": "com.bshare.bshare",
+    "versionName": "1.0.3",
+    "versionCode": 2014,
+    "device": "Samsung Galaxy S22 Ultra SM-S908U, Android14/API34",
+    "transport": "Wi-Fi LAN",
+    "scope": "Physical Android sender to browser receivers; statistics only. No personal video/audio saved. Native Linux source-static fix was verified with preceding76ae artifact; lifetime-only delta validated here.",
+    "screenConfigured": "1080p30; no touch between successive H264/VP8/H264 viewers",
+    "cameraConfigured": "Rear and front1080p30; front switch during receiver then rear restored; actual encoded dimensions adapted to640x360 in this short run",
+    "cases": [
+      {
+        "case": "worker-fixed-first-h264",
+        "passed": true,
+        "codec": "H264",
+        "kind": "screen",
+        "compatibilityMode": false,
+        "firstFrameSeconds": 4.314,
+        "decodedFrames": 20,
+        "observedFramesPerSecond": 2.1,
+        "durationSeconds": 13.44,
+        "dimensionsObserved": [
+          "1080x2316"
+        ],
+        "remoteViewerStopStatus": 200,
+        "cleanupPassed": true
+      },
+      {
+        "case": "worker-fixed-second-vp8",
+        "passed": true,
+        "codec": "VP8",
+        "kind": "screen",
+        "compatibilityMode": true,
+        "firstFrameSeconds": 3.268,
+        "decodedFrames": 27,
+        "observedFramesPerSecond": 2.43,
+        "durationSeconds": 13.47,
+        "dimensionsObserved": [
+          "597x1280"
+        ],
+        "remoteViewerStopStatus": 200,
+        "cleanupPassed": true
+      },
+      {
+        "case": "worker-fixed-third-h264",
+        "passed": true,
+        "codec": "H264",
+        "kind": "screen",
+        "compatibilityMode": false,
+        "firstFrameSeconds": 2.869,
+        "decodedFrames": 19,
+        "observedFramesPerSecond": 1.86,
+        "durationSeconds": 14.26,
+        "dimensionsObserved": [
+          "1080x2316"
+        ],
+        "remoteViewerStopStatus": 200,
+        "cleanupPassed": true
+      },
+      {
+        "case": "worker-fixed-camera-h264",
+        "passed": true,
+        "codec": "H264",
+        "kind": "camera",
+        "compatibilityMode": false,
+        "firstFrameSeconds": 1.838,
+        "decodedFrames": 565,
+        "observedFramesPerSecond": 29.98,
+        "durationSeconds": 21.67,
+        "dimensionsObserved": [
+          "640x360"
+        ],
+        "remoteViewerStopStatus": 200,
+        "cleanupPassed": true
+      }
+    ],
+    "threads": {
+      "baseline": {
+        "recordedAtUtc": "2026-10-24T04:52:30.760876+00:00",
+        "pid": "7592",
+        "threadCount": 35,
+        "encoderThreads": [],
+        "screenTextureThreads": [],
+        "screenTextureThreadsNote": "Thread enumeration is a snapshot; final source Stop is checked separately."
+      },
+      "duringCameraEncoding": {
+        "recordedAtUtc": "2026-10-24T04:56:47.026349+00:00",
+        "pid": "7592",
+        "threadCount": 57,
+        "encoderThreads": [
+          "11120 BShareVideoEnco"
+        ],
+        "screenTextureThreads": []
+      },
+      "afterEachScreenViewer": [
+        {
+          "recordedAtUtc": "2026-10-24T04:55:09.424818+00:00",
+          "pid": "7592",
+          "threadCount": 44,
+          "encoderThreads": [],
+          "screenTextureThreads": []
+        },
+        {
+          "recordedAtUtc": "2026-10-24T04:55:23.480039+00:00",
+          "pid": "7592",
+          "threadCount": 44,
+          "encoderThreads": [],
+          "screenTextureThreads": []
+        },
+        {
+          "recordedAtUtc": "2026-10-24T04:55:38.304345+00:00",
+          "pid": "7592",
+          "threadCount": 44,
+          "encoderThreads": [],
+          "screenTextureThreads": [
+            "9180 main_texture_sc"
+          ]
+        }
+      ],
+      "afterScreenStop": {
+        "recordedAtUtc": "2026-10-24T04:55:56.357326+00:00",
+        "pid": "7592",
+        "threadCount": 44,
+        "encoderThreads": [],
+        "screenTextureThreads": []
+      },
+      "afterCameraViewer": {
+        "recordedAtUtc": "2026-10-24T04:57:03.318621+00:00",
+        "pid": "7592",
+        "threadCount": 47,
+        "encoderThreads": [],
+        "screenTextureThreads": []
+      },
+      "afterCameraStop": {
+        "recordedAtUtc": "2026-10-24T04:57:19.257411+00:00",
+        "pid": "7592",
+        "threadCount": 47,
+        "encoderThreads": [],
+        "screenTextureThreads": []
+      }
+    },
+    "cleanup": {
+      "recordedAtUtc": "2026-10-24T04:57:32.870490+00:00",
+      "package": "com.bshare.bshare",
+      "appForegroundServices": [],
+      "activeCameraClients": "[]",
+      "appProjectionActive": false,
+      "appWakeLocks": [],
+      "appMulticastLocks": [],
+      "accelerometerRotation": "0",
+      "userRotation": "0",
+      "version": [
+        "versionCode=2014 minSdk=24 targetSdk=36",
+        "versionName=1.0.3"
+      ],
+      "screenEndpoint": {
+        "closed": true,
+        "errorType": "URLError"
+      },
+      "cameraEndpoint": {
+        "closed": true,
+        "errorType": "URLError"
+      }
+    },
+    "cleanupMethod": "Normal remote stop-viewer followed by source UI Stop; no force-stop or app process restart. Same PID7592 throughout.",
+    "restoration": {
+      "screenResolution": "1080p",
+      "screenFps": 30,
+      "cameraRearResolution": "1080p",
+      "cameraFrontResolution": "1080p",
+      "cameraFps": 30,
+      "accelerometerRotation": 0,
+      "userRotation": 0,
+      "cameraSelected": "rear",
+      "flash": false,
+      "microphone": false,
+      "cameraPermission": "Granted Only this time; no permanent permission override",
+      "auditApp": "Preserved and stopped"
+    },
+    "ownedProbePidsRemaining": [],
+    "limitations": [
+      "This final run does not repeat audio; earlier artifact verified audio sample transport.",
+      "No Honor MagicOS8 physical device or low-resource Windows hardware available.",
+      "No USB connection test; user authorized Wi-Fi only."
+    ]
+  }
 }

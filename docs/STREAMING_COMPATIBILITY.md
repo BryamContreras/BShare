@@ -96,13 +96,24 @@ timestamp so WebRTC can accept the repeated image. It does not replay a texture
 before its first valid frame. Stop cancels the refresh task, and rotation moves
 it to the replacement capture surface.
 
-Physical verification of this correction is pending. It must include a viewer
-joining an untouched screen, a second viewer, Stop, rotation and resource cleanup.
+On the S22, three successive viewers of the untouched screen received their first
+frame in 3.281, 2.757 and 2.280 seconds. The native Linux viewer received it in
+3.31 seconds without retrying the codec, and portrait/landscape rotation passed.
+The resource audit then found unused fallback-encoder workers surviving Stop.
+Metadata queries now avoid creating those workers. A follow-up S22 test with the
+final APK at 1080p/30 FPS received the first frames in 4.314, 3.268 and 2.869 seconds
+and left zero encoder workers after every viewer closed, without restarting the
+Android process. A camera session also released its encoder worker on viewer Stop.
 The original Honor/Windows screenshots identify earlier HTTP signaling failures;
 this subsequently reproduced first-frame issue is separate evidence and does not
 establish the cause of those photographed errors.
 
 ## Validation and remaining hardware coverage
+
+Desktop automation uses GitHub's `windows-2022` runner and Ubuntu 22.04 with an
+isolated X11 display. Native Linux reception was also checked over Wi-Fi from the
+physical S22. These results do not establish capture support for every Wayland
+compositor or performance on the reported Windows PC.
 
 Regression tests cover network discovery, exclusive HTTP listeners, destination
 error reporting, SDP profiles/RTX/audio preservation, zero-frame recovery,
