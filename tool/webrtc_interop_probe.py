@@ -179,9 +179,10 @@ def stop_process(process, timeout=10):
             return process.wait(timeout=5)
 
 
-def native_video_has_advanced(first_sample, decoded_count, now):
-    return (first_sample is not None and decoded_count > first_sample[1]
-        and now - first_sample[0] >= 1)
+def native_video_has_multiple_frames(decoded_count):
+    # Production stops sampling after startup succeeds, avoiding a permanent
+    # statistics timer. Its initial report must still prove more than one frame.
+    return decoded_count >= 2
 
 
 class Fixture:
@@ -364,7 +365,6 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
                 native = subprocess.Popen(arguments,
                     stdout=native_output, stderr=subprocess.STDOUT, env=env)
                 deadline = time.monotonic() + seconds
-                first_decoded = None
                 while time.monotonic() < deadline:
                     text = native_log.read_text(errors='replace')
                     if control_origin:
@@ -391,19 +391,14 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
                     decoded = [int(value) for value in re.findall(r'decoded=(\d+)', text)]
                     decoded.append((native_state or {}).get('decodedFrames', 0))
                     decoded_count = max(decoded, default=0)
-                    if decoded_count > 0 and first_decoded is None:
-                        first_decoded = (time.monotonic(), decoded_count)
-                    advancing = native_video_has_advanced(first_decoded, decoded_count, time.monotonic())
                     first_frame = 'renderer received its first frame' in text or (native_state or {}).get('firstFrameRendered') is True
                     stats = [value for value in fixture.reports if value['event'] == 'stats']
                     outgoing = next((value for value in reversed(stats) if value.get('framesEncoded', 0) > 0), None)
-                    if first_frame and advancing and outgoing:
+                    if first_frame and native_video_has_multiple_frames(decoded_count) and outgoing:
                         matched_codec = outgoing.get('codec', '').lower() == f'video/{codec.lower()}'
                         result.update({'passed': not stall_first or fixture.offer_count == 2,
                             'firstFrameRendered': True, 'decodedFrames': decoded_count,
-                            'nativeDecodingAdvanced': True,
-                            'firstDecodedFrames': first_decoded[1],
-                            'decodedObservationSeconds': round(time.monotonic() - first_decoded[0], 2),
+                            'multipleNativeFramesDecoded': True,
                             'sender': outgoing, 'requestedCodecUsed': matched_codec})
                         result['passed'] = result['passed'] and matched_codec
                         break

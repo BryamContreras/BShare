@@ -354,6 +354,22 @@ public class ScreenCapturerTest {
     }
   }
   public static void main(String[] args) {
+    Fixture futureClock = new Fixture(34);
+    long futureTimestamp = System.nanoTime() + 3600000000000L;
+    org.webrtc.VideoFrame.Buffer futureBuffer = new org.webrtc.VideoFrame.Buffer();
+    futureClock.helper.emit(new org.webrtc.VideoFrame(futureBuffer, 0, futureTimestamp));
+    try {
+      java.lang.reflect.Field delivery = OrientationAwareScreenCapturer.class
+          .getDeclaredField("lastFrameDeliveryTimeNs");
+      delivery.setAccessible(true);
+      delivery.setLong(futureClock.capturer, System.nanoTime() - 1000000000L);
+    } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
+    android.os.SystemClock.now += 1000;
+    futureClock.helper.getHandler().runDelayedOnce();
+    assert futureClock.observer.timestamps.get(1) - futureTimestamp >= 1000000000L
+        : "Ahead-of-uptime source clock replay advanced too little for the frame-rate adapter";
+    assert futureBuffer.refs == 1;
+    futureClock.capturer.dispose();
     for (int sdk : new int[] {24, 31, 34, 36}) {
       Fixture idle = new Fixture(sdk);
       assert idle.helper.getHandler().delayedPending() == 1;

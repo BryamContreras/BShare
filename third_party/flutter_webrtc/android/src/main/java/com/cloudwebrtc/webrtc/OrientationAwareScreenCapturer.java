@@ -66,6 +66,7 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
     private volatile boolean hasCapturedFrame;
     private volatile long lastFrameTimeMs;
     private volatile long lastFrameTimestampNs;
+    private volatile long lastFrameDeliveryTimeNs;
 
     /**
      * Constructs a new Screen Capturer.
@@ -113,6 +114,9 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
             return;
         }
         numCapturedFrames++;
+        final long nowNs = System.nanoTime();
+        final long elapsedNs = Math.max(1, nowNs - lastFrameDeliveryTimeNs);
+        lastFrameDeliveryTimeNs = nowNs;
         hasCapturedFrame = true;
         lastFrameTimeMs = SystemClock.uptimeMillis();
         maybeUpdateCaptureFormatFromDisplay();
@@ -123,7 +127,9 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
             lastFrameTimestampNs = frame.getTimestampNs();
             capturerObserver.onFrameCaptured(frame);
         } else {
-            lastFrameTimestampNs = Math.max(System.nanoTime(), lastFrameTimestampNs + 1);
+            // Preserve the source clock domain: its timestamps may include
+            // suspend time and therefore be ahead of System.nanoTime().
+            lastFrameTimestampNs += elapsedNs;
             frame.getBuffer().retain();
             final VideoFrame refreshed = new VideoFrame(
                     frame.getBuffer(), frame.getRotation(), lastFrameTimestampNs);
