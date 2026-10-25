@@ -472,7 +472,7 @@
     }
   },
   "limits": [
-    "Honor MagicOS 8 and the reported low-resource Windows PC are unavailable.",
+    "At this revision the Honor MagicOS 8 and reported low-resource Windows PC were unavailable. Subsequent Honor/S22 physical coverage is recorded in honor-compatibility-review.json; the low-resource Windows PC remains untested.",
     "Native API fixtures simulate platform behavior; they are not physical tests on every Android version.",
     "An idle screen frame count is not a video FPS benchmark. Camera FPS and audio counters describe this Wi-Fi session only.",
     "Audio sample receipt was verified without recording or assessing acoustic quality."
@@ -814,5 +814,6 @@
       "No Honor MagicOS8 physical device or low-resource Windows hardware available.",
       "No USB connection test; user authorized Wi-Fi only."
     ]
-  }
+  },
+  "subsequentPhysicalReview": "honor-compatibility-review.json"
 }

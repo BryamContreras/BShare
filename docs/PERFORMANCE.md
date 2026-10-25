@@ -1,8 +1,67 @@
 # Performance and lifecycle checks
 
+## Honor, S22 and Linux physical validation — 2026-10-24
+
+Two Android 14 phones, Honor WDY-LX3/MagicOS 8 and S22 Ultra/SM-S908U, ran the same
+production 1.0.3 APK, version code 2014, SHA-256
+`cf28db1d4a4ac5be139645f4a2976e24d00f2dbb23055bb48e0bd0042af217da`.
+H.264 screen sharing passed in both directions with portrait/landscape/portrait
+rotation: Honor output was 720×1612 ↔ 1612×720, and S22 output was
+1080×2316 ↔ 2316×1080. Android's Qualcomm and MediaTek decoders supplied evidence
+of real decoding. Static screen samples are not camera FPS benchmarks.
+
+The Linux production receiver rendered Honor screen video in 2.806 s and S22
+screen video in 4.808 s. S22 rotation also passed in that Linux receiver. The
+production Linux camera UI discovered and viewed the Honor automatically without
+manual IP entry or Refresh. A synthetic VP8 source was also rendered on the Honor;
+its producer recorded 1777 encoded frames, adapted up to 1280×720, and used a
+24 FPS cap with one offer. The Honor's decoded-frame count was unavailable for
+that VP8 case, so the producer count must not be presented as receiver throughput.
+
+An initial Honor camera run decoded 2550 frames at 28.72 FPS, then lost its LAN
+route after DHCP addresses changed; frames stopped advancing at 87.542 s. That
+trial is marked failed, including its unsuccessful remote Stop. After reconnecting,
+the completed camera/control/microphone trial ran 146.38 s, decoded 2146 frames,
+measured 15.03 FPS on average and adapted up to 1920×1080. Rear/front/rear switching,
+rear flash on/off and preview hiding preserved the peer. The varying rate is a
+measurement of these sessions, not a guarantee of 30 FPS on this or other phones.
+
+The muted receiver counted 6,900,480 audio samples while Android reported active,
+non-silenced 48 kHz recording. Reported audio energy was zero; transport was
+verified without claiming audible content or acoustic quality. At 73.32 s without
+interaction, the preview's black overlay appeared and the Honor remained awake.
+The same connection added 902 decoded frames and 3,495,360 audio samples through
+that interval, and video continued advancing through the end of the test.
+
+Viewer Stop returned HTTP 200; normal source Stop left no foreground services,
+camera/projection clients, BShare locks, encoder/decoder/capture workers or
+signaling listeners on either phone. All owned desktop helpers and temporary
+browser profiles were closed. Original rotation settings and 1080p/30 FPS capture
+preferences were restored, with microphone and flash off. Evidence retains
+statistics rather than private media, addresses, names or device serials.
+
+The DHCP change also exposed an old network address retained by Home after
+returning from the background. The follow-up change refreshes its network snapshot
+once after hidden/paused → resumed, avoids duplicate refreshes for permission
+dialogs, and prevents refresh during shutdown. Six focused lifecycle regression
+cases cover the change. The final ARM64 APK, version code 2015, passed native
+ABI/16 KB packaging and QR registrar checks, SHA-256
+`9ca37791bb3504cf2b3ee809ea345e70de6a12c50e11f0501918c3e8910a99b7`.
+It was installed in place on both phones with exact on-device hash matches. Both
+showed their current address after one ordinary background/resume cycle in the
+same app process, with no active capture resources. DHCP was not deliberately
+changed again; the stale-to-current transition has widget regression coverage.
+The full media matrix above applies to version code 2014.
+
+Physical OS coverage here is Android 14/API 34 only. Minimum API 24 and target API
+36 are build configuration, not evidence that every supported OS/vendor has been
+tested. Previous Windows Actions checks passed on the hosted VM; the reported
+low-resource Windows PC remains untested physically. Sanitized measurements and
+scope are in [honor-compatibility-review.json](performance/honor-compatibility-review.json).
+
 ## Streaming compatibility investigation (unreleased)
 
-The final Dart revision passes 440 Flutter tests and static analysis. Regression
+The preceding streaming revision passes 440 Flutter tests and static analysis. Regression
 coverage includes discovery without a default route, session cancellation,
 exclusive HTTP listeners, SDP negotiation and native encoder/capturer cleanup.
 The local Linux production receiver passes H.264, VP8, one successful recovery
@@ -13,7 +72,8 @@ on an isolated Xvfb display. Diagnostic binaries are not installer payloads.
 On a physical S22 Ultra running Android 14, the initial candidate receives both
 codecs and sends rotated screen content, rear/front camera video and microphone
 audio over Wi-Fi. Camera decoding measured about 29 FPS in these short sessions.
-These results do not measure the reported low-resource Windows PC or Honor.
+These earlier results do not measure the reported low-resource Windows PC. The
+subsequent Honor measurements are recorded above.
 
 Physical tests exposed an additional idle-screen defect: a later viewer waited
 25.654 seconds for its first frame; the native Linux viewer waited 40.91 seconds

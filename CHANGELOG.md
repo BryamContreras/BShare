@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fix LAN discovery across Wi-Fi/Ethernet adapters and Android multicast filtering; refresh now queries peers directly and stopped receivers withdraw their announcements.
+- Refresh Home's network address after returning from the background, including DHCP changes, without duplicating refreshes for permission dialogs or app shutdown.
 - Use exclusive HTTP listeners and show the actual destination and actionable connection errors instead of raw socket messages.
 - Add an optional Windows installer task for private LAN firewall access, scoped to BShare and the local subnet, with cleanup on uninstall.
 - Preserve real Android H.264 capabilities, prefer constrained baseline and recover once with bounded VP8 video when no frames arrive.
@@ -10,6 +11,7 @@
 - Refresh an unchanged Android screen at most once per second so a later viewer can receive its first frame without touching the phone; cancel idle refreshes when capture stops or rotates.
 - Fix Android encoder worker/buffer cleanup and desktop capture startup failure reporting.
 - Add native H.264/VP8 streaming, failed-startup recovery, Android codec lifecycle and Windows firewall regression checks. Hardware coverage is recorded separately in `docs/STREAMING_COMPATIBILITY.md`.
+- Record physical Android 14 tests for Honor/MagicOS 8 and S22 screen sharing in both directions, rotation, Linux camera discovery, VP8 reception, camera controls, audio transport and normal cleanup; keep the interrupted DHCP trial separate from completed results.
 
 ## 1.0.3
 

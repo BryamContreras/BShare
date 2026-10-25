@@ -374,6 +374,7 @@ class _RuntimeCleanupObserverState
     extends ConsumerState<_RuntimeCleanupObserver>
     with WidgetsBindingObserver {
   Future<void>? _cleanupFuture;
+  bool _refreshNetworkOnResume = false;
 
   @override
   void initState() {
@@ -391,6 +392,17 @@ class _RuntimeCleanupObserverState
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
       unawaited(_cleanup());
+      return;
+    }
+    if (_cleanupFuture != null) return;
+    if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      _refreshNetworkOnResume = true;
+    } else if (state == AppLifecycleState.resumed && _refreshNetworkOnResume) {
+      // Wi-Fi or DHCP may change in Settings while the app is in the background.
+      // Consume both hidden and paused as one return; dialogs only go inactive.
+      _refreshNetworkOnResume = false;
+      ref.invalidate(networkProvider);
     }
   }
 
