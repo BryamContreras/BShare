@@ -62,6 +62,9 @@ class FlutterScreenCapture : public MediaListObserver,
   // Loopback audio capturer active during a screen-share session.
   // Null when not capturing or on platforms without loopback support.
   std::unique_ptr<LoopbackCapturer> loopback_capturer_;
+  // Identity only: the video source owns the desktop capturer. Keeping a strong
+  // reference here would keep capture alive after its last video track closes.
+  RTCDesktopCapturer* loopback_owner_ = nullptr;
   // The custom audio source fed by the loopback capturer.
   scoped_refptr<RTCAudioSource> loopback_audio_source_;
 };

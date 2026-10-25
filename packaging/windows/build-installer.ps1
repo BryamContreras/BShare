@@ -48,6 +48,7 @@ New-Item -Path $outputPath -ItemType Directory -Force | Out-Null
 Copy-Item -Path (Join-Path $buildPath '*') -Destination $stagingPath -Recurse -Force
 Get-ChildItem -LiteralPath $stagingPath -Filter '*.pdb' -File -Recurse | Remove-Item -Force
 Copy-Item -LiteralPath (Join-Path $repository 'LICENSE') -Destination (Join-Path $stagingPath 'LICENSE.txt')
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'configure-firewall.ps1') -Destination $stagingPath
 
 # Use the redistributable files licensed for app-local deployment, not copies
 # from System32. This keeps installation per-user without a second installer.
@@ -86,12 +87,20 @@ $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
 if (-not (Test-Path -LiteralPath $compiler)) {
     throw 'Inno Setup 6 was not found. Install it before packaging.'
 }
+$firewallSource = [System.IO.File]::ReadAllBytes((Join-Path $PSScriptRoot 'configure-firewall.ps1'))
+$firewallBase64 = [Convert]::ToBase64String($firewallSource)
+# Installer/uninstaller execute a compiled-in payload, never a mutable script
+# from LocalAppData. Reserve room for runtime path/arguments in Windows' limit.
+if ($firewallBase64.Length -gt 24000) {
+    throw 'Embedded firewall helper exceeds the safe Windows command-line size.'
+}
 $compilerArguments = @(
     "/DAppVersion=$Version",
     "/DAppFileVersion=$fileVersion",
     "/DAppFullVersion=$fullVersion",
     "/DAppSourceDir=$stagingPath",
     "/DAppOutputDir=$outputPath",
+    "/DFirewallScriptBase64=$firewallBase64",
     (Join-Path $repository 'installer/windows/BShare.iss')
 )
 & $compiler @compilerArguments

@@ -10,13 +10,15 @@ import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/file_server.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
 import 'package:dio/dio.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 const _sdp =
     'v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\n'
-    'a=rtpmap:96 H264/90000\r\n';
+    'a=rtpmap:96 H264/90000\r\n'
+    'a=candidate:1 1 udp 2122260223 127.0.0.1 50000 typ host\r\n';
 
 const _cameraOfferSdp =
     'v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n'
@@ -157,6 +159,10 @@ class _Peer extends RTCPeerConnection {
   bool failOffer = false;
   bool failClose = false;
   String localSdp = _sdp;
+  String offerSdp = _sdp;
+  final descriptions = <RTCSessionDescription>[];
+  List<StatsReport> stats = [];
+  Object? remoteDescriptionError;
   final addedTransceivers = <_Transceiver>[];
   final associatedTransceivers = <_Transceiver>[];
   @override
@@ -195,11 +201,13 @@ class _Peer extends RTCPeerConnection {
   ]) async {
     offerConstraints = constraints;
     if (failOffer) throw StateError('Offer failed');
-    return RTCSessionDescription(_sdp, 'offer');
+    return RTCSessionDescription(offerSdp, 'offer');
   }
 
   @override
-  Future<void> setLocalDescription(RTCSessionDescription description) async {}
+  Future<void> setLocalDescription(RTCSessionDescription description) async {
+    descriptions.add(description);
+  }
 
   @override
   Future<RTCSessionDescription?> getLocalDescription() async =>
@@ -208,6 +216,7 @@ class _Peer extends RTCPeerConnection {
   @override
   Future<void> setRemoteDescription(RTCSessionDescription description) async {
     remoteDescriptions++;
+    if (remoteDescriptionError != null) throw remoteDescriptionError!;
     if (description.type == 'offer' &&
         (description.sdp ?? '').contains('m=audio')) {
       // Match libwebrtc: a trackless addTransceiver made before SRD is not
@@ -225,7 +234,7 @@ class _Peer extends RTCPeerConnection {
   @override
   Future<List<StatsReport>> getStats([MediaStreamTrack? track]) async {
     statsReads++;
-    return [];
+    return stats;
   }
 
   @override
@@ -266,12 +275,21 @@ class _Signaling {
   int offerCalls = 0;
   int generation = 1;
   final paths = <String>[];
+  final offers = <Map<String, dynamic>>[];
+  int stopCalls = 0;
+  String answerSdp = _sdp;
+  DioException? offerError;
 
   _Signaling() {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           paths.add(options.path);
+          if (options.path.endsWith('/stop-viewer')) {
+            stopCalls++;
+            handler.resolve(Response(requestOptions: options));
+            return;
+          }
           if (options.path.endsWith('/metadata')) {
             metadataCalls++;
             activeMetadata++;
@@ -312,6 +330,11 @@ class _Signaling {
             return;
           }
           offerCalls++;
+          offers.add(Map<String, dynamic>.from(options.data as Map));
+          if (offerError != null) {
+            handler.reject(offerError!);
+            return;
+          }
           if (!offerStarted.isCompleted) offerStarted.complete();
           await offerResponse?.future;
           handler.resolve(
@@ -320,7 +343,7 @@ class _Signaling {
               data: invalidAnswer
                   ? <String, dynamic>{}
                   : {
-                      'answer': {'sdp': _sdp, 'type': 'answer'},
+                      'answer': {'sdp': answerSdp, 'type': 'answer'},
                     },
             ),
           );
@@ -339,6 +362,8 @@ void main() {
     Future<RTCPeerConnection> Function()? peerFactory,
     Future<void> Function()? onSharingStopped,
     Future<void> Function(bool)? audioRecordingGate,
+    Duration videoStartupTimeout = const Duration(seconds: 25),
+    bool autoDispose = true,
   }) {
     final service = ScreenShareService(
       const AppLogger(),
@@ -349,8 +374,9 @@ void main() {
       peerConnectionFactory: peerFactory ?? () async => _Peer(),
       onSharingStopped: onSharingStopped,
       audioRecordingGate: audioRecordingGate,
+      videoStartupTimeout: videoStartupTimeout,
     );
-    addTearDown(service.dispose);
+    if (autoDispose) addTearDown(service.dispose);
     return service;
   }
 
@@ -401,6 +427,193 @@ void main() {
     expect(signaling.offerCalls, 1);
     await service.stopWatching();
   });
+
+  test(
+    'zero decoded frames trigger one VP8 retry, then close all resources',
+    () {
+      fakeAsync((clock) {
+        const vp8 =
+            'v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 98\r\n'
+            'a=rtpmap:98 VP8/90000\r\n'
+            'a=candidate:1 1 udp 2122260223 127.0.0.1 50000 typ host\r\n';
+        final signaling = _Signaling()..answerSdp = vp8;
+        final peers = <_Peer>[];
+        final renderer = _Renderer();
+        final service = makeService(
+          autoDispose: false,
+          signaling: signaling,
+          remote: renderer,
+          peerFactory: () async {
+            final peer = _Peer()
+              ..offerSdp = vp8
+              ..localSdp = vp8
+              ..stats = [
+                StatsReport('inbound', 'inbound-rtp', 1, {
+                  'kind': 'video',
+                  'bytesReceived': 5000,
+                  'framesDecoded': 0,
+                }),
+              ];
+            peers.add(peer);
+            return peer;
+          },
+        );
+        unawaited(service.watch(_device));
+        clock.flushMicrotasks();
+        clock.elapse(const Duration(milliseconds: 1));
+        expect(service.state.value.awaitingVideo, isTrue);
+        peers.first.onIceConnectionState!(
+          RTCIceConnectionState.RTCIceConnectionStateConnected,
+        );
+        clock.elapse(const Duration(seconds: 24));
+        expect(signaling.offerCalls, 1);
+        expect(peers.first.statsReads, greaterThan(1));
+        clock.elapse(const Duration(seconds: 2));
+        expect(signaling.offerCalls, 2);
+        expect(signaling.offers.last['compatibilityMode'], isTrue);
+        expect(
+          signaling.offers.first['viewerId'],
+          signaling.offers.last['viewerId'],
+        );
+        expect(peers.first.closes, 1);
+        expect(peers.first.disposes, 1);
+        clock.elapse(const Duration(seconds: 26));
+        expect(signaling.offerCalls, 2);
+        expect(service.state.value.failure, VideoConnectionFailure.video);
+        expect(service.state.value.mode, ScreenShareMode.idle);
+        expect(peers.last.disposes, 1);
+        expect(signaling.stopCalls, 1);
+        clock.elapse(const Duration(minutes: 1));
+        expect(signaling.offerCalls, 2);
+        expect(clock.nonPeriodicTimerCount, 0);
+        unawaited(service.dispose());
+        clock.flushMicrotasks();
+        clock.elapse(const Duration(milliseconds: 1));
+      });
+    },
+  );
+
+  test(
+    'first video frame completes startup and cancels compatibility retry',
+    () {
+      fakeAsync((clock) {
+        final signaling = _Signaling();
+        final renderer = _Renderer();
+        final peer = _Peer();
+        final service = makeService(
+          signaling: signaling,
+          remote: renderer,
+          autoDispose: false,
+          peerFactory: () async => peer,
+        );
+        unawaited(service.watch(_device));
+        clock.flushMicrotasks();
+        clock.elapse(const Duration(milliseconds: 1));
+        expect(service.state.value.awaitingVideo, isTrue);
+        renderer.onFirstFrameRendered!();
+        expect(
+          service.state.value.awaitingVideo,
+          isTrue,
+          reason:
+              'A stale native renderer event must not complete a new session',
+        );
+        final track = _RemoteTrack();
+        unawaited(
+          peer.onTrack!(
+            RTCTrackEvent(streams: [_RemoteStream(track)], track: track),
+          ),
+        );
+        clock.flushMicrotasks();
+        renderer.onFirstFrameRendered!();
+        expect(service.state.value.awaitingVideo, isFalse);
+        expect(service.state.value.status, 'Watching remote screen');
+        clock.elapse(const Duration(seconds: 60));
+        expect(signaling.offerCalls, 1);
+        unawaited(service.stopWatching());
+        clock.flushMicrotasks();
+        clock.elapse(const Duration(milliseconds: 1));
+        expect(clock.nonPeriodicTimerCount, 0);
+        unawaited(service.dispose());
+        clock.flushMicrotasks();
+        clock.elapse(const Duration(milliseconds: 1));
+      });
+    },
+  );
+
+  test(
+    'ICE failure is a network error and does not waste a codec retry',
+    () async {
+      final signaling = _Signaling();
+      final peer = _Peer();
+      final service = makeService(
+        signaling: signaling,
+        peerFactory: () async => peer,
+      );
+      await service.watch(_device);
+      final failed = Completer<void>();
+      service.state.addListener(() {
+        if (service.state.value.mode == ScreenShareMode.idle &&
+            !failed.isCompleted) {
+          failed.complete();
+        }
+      });
+      peer.onIceConnectionState!(
+        RTCIceConnectionState.RTCIceConnectionStateFailed,
+      );
+      await failed.future.timeout(const Duration(seconds: 1));
+      expect(service.state.value.failure, VideoConnectionFailure.network);
+      expect(signaling.offerCalls, 1);
+      expect(peer.disposes, 1);
+    },
+  );
+
+  test(
+    'refused signaling reports the destination port without a codec retry',
+    () async {
+      final options = RequestOptions(
+        path: 'http://192.168.1.6:53317/api/screen/offer',
+      );
+      final signaling = _Signaling()
+        ..offerError = DioException(
+          requestOptions: options,
+          type: DioExceptionType.connectionError,
+          error: const SocketException(
+            'Connection refused',
+            osError: OSError('Connection refused', 111),
+            port: 38126,
+          ),
+        );
+      final peer = _Peer();
+      final service = makeService(
+        signaling: signaling,
+        peerFactory: () async => peer,
+      );
+      await expectLater(service.watch(_device), throwsA(isA<DioException>()));
+      expect(
+        service.state.value.failure,
+        VideoConnectionFailure.connectionRefused,
+      );
+      expect(service.state.value.endpoint, '192.168.1.6:53317');
+      expect(signaling.offerCalls, 1);
+      expect(peer.disposes, 1);
+    },
+  );
+
+  test(
+    'no local ICE candidates fail before any remote offer is sent',
+    () async {
+      final peer = _Peer()
+        ..localSdp = 'v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\n';
+      final signaling = _Signaling();
+      final service = makeService(
+        signaling: signaling,
+        peerFactory: () async => peer,
+      );
+      await expectLater(service.watch(_device), throwsStateError);
+      expect(signaling.offerCalls, 0);
+      expect(peer.disposes, 1);
+    },
+  );
 
   test(
     'remote rendering selects the negotiated video track explicitly',
@@ -603,6 +816,62 @@ void main() {
   );
 
   test(
+    'a stopped reconnect cannot suppress the next session video timeout',
+    () {
+      fakeAsync((clock) {
+        final vp8 = _sdp.replaceAll('H264', 'VP8');
+        final signaling = _Signaling()..answerSdp = vp8;
+        final delayedPeer = Completer<RTCPeerConnection>();
+        final peers = <_Peer>[];
+        var creations = 0;
+        final service = makeService(
+          signaling: signaling,
+          autoDispose: false,
+          peerFactory: () async {
+            creations++;
+            if (creations == 2) return delayedPeer.future;
+            final peer = _Peer()
+              ..offerSdp = vp8
+              ..localSdp = vp8;
+            peers.add(peer);
+            return peer;
+          },
+        );
+        unawaited(service.watch(_device));
+        clock.flushMicrotasks();
+        clock.elapse(const Duration(milliseconds: 1));
+        signaling.generation = 2;
+        clock.elapse(const Duration(seconds: 1));
+        expect(creations, 2);
+        unawaited(service.stopWatching());
+        clock.flushMicrotasks();
+        clock.elapse(const Duration(milliseconds: 1));
+        unawaited(service.watch(_device));
+        clock.flushMicrotasks();
+        clock.elapse(const Duration(seconds: 26));
+        expect(creations, 4);
+        expect(signaling.offerCalls, 3);
+        expect(signaling.offers.last['compatibilityMode'], isTrue);
+        final latePeer = _Peer();
+        delayedPeer.complete(latePeer);
+        clock.flushMicrotasks();
+        expect(latePeer.disposes, 1);
+        clock.elapse(const Duration(seconds: 26));
+        expect(service.state.value.failure, VideoConnectionFailure.video);
+        expect(service.state.value.mode, ScreenShareMode.idle);
+        expect(signaling.offerCalls, 3);
+        for (final peer in peers) {
+          expect(peer.disposes, 1);
+        }
+        unawaited(service.dispose());
+        clock.flushMicrotasks();
+        clock.elapse(const Duration(milliseconds: 1));
+        expect(clock.nonPeriodicTimerCount, 0);
+      });
+    },
+  );
+
+  test(
     'camera viewer negotiates only camera endpoints and reuses one peer',
     () async {
       final signaling = _Signaling()..offerResponse = Completer<void>();
@@ -787,6 +1056,57 @@ void main() {
       id: '1',
       label: 'Front camera',
       frontFacing: true,
+    );
+
+    test(
+      'compatibility reconnect replaces one sender and applies limits after SDP',
+      () async {
+        final peers = <_SharingPeer>[];
+        final renderer = _Renderer()
+          ..value = const RTCVideoValue(width: 1440, height: 3088);
+        final service = makeService(
+          local: renderer,
+          peerFactory: () async {
+            final peer = _SharingPeer();
+            peers.add(peer);
+            return peer;
+          },
+        );
+        final server = FileServer(const AppLogger());
+        await service.startSharing(
+          server,
+          settings: const ScreenCaptureSettings(
+            resolution: 1440,
+            frameRate: 60,
+          ),
+        );
+        const viewerId = 'viewer-12345678901234';
+        await server.screenOfferHandler!({
+          'type': 'offer',
+          'sdp': _sdp,
+          'viewerId': viewerId,
+        });
+        await server.screenOfferHandler!({
+          'type': 'offer',
+          'sdp': _sdp,
+          'viewerId': viewerId,
+          'compatibilityMode': true,
+        });
+        expect(peers, hasLength(2));
+        expect(peers.first.disposes, 1);
+        expect(peers.last.disposes, 0);
+        final encoding = peers.last.sender.parameters.encodings!.single;
+        expect(encoding.maxFramerate, 30);
+        expect(encoding.maxBitrate, lessThanOrEqualTo(2500000));
+        expect(encoding.scaleResolutionDownBy, closeTo(3088 / 1280, 0.001));
+        expect(peers.last.descriptions, isNotEmpty);
+        await server.screenViewerStopHandler!(viewerId);
+        expect(peers.last.disposes, 1);
+        await server.screenViewerStopHandler!(viewerId);
+        expect(peers.last.disposes, 1);
+        await service.stop(server);
+        expect(server.screenViewerStopHandler, isNull);
+      },
     );
     Map<String, dynamic> cameraStream(int index, {String camera = '0'}) => {
       'streamId': 'camera-$index',

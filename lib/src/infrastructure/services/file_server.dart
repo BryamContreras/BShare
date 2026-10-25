@@ -84,8 +84,10 @@ class FileServer {
 
   ScreenOfferHandler? screenOfferHandler;
   ScreenMetadataHandler? screenMetadataHandler;
+  Future<void> Function(String viewerId)? screenViewerStopHandler;
   ScreenOfferHandler? cameraOfferHandler;
   ScreenMetadataHandler? cameraMetadataHandler;
+  Future<void> Function(String viewerId)? cameraViewerStopHandler;
   List<String>? cameraAllowedRemoteSubnets;
   TransferCommandHandler? transferCommandHandler;
   void Function()? onIdle;
@@ -132,7 +134,9 @@ class FileServer {
         return await HttpServer.bind(
           InternetAddress.anyIPv4,
           port,
-          shared: true,
+          // Different app instances must not accept each other's signaling.
+          // If occupied, bind the next port and advertise that actual port.
+          shared: false,
         );
       } on SocketException catch (error) {
         lastSocketError = error;
@@ -215,6 +219,14 @@ class FileServer {
       }
       if (request.method == 'GET' && request.uri.path == '/api/ping') {
         await _json(request.response, {'ok': true});
+      } else if (request.method == 'POST' &&
+          request.uri.path == '/api/screen/stop-viewer') {
+        await _handleViewerStop(request, screenViewerStopHandler);
+      } else if (request.method == 'POST' &&
+          request.uri.path == '/api/camera/stop-viewer') {
+        if (await _allowCameraInterface(request)) {
+          await _handleViewerStop(request, cameraViewerStopHandler);
+        }
       } else if (request.method == 'POST' &&
           request.uri.path == '/api/screen/offer') {
         await _handleVideoOffer(request, screenOfferHandler, 'screen');
@@ -322,6 +334,24 @@ class FileServer {
       if ((bytes[index] & mask) != (networkBytes[index] & mask)) return false;
     }
     return true;
+  }
+
+  Future<void> _handleViewerStop(
+    HttpRequest request,
+    Future<void> Function(String)? handler,
+  ) async {
+    final body = jsonDecode(await utf8.decoder.bind(request).join());
+    final id = body is Map ? body['viewerId'] : null;
+    if (id is! String || !RegExp(r'^[a-zA-Z0-9-]{16,64}$').hasMatch(id)) {
+      request.response.statusCode = HttpStatus.badRequest;
+      await _json(request.response, {
+        'ok': false,
+        'error': 'invalid-viewer-id',
+      });
+      return;
+    }
+    await handler?.call(id);
+    await _json(request.response, {'ok': true});
   }
 
   Future<void> _handleVideoOffer(
@@ -773,8 +803,10 @@ class FileServer {
       _server = null;
       screenOfferHandler = null;
       screenMetadataHandler = null;
+      screenViewerStopHandler = null;
       cameraOfferHandler = null;
       cameraMetadataHandler = null;
+      cameraViewerStopHandler = null;
       cameraAllowedRemoteSubnets = null;
       transferCommandHandler = null;
       onIdle = null;

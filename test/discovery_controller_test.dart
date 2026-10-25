@@ -26,15 +26,19 @@ class _Settings extends SettingsController {
 class _DiscoveryService extends LanDiscoveryService {
   _DiscoveryService() : super(const AppLogger());
   final events = StreamController<DeviceInfo>.broadcast(sync: true);
+  final departureEvents = StreamController<DeviceInfo>.broadcast(sync: true);
   final started = Completer<void>();
   final gate = Completer<void>();
   int starts = 0;
   int stops = 0;
+  int queries = 0;
   final advertisements = <bool>[];
   Object? startError;
   void Function()? onStart;
   @override
   Stream<DeviceInfo> get devices => _DiscoveryStream(events.stream);
+  @override
+  Stream<DeviceInfo> get departures => _DiscoveryStream(departureEvents.stream);
   @override
   Future<void> start(DeviceInfo self, {required bool advertise}) async {
     starts++;
@@ -47,6 +51,9 @@ class _DiscoveryService extends LanDiscoveryService {
   }
 
   @override
+  void requestDiscovery() => queries++;
+
+  @override
   Future<void> stop() {
     stops++;
     final completion = Completer<void>()..complete();
@@ -54,7 +61,10 @@ class _DiscoveryService extends LanDiscoveryService {
   }
 
   @override
-  Future<void> dispose() => events.close();
+  Future<void> dispose() async {
+    await events.close();
+    await departureEvents.close();
+  }
 }
 
 // StreamController.cancel uses a shared Future completed outside FakeAsync.
@@ -267,6 +277,7 @@ void main() {
       expect(container.read(discoveryProvider), hasLength(1));
       expect(service.starts, 1);
       expect(service.stops, 0);
+      expect(service.queries, 1);
       expect(finished, isFalse);
       time.elapse(DiscoveryController.searchWindow);
       _expectCompleted(first, time);
@@ -306,6 +317,27 @@ void main() {
       time.elapse(const Duration(seconds: 1));
       expect(container.read(discoveryProvider), isEmpty);
       _expectCompleted(controller.stop(), time);
+    });
+  });
+
+  test('goodbye removes only the exact endpoint and clears its selection', () {
+    _withDiscovery((time, service, container, controller, now) {
+      _expectCompleted(controller.start(), time);
+      final original = _remote(now());
+      final current = original.copyWith(ip: '192.168.1.42', port: 54000);
+      container.read(selectedDeviceProvider.notifier).set(current);
+      service.events.add(current);
+      service.departureEvents.add(original);
+      service.departureEvents.add(current.copyWith(port: 53317));
+      _flush(time);
+      expect(container.read(discoveryProvider).single, same(current));
+      expect(container.read(selectedDeviceProvider), same(current));
+      service.departureEvents.add(current);
+      _flush(time);
+      expect(container.read(discoveryProvider), isEmpty);
+      expect(container.read(selectedDeviceProvider), isNull);
+      _expectCompleted(controller.stop(), time);
+      expect(service.departureEvents.hasListener, isFalse);
     });
   });
 

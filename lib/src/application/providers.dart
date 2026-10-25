@@ -223,6 +223,7 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
 
   final DateTime Function() _clock;
   StreamSubscription<DeviceInfo>? _subscription;
+  StreamSubscription<DeviceInfo>? _departureSubscription;
   LanDiscoveryService? _service;
   DeviceInfo? _self;
   bool _advertise = false;
@@ -250,6 +251,8 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
       _expiryTimer = null;
       unawaited(_subscription?.cancel());
       _subscription = null;
+      unawaited(_departureSubscription?.cancel());
+      _departureSubscription = null;
     });
     return const [];
   }
@@ -294,6 +297,7 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
       if (_self?.ip != self.ip) state = const [];
       // Subscribe before binding: a receiver may announce immediately.
       _subscription ??= service.devices.listen(_onDevice);
+      _departureSubscription ??= service.departures.listen(_onDeparture);
       await service.start(self, advertise: shouldAdvertise);
       if (!ref.mounted) {
         await service.stop();
@@ -352,6 +356,20 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
     if (fresh.length != state.length) state = fresh;
   }
 
+  void _onDeparture(DeviceInfo device) {
+    if (!ref.mounted) return;
+    bool matches(DeviceInfo item) =>
+        item.id == device.id &&
+        item.ip == device.ip &&
+        item.port == device.port;
+    if (!state.any(matches)) return;
+    state = state.where((item) => !matches(item)).toList();
+    final selected = ref.read(selectedDeviceProvider);
+    if (selected != null && matches(selected)) {
+      ref.read(selectedDeviceProvider.notifier).set(null);
+    }
+  }
+
   void _setStatus(DiscoveryPhase phase, {Object? error}) {
     if (!ref.mounted) return;
     final previous = ref.read(discoveryStatusProvider);
@@ -408,6 +426,7 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
       ref.invalidate(networkProvider);
       await _start(advertise: _advertise, beginSearch: false);
       if (!ref.mounted || !_running) return;
+      _service?.requestDiscovery();
       _pruneDevices();
       search = _beginSearch();
     }).then((_) => search ?? Future<void>.value());
@@ -434,6 +453,8 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
     _self = null;
     await _subscription?.cancel();
     _subscription = null;
+    await _departureSubscription?.cancel();
+    _departureSubscription = null;
     await _service?.stop();
     if (ref.mounted) state = const [];
   }

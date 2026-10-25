@@ -1,0 +1,167 @@
+name: Verify native streaming
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bshare-streaming-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android native release compatibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.44.8'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Compile release code and shrinkers without publishing
+        run: flutter build apk --release --no-pub --target-platform android-arm,android-arm64,android-x64
+      - name: Inspect native ABIs, alignment and QR registrars
+        run: |
+          python3 -m pip install --requirement tool/requirements-test.txt
+          python3 tool/verify_android_native_compat.py build/app/outputs/flutter-apk/app-release.apk \
+            --require-abi armeabi-v7a --require-abi arm64-v8a --require-abi x86_64
+          python3 tool/verify_android_qr_release.py build/app/outputs/flutter-apk/app-release.apk
+
+  windows:
+    name: Windows video and installer
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.44.8'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Build release with native codecs
+        id: production-build
+        run: |
+          flutter build windows --release --no-pub
+          if ($LASTEXITCODE -ne 0) { throw 'Production Windows build failed.' }
+      - name: Decode H264 and VP8 and exercise recovery
+        run: |
+          python tool/webrtc_interop_probe.py --binary build/windows/x64/runner/Release/BShare.exe --matrix --output streaming-windows.json
+          if ($LASTEXITCODE -ne 0) { throw 'Native streaming verification failed.' }
+      - name: Package Windows installer
+        id: installer-build
+        if: ${{ !cancelled() && steps.production-build.outcome == 'success' }}
+        run: ./packaging/windows/build-installer.ps1
+      - name: Verify installed app, private LAN firewall and cleanup
+        if: ${{ !cancelled() && steps.installer-build.outcome == 'success' }}
+        run: ./packaging/windows/smoke-test.ps1
+      # Build the diagnostic target only after the production bundle has been
+      # packaged and exercised. It is never included in an installer/release.
+      - name: Build native media diagnostic entrypoint
+        id: diagnostic-build
+        if: ${{ !cancelled() && steps.production-build.outcome == 'success' }}
+        run: |
+          flutter build windows --release --no-pub --target tool/webrtc_native_probe.dart
+          if ($LASTEXITCODE -ne 0) { throw 'Windows diagnostic build failed.' }
+      - name: Verify native receiver using decoder and renderer telemetry
+        if: ${{ !cancelled() && steps.diagnostic-build.outcome == 'success' }}
+        run: |
+          python tool/webrtc_interop_probe.py --binary build/windows/x64/runner/Release/BShare.exe --native-probe --matrix --output streaming-native-receiver-windows.json
+          if ($LASTEXITCODE -ne 0) { throw 'Windows diagnostic receiver verification failed.' }
+      - name: Verify native screen capture and H264 and VP8 encoders
+        if: ${{ !cancelled() && steps.diagnostic-build.outcome == 'success' }}
+        run: |
+          python tool/webrtc_native_sender_probe.py --binary build/windows/x64/runner/Release/BShare.exe --isolated-desktop --seconds 12 --output streaming-native-sender-windows.json
+          if ($LASTEXITCODE -ne 0) { throw 'Windows native sender verification failed.' }
+      - name: Record streaming evidence
+        if: always()
+        run: >-
+          python tool/summarize_streaming_evidence.py
+          streaming-windows.json
+          dist/windows/verification/result.json
+          streaming-native-receiver-windows.json
+          streaming-native-sender-windows.json
+
+  linux:
+    name: Linux video and recovery
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: '2'
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      GDK_BACKEND: x11
+      XDG_SESSION_TYPE: x11
+      NO_AT_BRIDGE: '1'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Install native build and test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libstdc++-12-dev libasound2-dev libpulse-dev \
+            libgbm-dev libdrm-dev libgl1-mesa-dev libegl1-mesa-dev \
+            libgl1-mesa-dri libglx-mesa0 xvfb xauth pulseaudio pulseaudio-utils
+      - name: Start isolated audio device for WebRTC
+        run: |
+          pulseaudio --start --exit-idle-time=-1 --load='module-null-sink sink_name=bshare_ci'
+          pactl set-default-sink bshare_ci
+          pactl info
+          google-chrome --version
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.44.8'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Build production Linux release
+        id: production-build
+        run: flutter build linux --release --no-pub
+      - name: Decode H264 and VP8 and exercise recovery on a synthetic display
+        run: xvfb-run -a -s '-screen 0 1280x720x24' python3 tool/webrtc_interop_probe.py --matrix --output streaming-linux.json
+      - name: Build native media diagnostic entrypoint
+        id: diagnostic-build
+        if: ${{ !cancelled() && steps.production-build.outcome == 'success' }}
+        run: flutter build linux --release --no-pub --target tool/webrtc_native_probe.dart
+      - name: Verify native receiver using decoder and renderer telemetry
+        if: ${{ !cancelled() && steps.diagnostic-build.outcome == 'success' }}
+        run: >-
+          xvfb-run -a -s '-screen 0 1280x720x24'
+          python3 tool/webrtc_interop_probe.py --native-probe --matrix
+          --output streaming-native-receiver-linux.json
+      - name: Verify native screen capture and H264 and VP8 encoders
+        if: ${{ !cancelled() && steps.diagnostic-build.outcome == 'success' }}
+        run: >-
+          python3 tool/webrtc_native_sender_probe.py
+          --binary build/linux/x64/release/bundle/bshare --seconds 12
+          --output streaming-native-sender-linux.json
+      - name: Record streaming evidence
+        if: always()
+        run: >-
+          python3 tool/summarize_streaming_evidence.py
+          streaming-linux.json streaming-native-receiver-linux.json
+          streaming-native-sender-linux.json
+      - name: Stop isolated audio device
+        if: always()
+        run: pulseaudio --kill || true

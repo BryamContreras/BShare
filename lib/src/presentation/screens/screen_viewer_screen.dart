@@ -6,6 +6,7 @@ import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/infrastructure/services/android_screen_awake_service.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
+import 'package:bshare/src/presentation/localization/video_connection_localizations.dart';
 import 'package:bshare/src/presentation/navigation/app_navigation.dart';
 import 'package:bshare/src/presentation/widgets/orientation_aware_video_view.dart';
 import 'package:flutter/material.dart';
@@ -168,10 +169,12 @@ class _FocusedScreenViewerState extends ConsumerState<FocusedScreenViewer> {
                           final status = state.mode == ScreenShareMode.idle
                               ? l10n.screenStatus(_status)
                               : l10n.screenStatus(state.status);
-                          final error = state.error;
+                          final error = state.error == null
+                              ? null
+                              : l10n.videoConnectionError(state);
                           return Text(
                             error == null ? status : '$status: $error',
-                            maxLines: 1,
+                            maxLines: error == null ? 1 : 5,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(color: Colors.white),
                           );

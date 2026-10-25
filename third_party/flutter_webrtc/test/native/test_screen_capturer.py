@@ -45,16 +45,26 @@ package android.os;
 public class Handler {
   public boolean retired;
   private final java.util.ArrayDeque<Runnable> queue = new java.util.ArrayDeque<>();
+  private final java.util.ArrayDeque<Runnable> delayed = new java.util.ArrayDeque<>();
   public Handler() {}
   public Handler(Looper looper) {}
   public synchronized boolean post(Runnable runnable) { queue.add(runnable); return true; }
   public synchronized boolean postDelayed(Runnable runnable, long delay) {
-    queue.add(runnable); return true;
+    assert delay >= 1000 : "Static frames must not be scheduled faster than 1Hz";
+    delayed.add(runnable); return true;
   }
   public synchronized void removeCallbacks(Runnable runnable) {
     queue.removeIf(item -> item == runnable);
+    delayed.removeIf(item -> item == runnable);
   }
   public synchronized int pending() { return queue.size(); }
+  public synchronized int delayedPending() { return delayed.size(); }
+  public void runDelayedOnce() {
+    java.util.List<Runnable> due;
+    synchronized(this) { due = new java.util.ArrayList<>(delayed); delayed.clear(); }
+    for (Runnable runnable : due) runnable.run();
+    drain();
+  }
   public void drain() {
     while (true) {
       Runnable runnable;
@@ -68,6 +78,13 @@ public class Handler {
     "android/os/Looper.java": """
 package android.os;
 public class Looper { public static Looper getMainLooper() { return new Looper(); } }
+""",
+    "android/os/SystemClock.java": """
+package android.os;
+public class SystemClock {
+  public static long now = 10000;
+  public static long uptimeMillis() { return now; }
+}
 """,
     "android/util/DisplayMetrics.java": """
 package android.util;
@@ -196,7 +213,26 @@ public interface VideoCapturer {
     "org/webrtc/VideoSink.java": """
 package org.webrtc; public interface VideoSink { void onFrame(VideoFrame frame); }
 """,
-    "org/webrtc/VideoFrame.java": "package org.webrtc; public class VideoFrame {}",
+    "org/webrtc/VideoFrame.java": """
+package org.webrtc;
+public class VideoFrame {
+  public static class Buffer {
+    public int refs = 1;
+    public void retain() { assert refs > 0; ++refs; }
+    public void release() { assert refs > 0; --refs; }
+  }
+  private final Buffer buffer;
+  private final int rotation;
+  private final long timestamp;
+  public VideoFrame(Buffer buffer, int rotation, long timestamp) {
+    this.buffer = buffer; this.rotation = rotation; this.timestamp = timestamp;
+  }
+  public Buffer getBuffer() { return buffer; }
+  public int getRotation() { return rotation; }
+  public long getTimestampNs() { return timestamp; }
+  public void release() { buffer.release(); }
+}
+""",
     "org/webrtc/CapturerObserver.java": """
 package org.webrtc;
 public interface CapturerObserver {
@@ -214,7 +250,9 @@ public class SurfaceTextureHelper {
   public static Runnable onCreate;
   private final android.os.Handler handler = new android.os.Handler();
   private final android.graphics.SurfaceTexture texture = new android.graphics.SurfaceTexture();
-  public int width, height, starts, stops, disposals;
+  public int width, height, starts, stops, disposals, forcedFrames;
+  private VideoSink listener;
+  private VideoFrame lastFrame;
   public SurfaceTextureHelper() { helpers.add(this); }
   public static SurfaceTextureHelper create(String name, Object context) {
     if (onCreate != null) onCreate.run();
@@ -229,9 +267,15 @@ public class SurfaceTextureHelper {
   }
   public void startListening(VideoSink sink) {
     if (failStart) { failStart = false; throw new IllegalStateException("test listener failure"); }
-    ++starts;
+    ++starts; listener = sink;
   }
-  public void stopListening() { ++stops; }
+  public void emit(VideoFrame frame) { lastFrame = frame; if (listener != null) listener.onFrame(frame); }
+  public void forceFrame() {
+    assert !handler.retired : "Refreshing a disposed capture helper";
+    ++forcedFrames;
+    handler.post(() -> { if (listener != null && lastFrame != null) listener.onFrame(lastFrame); });
+  }
+  public void stopListening() { ++stops; listener = null; }
   public void dispose() { ++disposals; handler.retired = true; }
 }
 """,
@@ -280,9 +324,14 @@ public class ScreenCapturerTest {
   }
   static class Observer implements org.webrtc.CapturerObserver {
     int starts, stops;
+    boolean failFrame;
+    final java.util.List<Long> timestamps = new java.util.ArrayList<>();
     public void onCapturerStarted(boolean success) { assert success; ++starts; }
     public void onCapturerStopped() { ++stops; }
-    public void onFrameCaptured(org.webrtc.VideoFrame frame) {}
+    public void onFrameCaptured(org.webrtc.VideoFrame frame) {
+      if (failFrame) throw new IllegalStateException("test frame failure");
+      timestamps.add(frame.getTimestampNs());
+    }
   }
   static class Fixture {
     final Context context = new Context();
@@ -305,6 +354,71 @@ public class ScreenCapturerTest {
     }
   }
   public static void main(String[] args) {
+    Fixture futureClock = new Fixture(34);
+    long futureTimestamp = System.nanoTime() + 3600000000000L;
+    org.webrtc.VideoFrame.Buffer futureBuffer = new org.webrtc.VideoFrame.Buffer();
+    futureClock.helper.emit(new org.webrtc.VideoFrame(futureBuffer, 0, futureTimestamp));
+    try {
+      java.lang.reflect.Field delivery = OrientationAwareScreenCapturer.class
+          .getDeclaredField("lastFrameDeliveryTimeNs");
+      delivery.setAccessible(true);
+      delivery.setLong(futureClock.capturer, System.nanoTime() - 1000000000L);
+    } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
+    android.os.SystemClock.now += 1000;
+    futureClock.helper.getHandler().runDelayedOnce();
+    assert futureClock.observer.timestamps.get(1) - futureTimestamp >= 1000000000L
+        : "Ahead-of-uptime source clock replay advanced too little for the frame-rate adapter";
+    assert futureBuffer.refs == 1;
+    futureClock.capturer.dispose();
+    for (int sdk : new int[] {24, 31, 34, 36}) {
+      Fixture idle = new Fixture(sdk);
+      assert idle.helper.getHandler().delayedPending() == 1;
+      android.os.SystemClock.now += 1000;
+      idle.helper.getHandler().runDelayedOnce();
+      assert idle.helper.forcedFrames == 0 : "Must not replay an uninitialized texture";
+      org.webrtc.VideoFrame.Buffer buffer = new org.webrtc.VideoFrame.Buffer();
+      idle.helper.emit(new org.webrtc.VideoFrame(buffer, 0, 1000000000));
+      android.os.SystemClock.now += 500;
+      idle.helper.getHandler().runDelayedOnce();
+      assert idle.helper.forcedFrames == 0 : "Real frames must suppress duplicate work";
+      android.os.SystemClock.now += 500;
+      idle.helper.getHandler().runDelayedOnce();
+      assert idle.helper.forcedFrames == 1;
+      assert idle.observer.timestamps.size() == 2;
+      assert idle.observer.timestamps.get(1) > idle.observer.timestamps.get(0)
+          : "Replayed frame retained a duplicate timestamp and would be discarded";
+      assert buffer.refs == 1 : "Refreshing leaked or consumed the original texture";
+      android.os.SystemClock.now += 900;
+      idle.helper.emit(new org.webrtc.VideoFrame(buffer, 0, idle.observer.timestamps.get(1) + 1));
+      android.os.SystemClock.now += 100;
+      idle.helper.getHandler().runDelayedOnce();
+      assert idle.helper.forcedFrames == 1 : "Continuous capture must not add forced frames";
+      idle.projection.callback.onCapturedContentResize(2400, 1080);
+      idle.helper.getHandler().drain();
+      SurfaceTextureHelper current = sdk < 31 ? idle.helper :
+          SurfaceTextureHelper.helpers.get(SurfaceTextureHelper.helpers.size() - 1);
+      if (current != idle.helper) assert idle.helper.getHandler().delayedPending() == 0;
+      int forced = current.forcedFrames;
+      android.os.SystemClock.now += 1000;
+      current.getHandler().runDelayedOnce();
+      assert current.forcedFrames == forced : "Resize replayed the previous dimensions before a new frame";
+      org.webrtc.VideoFrame.Buffer rotatedBuffer = new org.webrtc.VideoFrame.Buffer();
+      current.emit(new org.webrtc.VideoFrame(rotatedBuffer, 0, 1000000001));
+      android.os.SystemClock.now += 1000;
+      current.getHandler().runDelayedOnce();
+      assert current.forcedFrames == forced + 1;
+      assert current.getHandler().delayedPending() == 1 : "Refresh loop duplicated after rotation";
+      idle.observer.failFrame = true;
+      android.os.SystemClock.now += 1000;
+      try { current.getHandler().runDelayedOnce(); throw new AssertionError("Expected observer failure"); }
+      catch (IllegalStateException expected) {}
+      assert rotatedBuffer.refs == 1 : "Observer failure leaked a retained replay texture";
+      idle.projection.callback.onStop();
+      assert current.getHandler().delayedPending() == 0 : "Revocation retained the refresh task";
+      assert current.getHandler().pending() == 0;
+      current.getHandler().runDelayedOnce();
+      assert android.view.Surface.live == 0;
+    }
     for (int sdk : new int[] {24, 31, 34, 36}) {
       for (int cap : new int[] {480, 720, 1080, 1440, 0}) {
         Fixture limited = new Fixture(sdk, true, cap);
@@ -389,6 +503,7 @@ public class ScreenCapturerTest {
       f.capturer.dispose();
       for (SurfaceTextureHelper helper : SurfaceTextureHelper.helpers) {
         assert helper.disposals == 1 : "Each capture helper must be disposed exactly once";
+        assert helper.getHandler().delayedPending() == 0 : "Stopped helper retained a refresh task";
       }
       int listenerStops = f.helper.stops;
       f.capturer.stopCapture();
@@ -419,6 +534,8 @@ public class ScreenCapturerTest {
       assert rollback.projection.displays.get(0).surface.texture
           == rollback.helper.getSurfaceTexture() : "Resize failure lost the old producer";
       assert rollback.helper.disposals == 0 : "Resize failure disposed the usable helper";
+      assert rollback.helper.getHandler().delayedPending() == 1
+          : "Resize rollback lost or duplicated the refresh task";
       assert android.view.Surface.live == 1;
       rollback.capturer.changeCaptureFormat(2400, 1080, 30);
       assert rollback.helper.getHandler().pending() == 1
@@ -482,7 +599,7 @@ public class ScreenCapturerTest {
     assert concurrentDispose.projection.stops == 1;
     assert android.view.Surface.live == 0;
     System.out.println("Android capturer: API 24/29/30/31/34/36 resize, coalescing, stop, "
-        + "revocation, failed handoff rollback, concurrent stop/dispose and cleanup passed.");
+        + "revocation, static-frame refresh/timestamps, failed handoff rollback, concurrent stop/dispose and cleanup passed.");
   }
 }
 """

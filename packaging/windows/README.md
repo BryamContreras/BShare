@@ -10,9 +10,18 @@ La instalación es por usuario en `%LOCALAPPDATA%\Programs\BShare`, sin solicita
 permisos de administrador. Crea un acceso en Inicio y ofrece un acceso opcional
 en el escritorio. El desinstalador conserva los datos de usuario de la app.
 
-El artefacto `BShare-Windows-x64` contiene el `.exe` y su SHA-256. Actualmente no
-se aplica firma Authenticode porque el repositorio no dispone de certificado de
-firma. No se descarga ni se ejecuta otro instalador de dependencias al instalar.
+La release publica el `.exe` directamente junto a `SHA256SUMS.txt`, sin un ZIP
+intermedio. Actualmente no se aplica firma Authenticode porque el repositorio no
+dispone de certificado de firma. No se descarga ni se ejecuta otro instalador de
+dependencias al instalar.
+
+La casilla «Permitir conexiones en redes privadas» está desmarcada inicialmente.
+Al seleccionarla, Windows pide autorización de administrador para crear reglas
+TCP/UDP de entrada limitadas al ejecutable instalado y a la subred local, solo
+en redes privadas. La app sigue ejecutándose con el usuario normal. Se conservan
+las reglas de bloqueo existentes; si impiden configurar el acceso, el instalador
+informa del fallo y lo registra en `network-setup.log`. La desinstalación solicita
+autorización para retirar las reglas creadas por esa instalación.
 
 El job instala el EXE en un directorio temporal, compara todo el contenido con
 la compilación, abre BShare, comprueba que crea su ventana, la cierra y

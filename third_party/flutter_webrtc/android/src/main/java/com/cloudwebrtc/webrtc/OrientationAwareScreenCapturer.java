@@ -16,6 +16,7 @@ import android.media.projection.MediaProjection;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.view.Surface;
 import android.view.WindowManager;
 import android.app.Activity;
@@ -60,6 +61,12 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
     private int pendingHeight;
     private int activeStopCalls;
     private final Runnable resizeTask = this::applyPendingCaptureFormat;
+    private static final long STATIC_FRAME_INTERVAL_MS = 1000;
+    private final Runnable staticFrameTask = this::refreshStaticFrame;
+    private volatile boolean hasCapturedFrame;
+    private volatile long lastFrameTimeMs;
+    private volatile long lastFrameTimestampNs;
+    private volatile long lastFrameDeliveryTimeNs;
 
     /**
      * Constructs a new Screen Capturer.
@@ -107,8 +114,51 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
             return;
         }
         numCapturedFrames++;
+        final long nowNs = System.nanoTime();
+        final long elapsedNs = Math.max(1, nowNs - lastFrameDeliveryTimeNs);
+        lastFrameDeliveryTimeNs = nowNs;
+        hasCapturedFrame = true;
+        lastFrameTimeMs = SystemClock.uptimeMillis();
         maybeUpdateCaptureFormatFromDisplay();
-        capturerObserver.onFrameCaptured(frame);
+        // forceFrame() reuses the SurfaceTexture timestamp. WebRTC discards
+        // duplicates, so a replay needs a fresh monotonic timestamp. Preserve
+        // normal source timestamps while they continue to advance.
+        if (frame.getTimestampNs() > lastFrameTimestampNs) {
+            lastFrameTimestampNs = frame.getTimestampNs();
+            capturerObserver.onFrameCaptured(frame);
+        } else {
+            // Preserve the source clock domain: its timestamps may include
+            // suspend time and therefore be ahead of System.nanoTime().
+            lastFrameTimestampNs += elapsedNs;
+            frame.getBuffer().retain();
+            final VideoFrame refreshed = new VideoFrame(
+                    frame.getBuffer(), frame.getRotation(), lastFrameTimestampNs);
+            try {
+                capturerObserver.onFrameCaptured(refreshed);
+            } finally {
+                refreshed.release();
+            }
+        }
+    }
+
+    private synchronized void refreshStaticFrame() {
+        final SurfaceTextureHelper helper = surfaceTextureHelper;
+        if (isDisposed || !captureStarted || helper == null) {
+            return;
+        }
+        // VirtualDisplay emits only changed content. A viewer joining an idle
+        // screen otherwise has no frame to encode until the user touches it.
+        // Reuse the current texture at most once per second, never before its
+        // first valid frame and never while real frames are arriving.
+        if (hasCapturedFrame && SystemClock.uptimeMillis() - lastFrameTimeMs >= STATIC_FRAME_INTERVAL_MS) {
+            helper.forceFrame();
+        }
+        scheduleStaticFrame(helper);
+    }
+
+    private void scheduleStaticFrame(final SurfaceTextureHelper helper) {
+        helper.getHandler().removeCallbacks(staticFrameTask);
+        helper.getHandler().postDelayed(staticFrameTask, STATIC_FRAME_INTERVAL_MS);
     }
 
     private DisplayMetrics currentDisplayMetrics() {
@@ -186,8 +236,11 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
 
         createVirtualDisplay();
         captureStarted = true;
+        hasCapturedFrame = false;
+        lastFrameTimeMs = 0;
         capturerObserver.onCapturerStarted(true);
         surfaceTextureHelper.startListening(this);
+        scheduleStaticFrame(surfaceTextureHelper);
     }
 
     @Override
@@ -246,6 +299,8 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
             @Override
             public void run() {
                 helper.getHandler().removeCallbacks(resizeTask);
+                helper.getHandler().removeCallbacks(staticFrameTask);
+                hasCapturedFrame = false;
                 resizePending = false;
                 helper.stopListening();
                 if (virtualDisplay != null || mediaProjection != null) {
@@ -339,6 +394,7 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
     }
 
     private void createVirtualDisplay() {
+        hasCapturedFrame = false;
         updateSurfaceTextureSize();
         releaseVirtualDisplaySurface();
         virtualDisplaySurface = new Surface(surfaceTextureHelper.getSurfaceTexture());
@@ -361,6 +417,7 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
             // the texture/helper while retaining the single VirtualDisplay.
             final SurfaceTextureHelper oldHelper = surfaceTextureHelper;
             final Surface oldSurface = virtualDisplaySurface;
+            final boolean oldHasCapturedFrame = hasCapturedFrame;
             final SurfaceTextureHelper resizedHelper = SurfaceTextureHelper.create(
                     "texture_screen_thread", EglUtils.getRootEglBaseContext());
             if (resizedHelper == null) {
@@ -371,22 +428,27 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
             try {
                 resizedHelper.setTextureSize(width, height);
                 resizedSurface = new Surface(resizedHelper.getSurfaceTexture());
+                oldHelper.getHandler().removeCallbacks(staticFrameTask);
                 oldHelper.stopListening();
                 listenerStopped = true;
                 virtualDisplay.resize(width, height, VIRTUAL_DISPLAY_DPI);
                 virtualDisplay.setSurface(resizedSurface);
                 surfaceTextureHelper = resizedHelper;
                 virtualDisplaySurface = resizedSurface;
+                hasCapturedFrame = false;
                 resizedHelper.startListening(this);
+                scheduleStaticFrame(resizedHelper);
             } catch (RuntimeException error) {
                 surfaceTextureHelper = oldHelper;
                 virtualDisplaySurface = oldSurface;
+                hasCapturedFrame = oldHasCapturedFrame;
                 try {
                     virtualDisplay.resize(oldWidth, oldHeight, VIRTUAL_DISPLAY_DPI);
                     virtualDisplay.setSurface(oldSurface);
                     if (listenerStopped) {
                         oldHelper.startListening(this);
                     }
+                    scheduleStaticFrame(oldHelper);
                 } catch (RuntimeException rollbackError) {
                     error.addSuppressed(rollbackError);
                 }
@@ -401,6 +463,7 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
             }
             oldHelper.dispose();
         } else {
+            hasCapturedFrame = false;
             updateSurfaceTextureSize();
             releaseVirtualDisplaySurface();
             virtualDisplaySurface = new Surface(surfaceTextureHelper.getSurfaceTexture());

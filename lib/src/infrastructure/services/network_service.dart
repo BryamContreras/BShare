@@ -13,9 +13,27 @@ class NetworkSnapshot {
 }
 
 class NetworkService {
+  NetworkService({
+    String? operatingSystem,
+    this._readWifiIp,
+    this._readWifiName,
+    Future<bool> Function()? hasWifiNetwork,
+    this._listInterfaces,
+  }) : _operatingSystem = operatingSystem ?? Platform.operatingSystem,
+       _readHasWifiNetwork = hasWifiNetwork;
+
   static const _directChannel = MethodChannel('bshare/direct_network');
 
   final _info = NetworkInfo();
+  final String _operatingSystem;
+  final Future<String?> Function()? _readWifiIp;
+  final Future<String?> Function()? _readWifiName;
+  final Future<bool> Function()? _readHasWifiNetwork;
+  final Future<List<NetworkInterface>> Function()? _listInterfaces;
+
+  bool get _isAndroid => _operatingSystem == 'android';
+  bool get _isWindows => _operatingSystem == 'windows';
+  bool get _isLinux => _operatingSystem == 'linux';
 
   Future<NetworkSnapshot> snapshot({
     bool includeLocalInterfaces = false,
@@ -24,8 +42,10 @@ class NetworkService {
     final wifiIp = hasWifiNetwork ? await _safeWifiIp() : null;
     final localIp = includeLocalInterfaces
         ? await _localWifiIp()
-        : wifiIp == null && Platform.isLinux
-        ? await _localLanIp()
+        : wifiIp == null && (!_isAndroid || hasWifiNetwork)
+        ? _isAndroid
+              ? await _localWifiIp()
+              : await _localLanIp()
         : null;
     final ip = wifiIp ?? localIp;
     final wifiName = await _safeWifiName();
@@ -39,7 +59,9 @@ class NetworkService {
   }
 
   Future<bool> _hasWifiNetwork() async {
-    if (!Platform.isAndroid) return true;
+    final reader = _readHasWifiNetwork;
+    if (reader != null) return reader();
+    if (!_isAndroid) return true;
     try {
       return await _directChannel.invokeMethod<bool>('hasWifiNetwork') ?? false;
     } catch (_) {
@@ -49,7 +71,16 @@ class NetworkService {
 
   Future<String?> _safeWifiIp() async {
     try {
-      return await _info.getWifiIP();
+      final value = await (_readWifiIp?.call() ?? _info.getWifiIP());
+      final address = value == null ? null : InternetAddress.tryParse(value);
+      if (address == null ||
+          address.type != InternetAddressType.IPv4 ||
+          address.isLoopback ||
+          address.isMulticast ||
+          address.address == '0.0.0.0') {
+        return null;
+      }
+      return address.address;
     } catch (_) {
       return null;
     }
@@ -57,17 +88,14 @@ class NetworkService {
 
   Future<String?> _safeWifiName() async {
     try {
-      return await _info.getWifiName();
+      return await (_readWifiName?.call() ?? _info.getWifiName());
     } catch (_) {
       return null;
     }
   }
 
   Future<String?> _localWifiIp() async {
-    final interfaces = await NetworkInterface.list(
-      includeLoopback: false,
-      type: InternetAddressType.IPv4,
-    );
+    final interfaces = await _interfaces();
     final candidates = <({String address, int score})>[];
     for (final interface in interfaces) {
       final name = interface.name.toLowerCase();
@@ -84,13 +112,13 @@ class NetworkService {
   }
 
   int _localInterfaceScore(String name, String address) {
-    if (Platform.isWindows && address.startsWith('192.168.137.')) return 100;
-    if (Platform.isLinux &&
+    if (_isWindows && address.startsWith('192.168.137.')) return 100;
+    if (_isLinux &&
         _isLinuxWifiInterface(name) &&
         address.startsWith('10.42.')) {
       return 100;
     }
-    if (Platform.isWindows &&
+    if (_isWindows &&
         (name.contains('wi-fi direct') ||
             name.contains('wifi direct') ||
             name.contains('microsoft wi-fi') ||
@@ -106,10 +134,7 @@ class NetworkService {
   }
 
   Future<String?> _localLanIp() async {
-    final interfaces = await NetworkInterface.list(
-      includeLoopback: false,
-      type: InternetAddressType.IPv4,
-    );
+    final interfaces = await _interfaces();
     final candidates = <({String address, int score})>[];
     for (final interface in interfaces) {
       final name = interface.name.toLowerCase();
@@ -127,13 +152,15 @@ class NetworkService {
   }
 
   int _lanInterfaceScore(String name, String address) {
-    if (Platform.isLinux &&
+    if (_isLinux &&
         _isLinuxWifiInterface(name) &&
         address.startsWith('10.42.')) {
       return 100;
     }
     if (_isLinuxWifiInterface(name)) return 80;
     if (name == 'eth0' ||
+        name.startsWith('ethernet') ||
+        (_operatingSystem == 'macos' && RegExp(r'^en\d+$').hasMatch(name)) ||
         name.startsWith('enp') ||
         name.startsWith('ens') ||
         name.startsWith('eno') ||
@@ -141,7 +168,10 @@ class NetworkService {
       return 70;
     }
     if (_isWifiInterface(name)) return 60;
-    return 0;
+    // Windows exposes localized/user-renamed adapter labels. Any remaining
+    // physical LAN interface is preferable to incorrectly treating Ethernet
+    // as disconnected and trying to create a hotspot.
+    return 10;
   }
 
   bool _isWifiInterface(String name) =>
@@ -149,12 +179,12 @@ class NetworkService {
       name.contains('wifi') ||
       name.contains('wi-fi') ||
       name.contains('swlan') ||
-      name.contains('ap') ||
+      RegExp(r'^ap\d*$').hasMatch(name) ||
       name.contains('p2p') ||
       _isLinuxWifiInterface(name);
 
   bool _isLinuxWifiInterface(String name) =>
-      Platform.isLinux && (name.startsWith('wl') || name.startsWith('wifi'));
+      _isLinux && (name.startsWith('wl') || name.startsWith('wifi'));
 
   bool _isVirtualInterface(String name) =>
       name.startsWith('br-') ||
@@ -162,11 +192,22 @@ class NetworkService {
       name.startsWith('veth') ||
       name.startsWith('virbr') ||
       name.startsWith('vmnet') ||
+      name.startsWith('vethernet') ||
+      name.contains('vmware') ||
+      name.contains('virtualbox') ||
+      name.contains('hyper-v') ||
       name.startsWith('tailscale') ||
       name.startsWith('tun') ||
       name.startsWith('tap') ||
       name.startsWith('wg') ||
       name.startsWith('zt');
+
+  Future<List<NetworkInterface>> _interfaces() =>
+      _listInterfaces?.call() ??
+      NetworkInterface.list(
+        includeLoopback: false,
+        type: InternetAddressType.IPv4,
+      );
 
   bool _looksLocal(String address) =>
       address.startsWith('10.') ||

@@ -1,0 +1,392 @@
+{
+  "date": "2026-10-24",
+  "timezone": "America/Managua",
+  "sourceRevision": "66086ea0a3a960beee17be7cc547e85246737682",
+  "scope": "Physical Wi-Fi LAN tests with production Android applications and Linux native/browser receivers. Statistics and UI semantics only; no private media retained.",
+  "testedAndroidArtifact": {
+    "package": "com.bshare.bshare",
+    "versionName": "1.0.3",
+    "versionCode": 2014,
+    "apkSha256": "cf28db1d4a4ac5be139645f4a2976e24d00f2dbb23055bb48e0bd0042af217da",
+    "installedOnBothPhones": true,
+    "minSdk": 24,
+    "targetSdk": 36,
+    "physicalOsCoverage": [
+      {
+        "deviceModel": "Honor WDY-LX3",
+        "vendorOs": "MagicOS 8",
+        "androidVersion": 14,
+        "androidApi": 34
+      },
+      {
+        "deviceModel": "Samsung S22 Ultra SM-S908U",
+        "androidVersion": 14,
+        "androidApi": 34
+      }
+    ],
+    "configurationDoesNotEstablishPhysicalCoverageOfAllApis": true
+  },
+  "linuxProductionReceiver": {
+    "aotSha256": "140e93147d622a7d4d0ac68888ec2f1dd9556480377fd42cb7e8d8bc64197495",
+    "decoder": "FFmpeg",
+    "isolatedX11Display": true
+  },
+  "screenCases": [
+    {
+      "name": "Honor to S22",
+      "passed": true,
+      "discovery": "automatic",
+      "codec": "H264",
+      "decoder": "c2.qti.avc.decoder",
+      "rendererDimensions": [
+        [
+          720,
+          1612
+        ],
+        [
+          1612,
+          720
+        ],
+        [
+          720,
+          1612
+        ]
+      ],
+      "rotationRoundTrip": true,
+      "firstRenderedFrameAfterNegotiationSeconds": 0.574,
+      "initialDecodedFrames": 30,
+      "initialDroppedFrames": 6,
+      "viewerClosedNormally": true,
+      "sourceStoppedNormally": true
+    },
+    {
+      "name": "S22 to Honor",
+      "passed": true,
+      "discovery": "automatic after DHCP address change",
+      "codec": "H264",
+      "senderEncoder": "c2.qti.avc.encoder",
+      "decoder": "c2.mtk.avc.decoder",
+      "decodedCodecDimensions": [
+        [
+          1080,
+          2316
+        ],
+        [
+          2316,
+          1080
+        ],
+        [
+          1080,
+          2316
+        ]
+      ],
+      "rotationRoundTrip": true,
+      "sourceTrackPreservedAcrossRotation": true,
+      "activeSenderEncoderWorkersPerPhase": 1,
+      "codecLatencyMeasurementCounts": [
+        170,
+        83,
+        78
+      ],
+      "countsAreNotFpsOrDecodedFrameTotals": true,
+      "receiverEvidence": "Native first-render guard, persistent viewer UI without error and Android MediaMetrics for this package",
+      "deviceLogcatAvailable": false,
+      "viewerClosedNormally": true,
+      "sourceStoppedNormally": true
+    },
+    {
+      "name": "Honor to native Linux",
+      "passed": true,
+      "codec": "H264",
+      "decoder": "FFmpeg",
+      "firstRenderedFrameFromNativeLaunchSeconds": 2.806,
+      "initialDecodedFrames": 37,
+      "rendererDimensions": [
+        [
+          720,
+          1612
+        ]
+      ],
+      "rotationCheckedInThisCase": false,
+      "codecRetry": false,
+      "nativeExitCode": 0,
+      "cleanupPassed": true
+    },
+    {
+      "name": "S22 to native Linux",
+      "passed": true,
+      "codec": "H264",
+      "decoder": "FFmpeg",
+      "firstRenderedFrameFromNativeLaunchSeconds": 4.808,
+      "initialDecodedFrames": 5,
+      "rendererDimensions": [
+        [
+          1080,
+          2316
+        ],
+        [
+          2316,
+          1080
+        ],
+        [
+          1080,
+          2316
+        ]
+      ],
+      "rotationRoundTrip": true,
+      "codecRetry": false,
+      "nativeExitCode": 0,
+      "cleanupPassed": true
+    },
+    {
+      "name": "Synthetic Linux H264 to S22",
+      "passed": true,
+      "discovery": "automatic; no manual Refresh",
+      "codec": "H264",
+      "decoder": "c2.qti.avc.decoder",
+      "rendererDimensions": [
+        [
+          640,
+          360
+        ]
+      ],
+      "initialDecodedFrames": 29,
+      "viewerClosedNormally": true
+    },
+    {
+      "name": "Synthetic Linux VP8 to Honor",
+      "passed": true,
+      "discovery": "automatic",
+      "codec": "VP8",
+      "configuredDimensions": [
+        1280,
+        720
+      ],
+      "configuredFrameRate": 24,
+      "observedProducerDimensions": [
+        [
+          640,
+          360
+        ],
+        [
+          960,
+          540
+        ],
+        [
+          1280,
+          720
+        ]
+      ],
+      "producerEncodedFrames": 1777,
+      "receiverDecodedFrameCount": null,
+      "receiverFirstFrameGuardSatisfied": true,
+      "receiverErrorUiObserved": false,
+      "offers": 1,
+      "producerProcessDurationSeconds": 86.09,
+      "connectedStatisticsDurationSeconds": 73.8402,
+      "producerConnectedStatisticsSamples": 147,
+      "remoteViewerStopRequests": 1,
+      "browserMediaClosed": true,
+      "temporaryProfileRemoved": true,
+      "networkHelpersStopped": true,
+      "limits": "Producer frame counts are not Honor decoded frames or a receiver throughput benchmark; Android logcat was unavailable."
+    }
+  ],
+  "cameraCases": [
+    {
+      "name": "Honor automatic discovery and viewing in native Linux production UI",
+      "passed": true,
+      "automaticDiscovery": true,
+      "manualIpEntry": false,
+      "refreshPressed": false,
+      "codec": "H264",
+      "decoder": "FFmpeg",
+      "initialDecodedFrames": 10,
+      "rendererDimensions": [
+        [
+          320,
+          180
+        ],
+        [
+          480,
+          270
+        ],
+        [
+          640,
+          360
+        ]
+      ],
+      "remoteAudioTrackObserved": true,
+      "audioSampleTransportValidatedInThisCase": false,
+      "nativeStopButtonUsed": true,
+      "nativeExitCode": 0,
+      "cleanupPassed": true,
+      "temporaryProfileRemoved": true,
+      "isolatedDisplayStopped": true,
+      "silentAudioSinkRemoved": true
+    },
+    {
+      "name": "Initial Honor camera trial interrupted by DHCP change",
+      "passed": false,
+      "videoAdvancedBeforeInterruption": true,
+      "continuousVideoAtEnd": false,
+      "codec": "H264",
+      "decodedFrames": 2550,
+      "observedFramesPerSecondBeforeInterruption": 28.72,
+      "dimensionsObserved": [
+        [
+          640,
+          360
+        ],
+        [
+          960,
+          540
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          1920,
+          1080
+        ]
+      ],
+      "firstRenderedVideoSeconds": 1.585,
+      "lastVideoAdvanceAtSeconds": 87.542,
+      "networkFailure": "The router assigned different phone addresses; the old route and ADB connections stopped responding.",
+      "remoteViewerStopSucceeded": false,
+      "remoteViewerStopErrorCategory": "No route to host",
+      "desktopCleanupPassed": true,
+      "mustNotBeReportedAsCompletedPass": true
+    },
+    {
+      "name": "Completed Honor camera controls and microphone trial after reconnection",
+      "passed": true,
+      "codec": "H264",
+      "compatibilityMode": false,
+      "durationSeconds": 146.38,
+      "decodedFrames": 2146,
+      "observedFramesPerSecond": 15.03,
+      "dimensionsObserved": [
+        [
+          320,
+          180
+        ],
+        [
+          960,
+          540
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          1920,
+          1080
+        ]
+      ],
+      "advancingVideo": true,
+      "continuousVideoThroughFinalTwoSeconds": true,
+      "cameraRearFrontRear": true,
+      "frontFlashUnavailableControlDisabled": true,
+      "rearFlashOnOff": true,
+      "microphonePermission": "Android Only this time",
+      "microphoneEnabledForTrialThenDisabled": true,
+      "localPreviewHidden": true,
+      "autoDim": {
+        "observedAfterSecondsWithoutInteraction": 73.32178935200045,
+        "blackOverlaySemanticsObserved": true,
+        "deviceRemainedAwake": true,
+        "samePeerDecodedFrameGrowth": 902,
+        "samePeerAudioSampleGrowth": 3495360
+      },
+      "audio": {
+        "samplesReceived": 6900480,
+        "receiverPlayoutMuted": true,
+        "energy": 0,
+        "androidActiveRecordingSampleRate": 48000,
+        "androidRecordingSilenced": false,
+        "transportVerified": true,
+        "audibleContentOrAcousticQualityVerified": false,
+        "recordingSaved": false
+      },
+      "remoteViewerStopHttpStatus": 200,
+      "browserMediaClosed": true,
+      "temporaryProfileRemoved": true,
+      "cleanupPassed": true,
+      "limits": "Frame rate varied during the trial; 30 FPS is a configured cap. Lighting and exposure were not controlled. Muted audio statistics with energy zero do not prove audible content or acoustic quality."
+    }
+  ],
+  "homeAddressResumeCorrection": {
+    "observedProblem": "Home retained the previous network address after DHCP changed while the application was in the background; discovery and newly started HTTP listeners used the current address.",
+    "implementation": "Refresh the network snapshot once after hidden/paused to resumed; ignore inactive-only permission dialog transitions and prevent refresh during/after shutdown.",
+    "focusedRegressionCases": 6,
+    "followUpAndroidArtifact": {
+      "versionName": "1.0.3",
+      "versionCode": 2015,
+      "apkSha256": "9ca37791bb3504cf2b3ee809ea345e70de6a12c50e11f0501918c3e8910a99b7",
+      "buildStatus": "passed",
+      "physicalInstallationStatus": {
+        "S22": "installed in place; on-device APK hash matched; no idle media resources active",
+        "Honor": "installed in place; on-device APK hash matched; no idle media resources active"
+      },
+      "fullMediaMatrixRepeated": false,
+      "mediaEvidenceAppliesToVersionCode": 2014,
+      "architecture": "arm64-v8a",
+      "staticChecks": {
+        "nativeAbiCompleteness": true,
+        "native16KbAlignment": true,
+        "qrRegistrarConstructors": true
+      },
+      "physicalResumeHomeUiVerification": {
+        "passed": true,
+        "bothPhones": true,
+        "currentIpVisibleAfterNormalBackgroundResume": true,
+        "sameAppProcess": true,
+        "dhcpChangedDeliberately": false,
+        "scope": "One ordinary background/resume cycle per phone; stale-to-current address change is covered separately by lifecycle widget regressions."
+      }
+    }
+  },
+  "finalCleanup": {
+    "normalUiStopUsed": true,
+    "forceStopRequired": false,
+    "phones": {
+      "bshareForegroundServices": 0,
+      "activeCameraClients": 0,
+      "activeMediaProjection": false,
+      "appWakeLocks": 0,
+      "appMulticastLocks": 0,
+      "encoderWorkers": 0,
+      "decoderWorkers": 0,
+      "captureTextureWorkers": 0,
+      "screenSignalingListeners": 0,
+      "cameraSignalingListeners": 0
+    },
+    "desktopOwnedHelpersRemaining": 0,
+    "temporaryBrowserProfilesRemoved": true,
+    "preferences": {
+      "screenResolution": 1080,
+      "screenFrameRate": 30,
+      "cameraResolution": 1080,
+      "cameraFrameRate": 30,
+      "cameraSelected": "rear",
+      "microphoneEnabled": false,
+      "flashEnabled": false,
+      "originalRotationSettingsRestored": true
+    },
+    "appsReturnedToHome": true
+  },
+  "privacy": {
+    "personalNamesIncluded": false,
+    "ipAddressesIncluded": false,
+    "deviceSerialsIncluded": false,
+    "privatePhotosFramesOrAudioIncluded": false
+  },
+  "remainingCoverage": [
+    "Physical Android coverage is API 34 only; configured API 24 minimum and API 36 target are not runtime verification of every Android release.",
+    "Windows native H264/VP8 capture/receive and installer/firewall checks passed in earlier GitHub hosted-runner CI. The reported low-resource Windows PC was unavailable for physical testing.",
+    "Router/client isolation, other vendors, GPU drivers, Wayland compositors and USB transport are not all covered by these Wi-Fi observations.",
+    "No audible audio quality or visual stretch assessment was recorded; codec/renderer metrics and metadata establish decoding and dimension changes."
+  ]
+}

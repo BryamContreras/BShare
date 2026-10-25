@@ -5,6 +5,7 @@ import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
+import 'package:bshare/src/presentation/localization/video_connection_localizations.dart';
 import 'package:bshare/src/presentation/localization/camera_localizations.dart';
 import 'package:bshare/src/presentation/localization/camera_ui_localizations.dart';
 import 'package:bshare/src/presentation/screens/screen_viewer_screen.dart';
@@ -134,7 +135,7 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
                           ),
                           subtitle: state.error == null
                               ? null
-                              : Text(state.error!),
+                              : Text(l10n.videoConnectionError(state)),
                         ),
                       ),
                       const SizedBox(height: 14),

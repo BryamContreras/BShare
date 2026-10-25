@@ -20,9 +20,10 @@ void main() {
   Future<int> start({
     bool autoAccept = true,
     IncomingTransferHandler? onIncoming,
+    int preferredPort = 0,
   }) {
     return server.start(
-      preferredPort: 0,
+      preferredPort: preferredPort,
       downloadDirectory: directory.path,
       autoAccept: autoAccept,
       onIncoming: onIncoming ?? (_) async => true,
@@ -218,6 +219,58 @@ void main() {
         () => Socket.connect('127.0.0.1', ports.first),
         throwsA(isA<SocketException>()),
       );
+    },
+  );
+
+  test('another BShare instance cannot share a signaling listener', () async {
+    final occupied = await HttpServer.bind(
+      InternetAddress.anyIPv4,
+      0,
+      shared: true,
+    );
+    addTearDown(() => occupied.close(force: true));
+    final port = await start(preferredPort: occupied.port);
+    expect(port, isNot(occupied.port));
+    expect(server.port, port);
+    final request = await client.getUrl(
+      Uri.parse('http://127.0.0.1:$port/api/ping'),
+    );
+    final response = await request.close();
+    expect(response.statusCode, HttpStatus.ok);
+    await response.drain<void>();
+  });
+
+  test(
+    'viewer stop releases only its requested media session and validates ID',
+    () async {
+      final stopped = <String>[];
+      server.screenViewerStopHandler = (id) async => stopped.add('screen:$id');
+      server.cameraViewerStopHandler = (id) async => stopped.add('camera:$id');
+      final port = await start();
+      for (final source in ['screen', 'camera']) {
+        final request = await client.postUrl(
+          Uri.parse('http://127.0.0.1:$port/api/$source/stop-viewer'),
+        );
+        request.write(jsonEncode({'viewerId': 'viewer-12345678901234'}));
+        final response = await request.close();
+        expect(response.statusCode, HttpStatus.ok);
+        await response.drain<void>();
+      }
+      expect(stopped, [
+        'screen:viewer-12345678901234',
+        'camera:viewer-12345678901234',
+      ]);
+      final invalid = await client.postUrl(
+        Uri.parse('http://127.0.0.1:$port/api/screen/stop-viewer'),
+      );
+      invalid.write('{}');
+      final rejected = await invalid.close();
+      expect(rejected.statusCode, HttpStatus.badRequest);
+      await rejected.drain<void>();
+      expect(stopped, hasLength(2));
+      await server.stop();
+      expect(server.cameraViewerStopHandler, isNull);
+      expect(server.screenViewerStopHandler, isNull);
     },
   );
 
