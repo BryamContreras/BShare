@@ -36,6 +36,7 @@ import urllib.request
 
 
 ROOT = Path(__file__).resolve().parents[1]
+BROWSER_STARTUP_TIMEOUT = 45.0
 
 
 def close_native_window(pid: int, display_name: str | None = None) -> bool:
@@ -185,6 +186,32 @@ def native_video_has_multiple_frames(decoded_count):
     return decoded_count >= 2
 
 
+def check_browser(fixture, browser):
+    fatal = next((event for event in fixture.reports if event.get('event') == 'fatal'), None)
+    if fatal:
+        raise RuntimeError(f'Browser fixture fatal: {fatal.get("message", "unknown error")}')
+    exit_code = browser.poll()
+    if exit_code is not None:
+        raise RuntimeError(f'Browser exited early: {exit_code}')
+
+
+def wait_for_browser_ready(fixture, browser, timeout=BROWSER_STARTUP_TIMEOUT, *,
+                           started_at=None, clock=None):
+    if not 0 < timeout < float('inf'):
+        raise ValueError('Browser startup timeout must be positive and finite')
+    clock = time.monotonic if clock is None else clock
+    deadline = (clock() if started_at is None else started_at) + timeout
+    while True:
+        # A ready event must not hide a fatal report or an exited process.
+        check_browser(fixture, browser)
+        if fixture.ready.is_set() and fixture.ready_received_at <= deadline:
+            return
+        remaining = deadline - clock()
+        if remaining <= 0:
+            raise TimeoutError(f'Browser fixture did not become ready within {timeout:g} seconds')
+        fixture.ready.wait(min(.1, remaining))
+
+
 class Fixture:
     def __init__(self, codec, stall_first, stall_all, source_url=None, audio=False,
                  compatibility=False, viewer_id=None, verify_synthetic_pattern=False):
@@ -201,6 +228,7 @@ class Fixture:
         self.answers = {}
         self.reports = []
         self.ready = threading.Event()
+        self.ready_received_at = None
         self.stopped = threading.Event()
         self.offer_count = 0
         self.offers = []
@@ -281,6 +309,8 @@ class Fixture:
                 if self.path == '/report':
                     fixture.reports.append(data)
                     if data.get('event') == 'ready':
+                        if fixture.ready_received_at is None:
+                            fixture.ready_received_at = time.monotonic()
                         fixture.ready.set()
                     return self.reply({'ok': True})
                 if self.path.startswith('/answer/'):
@@ -319,7 +349,9 @@ class Fixture:
         return Handler
 
 
-def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_probe=False):
+def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_probe=False,
+             browser_startup_timeout=BROWSER_STARTUP_TIMEOUT):
+    started = time.monotonic()
     fixture = Fixture(codec, stall_first, stall_all)
     server = ThreadingHTTPServer(('127.0.0.1', 0), fixture.handler())
     serving = threading.Thread(target=server.serve_forever, daemon=True)
@@ -332,9 +364,11 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
             listener.bind(('127.0.0.1', 0))
             control_port = listener.getsockname()[1]
         control_origin = f'http://127.0.0.1:{control_port}'
-    started = time.monotonic()
+    timings = {'browserLaunchSeconds': None, 'browserReadySeconds': None,
+        'nativeLaunchSeconds': None, 'errorSeconds': None, 'cleanupStartSeconds': None}
     result = {'codec': codec, 'stallFirstOffer': stall_first, 'stallAllOffers': stall_all,
-        'nativeDiagnosticEntrypoint': native_probe, 'passed': False}
+        'nativeDiagnosticEntrypoint': native_probe, 'passed': False,
+        'browserStartupTimeoutSeconds': browser_startup_timeout, 'timings': timings}
     with tempfile.TemporaryDirectory(prefix='bshare-interop-') as directory:
         temp = Path(directory)
         native_log = temp / 'native.log'
@@ -347,7 +381,10 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
         if os.name != 'nt':
             env['GDK_BACKEND'] = 'x11'
         with native_log.open('w') as native_output, browser_log.open('w') as browser_output:
+            stage = 'browser-launch'
             try:
+                browser_started = time.monotonic()
+                timings['browserLaunchSeconds'] = round(browser_started - started, 3)
                 source = subprocess.Popen([browser, '--headless=new', '--disable-gpu',
                     '--no-first-run', '--no-default-browser-check', '--disable-extensions',
                     '--disable-background-networking', '--disable-component-update',
@@ -356,16 +393,21 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
                     f'--user-data-dir={temp / "browser-profile"}',
                     f'http://127.0.0.1:{server.server_port}/'],
                     stdout=browser_output, stderr=subprocess.STDOUT, env=env)
-                if not fixture.ready.wait(15):
-                    raise RuntimeError('Browser fixture did not become ready')
+                stage = 'browser-startup'
+                wait_for_browser_ready(fixture, source, browser_startup_timeout,
+                    started_at=browser_started)
                 arguments = [str(binary), '--viewer-ip', '127.0.0.1',
                     '--viewer-port', str(server.server_port), '--viewer-name', f'Interop-{codec}']
                 if native_probe:
                     arguments += ['--probe-control-port', str(control_port), '--probe-seconds', str(int(seconds + 30))]
+                stage = 'native-launch'
+                timings['nativeLaunchSeconds'] = round(time.monotonic() - started, 3)
                 native = subprocess.Popen(arguments,
                     stdout=native_output, stderr=subprocess.STDOUT, env=env)
+                stage = 'native-media'
                 deadline = time.monotonic() + seconds
                 while time.monotonic() < deadline:
+                    check_browser(fixture, source)
                     text = native_log.read_text(errors='replace')
                     if control_origin:
                         try:
@@ -407,9 +449,14 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
                     time.sleep(.2)
                 if not result['passed']:
                     result['error'] = 'No verified decoded frames before deadline'
+                    result['errorStage'] = stage
+                    timings['errorSeconds'] = round(time.monotonic() - started, 3)
             except Exception as error:
                 result['error'] = str(error)
+                result['errorStage'] = stage
+                timings['errorSeconds'] = round(time.monotonic() - started, 3)
             finally:
+                timings['cleanupStartSeconds'] = round(time.monotonic() - started, 3)
                 if control_origin:
                     try:
                         request = urllib.request.Request(f'{control_origin}/stop', data=b'{}',
@@ -444,6 +491,8 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
                 server.shutdown()
                 server.server_close()
                 serving.join(timeout=5)
+        if fixture.ready_received_at is not None:
+            timings['browserReadySeconds'] = round(fixture.ready_received_at - started, 3)
         result['nativeLog'] = native_log.read_text(errors='replace')
         if not result['passed']:
             result['browserLog'] = browser_log.read_text(errors='replace')
@@ -474,12 +523,16 @@ def main():
     parser.add_argument('--browser', default=find_browser())
     parser.add_argument('--codec', action='append', choices=['H264', 'VP8'])
     parser.add_argument('--timeout', type=float, default=65)
+    parser.add_argument('--browser-startup-timeout', type=float, default=BROWSER_STARTUP_TIMEOUT,
+        help='Bound browser fixture startup separately from the native media timeout (seconds)')
     parser.add_argument('--stall-first-offer', action='store_true')
     parser.add_argument('--stall-all-offers', action='store_true')
     parser.add_argument('--matrix', action='store_true', help='Run H264, VP8, VP8 recovery and bounded total failure')
     parser.add_argument('--native-probe', action='store_true', help='Binary uses webrtc_native_probe.dart; verify renderer/status via HTTP without stdout dependency')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    if not 0 < args.browser_startup_timeout < float('inf'):
+        parser.error('--browser-startup-timeout must be positive and finite')
     if not args.browser or not args.binary.is_file() or (os.name != 'nt' and not os.environ.get('DISPLAY')):
         parser.error('A built native binary, browser, and Windows or an X11 display are required')
     if args.matrix and (args.codec or args.stall_first_offer or args.stall_all_offers):
@@ -495,7 +548,8 @@ def main():
     cases = [('H264', False, False), ('VP8', False, False), ('VP8', True, False), ('VP8', False, True)] if args.matrix else [
         (codec, args.stall_first_offer, args.stall_all_offers) for codec in codecs]
     for codec, stall_first, stall_all in cases:
-        result = run_case(args.binary.resolve(), args.browser, codec, args.timeout, stall_first, stall_all, args.native_probe)
+        result = run_case(args.binary.resolve(), args.browser, codec, args.timeout, stall_first, stall_all,
+            args.native_probe, browser_startup_timeout=args.browser_startup_timeout)
         report['cases'].append(result)
         print(json.dumps({key: value for key, value in result.items() if key not in ['nativeLog', 'browserEvents']}), flush=True)
     report['passed'] = all(case['passed'] for case in report['cases'])

@@ -193,6 +193,13 @@ video avoids recording the user's desktop. Use `--help` for the available modes.
 Results must record the tested binary hash, platform, negotiated codec, decoded
 frames and cleanup outcome.
 
+The browser source has a separate, bounded 45-second startup budget. Two Windows
+CI attempts exceeded the previous 15-second limit before BShare launched or any
+offer was sent. The probe now records browser launch/readiness, native launch and
+cleanup timing, and fails early if the source exits or reports a fatal error.
+Late readiness does not turn a failed startup into a pass. This budget does not
+extend the native media verification deadline or trigger automatic retries.
+
 Successful builds and these tests do not establish operation on every Android
 vendor, GPU, Windows PC or router. Honor/S22 screen streaming in both directions,
 rotation and Honor camera reception on Linux now have physical evidence. Both

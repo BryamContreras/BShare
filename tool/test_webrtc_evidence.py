@@ -1,11 +1,15 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import io
+import json
 import os
 import threading
 import time
 
-from webrtc_interop_probe import close_native_window, find_browser, native_video_has_multiple_frames
+from webrtc_interop_probe import (
+    Fixture, close_native_window, find_browser, native_video_has_multiple_frames,
+    wait_for_browser_ready,
+)
 from webrtc_native_sender_probe import launch_xvfb
 from webrtc_receive_probe import video_evidence
 
@@ -14,6 +18,114 @@ def sample(time, frames, codec='video/VP8', state='connected'):
     return {'event': 'stats', 'timestampMs': time, 'framesDecoded': frames,
         'firstFrameRendered': frames > 0, 'connectionState': state,
         'codec': codec, 'frameWidth': 640, 'frameHeight': 360}
+
+
+class _FakeClock:
+    def __init__(self):
+        self.now = 100.0
+
+    def __call__(self):
+        return self.now
+
+
+class _FakeReady:
+    def __init__(self, clock, fixture, ready_after=None):
+        self.clock = clock
+        self.fixture = fixture
+        self.ready_at = None if ready_after is None else clock() + ready_after
+        self.waits = []
+        self.on_wait = None
+
+    def is_set(self):
+        return self.fixture.ready_received_at is not None
+
+    def wait(self, timeout):
+        self.waits.append(timeout)
+        duration = timeout
+        if self.ready_at is not None:
+            duration = min(duration, max(0, self.ready_at - self.clock()))
+        self.clock.now += duration
+        if self.ready_at is not None and self.clock() >= self.ready_at:
+            self.fixture.ready_received_at = self.ready_at
+        if self.on_wait is not None:
+            self.on_wait()
+        return self.is_set()
+
+
+class BrowserStartupTest(unittest.TestCase):
+    def fixture(self, ready_after=None):
+        clock = _FakeClock()
+        fixture = Fixture('H264', False, False)
+        fixture.ready = _FakeReady(clock, fixture, ready_after)
+        return clock, fixture, Mock(poll=Mock(return_value=None))
+
+    def test_browser_ready_after_seventeen_seconds_has_its_own_budget(self):
+        clock, fixture, browser = self.fixture(ready_after=17)
+        wait_for_browser_ready(fixture, browser, clock=clock)
+        self.assertEqual(clock(), 117)
+        self.assertEqual(fixture.ready_received_at, 117)
+        self.assertTrue(all(0 < duration <= .1 for duration in fixture.ready.waits))
+
+    def test_browser_readiness_stall_reaches_exact_forty_five_second_deadline(self):
+        clock, fixture, browser = self.fixture()
+        with self.assertRaisesRegex(TimeoutError, 'within 45 seconds'):
+            wait_for_browser_ready(fixture, browser, clock=clock)
+        self.assertEqual(clock(), 145)
+        self.assertTrue(all(0 < duration <= .1 for duration in fixture.ready.waits))
+
+    def test_ready_received_after_deadline_cannot_reverse_a_timeout(self):
+        clock, fixture, browser = self.fixture(ready_after=46)
+        with self.assertRaises(TimeoutError):
+            wait_for_browser_ready(fixture, browser, started_at=100, clock=clock)
+        fixture.ready.wait(1)  # A late report can still arrive during cleanup.
+        self.assertEqual(fixture.ready_received_at, 146)
+        with self.assertRaises(TimeoutError):
+            wait_for_browser_ready(fixture, browser, started_at=100, clock=clock)
+
+    def test_browser_exit_fails_early_even_when_ready_is_also_received(self):
+        for ready_after in [None, 2]:
+            for exit_code in [0, 9]:
+                with self.subTest(ready_after=ready_after, exit_code=exit_code):
+                    clock, fixture, browser = self.fixture(ready_after)
+                    browser.poll.side_effect = lambda: exit_code if clock() >= 102 else None
+                    with self.assertRaisesRegex(RuntimeError, f'Browser exited early: {exit_code}'):
+                        wait_for_browser_ready(fixture, browser, clock=clock)
+                    self.assertLess(clock(), 103)
+
+    def test_fatal_fails_early_even_when_ready_is_also_received(self):
+        for ready_after in [None, 2]:
+            with self.subTest(ready_after=ready_after):
+                clock, fixture, browser = self.fixture(ready_after)
+
+                def report_fatal():
+                    if clock() >= 102:
+                        fixture.reports.append({'event': 'fatal', 'message': 'fixture failed'})
+
+                fixture.ready.on_wait = report_fatal
+                with self.assertRaisesRegex(RuntimeError, 'Browser fixture fatal: fixture failed'):
+                    wait_for_browser_ready(fixture, browser, clock=clock)
+                self.assertLess(clock(), 103)
+
+    def test_startup_budget_must_be_positive_and_finite(self):
+        clock, fixture, browser = self.fixture()
+        for timeout in [0, -1, float('inf'), float('nan')]:
+            with self.subTest(timeout=timeout), self.assertRaises(ValueError):
+                wait_for_browser_ready(fixture, browser, timeout, clock=clock)
+        self.assertFalse(fixture.ready.waits)
+
+    def test_ready_report_records_its_first_received_time_before_signaling(self):
+        fixture = Fixture('H264', False, False)
+        handler = object.__new__(fixture.handler())
+        payload = json.dumps({'event': 'ready'}).encode()
+        handler.path = '/report'
+        handler.headers = {'Content-Length': str(len(payload))}
+        handler.reply = Mock()
+        for received_at in [117, 146]:
+            handler.rfile = io.BytesIO(payload)
+            with patch('webrtc_interop_probe.time.monotonic', return_value=received_at):
+                handler.do_POST()
+            self.assertEqual(fixture.ready_received_at, 117)
+            self.assertTrue(fixture.ready.is_set())
 
 
 class VideoEvidenceTest(unittest.TestCase):
