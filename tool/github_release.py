@@ -40,6 +40,26 @@ def validate_tag(tag):
     return tag[1:]
 
 
+def release_for_tag(github, tag, *, missing_ok=False):
+    # GitHub's by-tag endpoint only returns published releases. Drafts, even
+    # those with uploaded installers, must be found through the release list.
+    published = github.api('GET', f'releases/tags/{tag}', missing_ok=True)
+    if published is not None:
+        return published
+    page = 1
+    while True:
+        releases = github.api('GET', f'releases?per_page=100&page={page}')
+        for release in releases:
+            if release['tag_name'] == tag:
+                return release
+        if len(releases) < 100:
+            break
+        page += 1
+    if not missing_ok:
+        raise ValueError(f'Release not found: {tag}')
+    return None
+
+
 def tag_commit(github, reference):
     if reference is None:
         return None
@@ -82,7 +102,7 @@ def stage(github, tag, version, commit, run_id, attempt, changelog, notes_path):
         raise ValueError('Expected an immutable source commit SHA')
     if not str(run_id).isdigit() or not str(attempt).isdigit():
         raise ValueError('Expected numeric workflow run identifiers')
-    existing = github.api('GET', f'releases/tags/{tag}', missing_ok=True)
+    existing = release_for_tag(github, tag, missing_ok=True)
     if existing and existing.get('immutable'):
         raise ValueError('GitHub marks this release immutable; it cannot be replaced')
     reference = github.api('GET', f'git/ref/tags/{tag}', missing_ok=True)
@@ -90,7 +110,7 @@ def stage(github, tag, version, commit, run_id, attempt, changelog, notes_path):
     notes = changelog_section(changelog, version)
     notes_path.parent.mkdir(parents=True, exist_ok=True)
     notes_path.write_text(notes + '\n', encoding='utf-8')
-    draft = github.api('GET', f'releases/tags/{upload_tag}', missing_ok=True)
+    draft = release_for_tag(github, upload_tag, missing_ok=True)
     if draft and (not draft['draft'] or draft['target_commitish'] != commit):
         raise ValueError('The staging release belongs to another source or is published')
     data = {'tag_name': upload_tag, 'target_commitish': commit, 'name': tag,
@@ -112,13 +132,13 @@ def publish(github, tag, upload_tag, commit, expected_tag_sha, assets, notes_pat
     hashes = installer_hashes(files, checksums)
     files = [*files, checksums]
     notes = notes_path.read_text(encoding='utf-8')
-    staging = github.api('GET', f'releases/tags/{upload_tag}')
+    staging = release_for_tag(github, upload_tag)
     if not staging['draft'] or staging['target_commitish'] != commit:
         raise ValueError('Expected a draft containing installers for the source commit')
     reference = github.api('GET', f'git/ref/tags/{tag}', missing_ok=True)
     resolved = tag_commit(github, reference)
     check_tag_lease(reference, expected_tag_sha, commit, resolved)
-    canonical = github.api('GET', f'releases/tags/{tag}', missing_ok=True)
+    canonical = release_for_tag(github, tag, missing_ok=True)
     if canonical is None:
         canonical = github.api('POST', 'releases', {
             'tag_name': tag, 'target_commitish': commit, 'name': tag,
