@@ -5,9 +5,12 @@
 The **Build installers** workflow runs the quality gate on pushes and pull
 requests to `main`. A version tag such as `v1.0.4` runs the same gate, builds all
 installers, verifies them, and publishes the files as individual GitHub Release
-assets. To run a release build manually, select a version tag as the ref in
-**Actions → Build installers → Run workflow**. The tag must match `pubspec.yaml`.
-An interrupted run for the same ref is canceled when a newer run starts.
+assets. To rebuild a release manually, select `main` in
+**Actions → Build installers → Run workflow** and enter the version tag in
+`release_tag`. The tag must match `pubspec.yaml`; see
+[regenerating an existing version](#regenerate-an-existing-version).
+Verification runs for the same branch cancel older verification runs. Release
+builds finish in sequence so a newer request cannot interrupt publication.
 
 The quality job runs analysis, the Flutter regression suite, verification-tool
 unit tests, and native Linux window-decoration tests. It must pass before Windows,

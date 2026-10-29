@@ -3,19 +3,31 @@ import 'package:bshare/src/domain/entities/receive_progress.dart';
 import 'package:bshare/src/domain/entities/selected_transfer_file.dart';
 import 'package:bshare/src/domain/entities/send_progress.dart';
 import 'package:bshare/src/domain/entities/transfer_progress_status.dart';
+import 'package:bshare/src/infrastructure/services/network_service.dart';
 import 'package:bshare/src/presentation/app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+ProviderContainer _container() => ProviderContainer(
+  // Layout and navigation tests must not launch host network commands or sockets.
+  overrides: [
+    networkProvider.overrideWith((_) async => const NetworkSnapshot()),
+  ],
+);
+
 void main() {
   testWidgets('BShare app renders', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: BShareApp()));
+    final container = _container();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(container: container, child: const BShareApp()),
+    );
     expect(find.text('BShare'), findsWidgets);
   });
 
   testWidgets('incoming files open the Transfers tab', (tester) async {
-    final container = ProviderContainer();
+    final container = _container();
     addTearDown(container.dispose);
 
     await tester.pumpWidget(
@@ -50,7 +62,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final container = ProviderContainer();
+    final container = _container();
     addTearDown(container.dispose);
     container.read(pickedFilesProvider.notifier).set(const [
       SelectedTransferFile(
@@ -122,7 +134,14 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(const ProviderScope(child: BShareApp()));
+      final container = _container();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const BShareApp(),
+        ),
+      );
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(tester.takeException(), isNull);
