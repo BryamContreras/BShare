@@ -143,7 +143,7 @@ void main() {
     storage = _Storage();
     execution = _Execution();
     discovery = _Discovery();
-    directory = '/tmp';
+    directory = Directory.systemTemp.path;
     container = ProviderContainer(
       overrides: [
         settingsProvider.overrideWith(() => _Settings(directory)),
@@ -471,7 +471,13 @@ void main() {
   test(
     'unwritable configured folder never silently changes the destination',
     () async {
-      directory = '/proc/bshare-unwritable-test/Downloads';
+      final temp = await Directory.systemTemp.createTemp(
+        'bshare-unwritable-receiver-',
+      );
+      addTearDown(() => temp.delete(recursive: true));
+      final blocker = File('${temp.path}/occupied');
+      await blocker.writeAsString('This file blocks creation of a directory.');
+      directory = '${blocker.path}/Downloads';
       await container.read(receiveControllerProvider.future);
       final controller = container.read(receiveControllerProvider.notifier);
       await controller.startForVideoShare();

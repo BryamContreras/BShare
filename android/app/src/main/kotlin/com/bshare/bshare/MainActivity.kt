@@ -36,6 +36,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.NetworkInterface
 import java.net.Inet4Address
+import java.net.InetAddress
 import java.util.UUID
 import kotlin.concurrent.thread
 
@@ -193,6 +194,20 @@ class MainActivity : FlutterActivity() {
                 result.error("camera_platform_error", error.message, null)
             }
         }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bshare/network").setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "getLanInterfaces" -> result.success(lanNetworkInterfaces())
+                    "getRoutedInterfaceIndexes" -> result.success(
+                        lanNetworkInterfaces().filter { it["hasDefaultRoute"] == true }
+                            .map { it["index"] }
+                    )
+                    else -> result.notImplemented()
+                }
+            } catch (error: Exception) {
+                result.error("network_interfaces_unavailable", error.message, null)
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bshare/direct_network").setMethodCallHandler { call, result ->
             when (call.method) {
                 "startLocalOnlyHotspot" -> startLocalOnlyHotspot(result)
@@ -241,6 +256,80 @@ class MainActivity : FlutterActivity() {
         val lock = discoveryMulticastLock
         discoveryMulticastLock = null
         if (lock?.isHeld == true) lock.release()
+    }
+
+    private fun isLanNetwork(capabilities: NetworkCapabilities): Boolean =
+        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+            (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
+
+    private fun lanNetworkInterfaces(): List<Map<String, Any>> {
+        val connectivity = applicationContext.getSystemService(ConnectivityManager::class.java)
+        val activeNetwork = connectivity.activeNetwork
+        val interfaces = mutableListOf<Map<String, Any>>()
+        for (network in connectivity.allNetworks) {
+            val capabilities = connectivity.getNetworkCapabilities(network) ?: continue
+            if (!isLanNetwork(capabilities)) continue
+            val properties = connectivity.getLinkProperties(network) ?: continue
+            val name = properties.interfaceName ?: continue
+            val iface = NetworkInterface.getByName(name) ?: continue
+            if (iface.index <= 0 || iface.isLoopback) continue
+            val addresses = properties.linkAddresses.mapNotNull { link ->
+                val address = link.address
+                if (address !is Inet4Address || address.isAnyLocalAddress ||
+                    address.isLoopbackAddress || address.isMulticastAddress) null
+                else mapOf("ip" to (address.hostAddress ?: return@mapNotNull null),
+                    "prefixLength" to link.prefixLength)
+            }
+            val isUp = iface.isUp
+            // LANs without Internet access/validation are valid transfer links.
+            interfaces.add(mapOf(
+                "index" to iface.index,
+                "name" to name,
+                "addresses" to addresses,
+                "kind" to if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
+                    "ethernet" else "wifi",
+                "isUp" to isUp,
+                "isLan" to (isUp && addresses.isNotEmpty()),
+                "hasDefaultRoute" to properties.routes.any {
+                    it.isDefaultRoute && it.destination.address is Inet4Address
+                },
+                "metric" to if (network == activeNetwork) 0 else 100,
+                "isHosted" to false,
+            ))
+        }
+        // Android does not expose a LocalOnlyHotspot as a ConnectivityManager
+        // network on every device. Only inspect AP-style interfaces while this
+        // Activity actually owns a reservation, and retain their real prefixes.
+        if (hotspotReservation != null) {
+            val knownNames = interfaces.map { it["name"] }.toSet()
+            val localInterfaces = NetworkInterface.getNetworkInterfaces()
+            if (localInterfaces != null) for (iface in localInterfaces) {
+                if (iface.name in knownNames || iface.index <= 0 ||
+                    !iface.isUp || iface.isLoopback ||
+                    !Regex("^(wlan|swlan|ap)\\d*$").matches(iface.name.lowercase())) continue
+                val addresses = iface.interfaceAddresses.mapNotNull { link ->
+                    val address = link.address
+                    if (address !is Inet4Address || address.isAnyLocalAddress ||
+                        address.isLoopbackAddress || address.isMulticastAddress) null
+                    else mapOf("ip" to (address.hostAddress ?: return@mapNotNull null),
+                        "prefixLength" to link.networkPrefixLength.toInt())
+                }
+                if (addresses.isEmpty()) continue
+                interfaces.add(mapOf(
+                    "index" to iface.index,
+                    "name" to iface.name,
+                    "addresses" to addresses,
+                    "kind" to "wifi",
+                    "isUp" to true,
+                    "isLan" to true,
+                    "isHosted" to true,
+                    "hasDefaultRoute" to false,
+                    "metric" to 0,
+                ))
+            }
+        }
+        return interfaces.sortedBy { it["metric"] as Int }.distinctBy { it["index"] }
     }
 
     private fun usbNetworkAddresses(): List<Map<String, Any>> {
@@ -815,23 +904,43 @@ class MainActivity : FlutterActivity() {
         path: String,
         result: MethodChannel.Result
     ) {
-        if (host.isNullOrBlank() || port <= 0) {
+        if (host.isNullOrBlank() || port !in 1..65535) {
             result.error("wifi_bind_invalid", "Missing receiver address.", null)
             return
         }
         val connectivityManager = applicationContext.getSystemService(ConnectivityManager::class.java)
         thread {
-            val networks = connectivityManager.allNetworks
-            for (network in networks) {
-                val capabilities = connectivityManager.getNetworkCapabilities(network) ?: continue
-                if (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) continue
-                if (canReachHost(network, host.trim(), port, path)) {
-                    connectivityManager.bindProcessToNetwork(network)
-                    runOnUiThread { result.success(true) }
-                    return@thread
+            try {
+                val destination = try {
+                    InetAddress.getByName(host.trim())
+                } catch (_: Exception) {
+                    null
                 }
+                val activeNetwork = connectivityManager.activeNetwork
+                val candidates = connectivityManager.allNetworks.mapNotNull { network ->
+                    val capabilities = connectivityManager.getNetworkCapabilities(network)
+                        ?: return@mapNotNull null
+                    if (!isLanNetwork(capabilities)) return@mapNotNull null
+                    val properties = connectivityManager.getLinkProperties(network)
+                        ?: return@mapNotNull null
+                    val prefix = if (destination == null) -1 else properties.routes
+                        .filter { it.matches(destination) }
+                        .maxOfOrNull { it.destination.prefixLength } ?: -1
+                    Triple(network, prefix, network == activeNetwork)
+                }.sortedWith(compareByDescending<Triple<Network, Int, Boolean>> { it.second }
+                    .thenByDescending { it.third })
+                for (candidate in candidates) {
+                    val network = candidate.first
+                    if (canReachHost(network, host.trim(), port, path) &&
+                        connectivityManager.bindProcessToNetwork(network)) {
+                        runOnUiThread { result.success(true) }
+                        return@thread
+                    }
+                }
+                runOnUiThread { result.success(false) }
+            } catch (error: Exception) {
+                runOnUiThread { result.error("wifi_bind_failed", error.message, null) }
             }
-            runOnUiThread { result.success(false) }
         }
     }
 

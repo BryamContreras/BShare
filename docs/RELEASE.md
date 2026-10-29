@@ -31,8 +31,8 @@ Download these individual files from the [latest GitHub Release](https://github.
 | `BShare-<version>+<build>-windows-x64-setup.exe` | Windows x64 installer |
 | `bshare_<version>-<build>_amd64.deb` | Debian/Ubuntu x64 package |
 | `bshare-<version>-<build>.x86_64.rpm` | Fedora/RHEL x64 package |
-| `BShare-<version>-macos-arm64.dmg` | Apple Silicon installer |
-| `BShare-<version>-macos-x64.dmg` | Intel Mac installer |
+| `BShare-<version>-macos-arm64.pkg` | Apple Silicon installer |
+| `BShare-<version>-macos-x64.pkg` | Intel Mac installer |
 | `SHA256SUMS.txt` | SHA-256 for every installer |
 
 Each native build uploads its installer directly to a draft GitHub Release. A
@@ -168,9 +168,35 @@ requirements see [LINUX.md](LINUX.md).
 
 ## Other native builds
 
-The installer workflow builds on native Apple Silicon and Intel runners, checks
-the executable architecture inside each DMG, and publishes separate `.dmg`
-assets. Apps are ad-hoc signed but not notarized; Gatekeeper may require an
-explicit user override. The local `scripts/build_releases.sh --macos-only` script
-builds a DMG for the architecture of its host Mac. iOS signing and store
-publication remain manual.
+The installer workflow builds on native Apple Silicon and Intel runners and
+publishes separate `.pkg` assets. `tool/packaging_macos.py` creates an Installer
+package containing only `/Applications/BShare.app`, disables bundle relocation,
+checks the app version and architecture inside the expanded payload, and verifies
+an actual installation on the native CI runner. The installer includes the app's
+minimum macOS requirement and the matching ARM64 or Intel architecture.
+
+The local `scripts/build_releases.sh --macos-only` command builds a PKG for its
+host architecture. The helper also accepts `--signing-identity` when a Developer
+ID Installer identity is available in that Mac's keychain. Current CI packages
+are unsigned, and the apps are ad-hoc signed rather than notarized. Users may
+need to approve the installer in macOS Privacy & Security. Changing the container
+to PKG does not itself supply Developer ID signing or notarization. iOS signing
+and store publication remain manual.
+
+## Regenerate an existing version
+
+Release titles match their tags exactly, for example `v1.0.4`. To intentionally
+replace that version with the current `main` source and freshly verified
+installers:
+
+```bash
+gh workflow run build-installers.yml --ref main -f release_tag=v1.0.4
+```
+
+The version must match `pubspec.yaml`. Existing downloads remain published while
+the jobs upload new installers to a separate draft. Once all jobs pass and the
+seven installers and checksums are verified, publication replaces the canonical
+release assets, moves the version tag to the built commit and sets the release
+title to that tag. A tag changed independently during the build stops publication.
+The temporary draft and its temporary tag are removed after publication. A failed
+installer build leaves the existing published release available.

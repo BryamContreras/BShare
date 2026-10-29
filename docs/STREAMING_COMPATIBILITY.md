@@ -39,6 +39,80 @@ announcement before closing their HTTP listener; session identifiers prevent a
 late departure from removing a restarted receiver. Legacy peers or a lost UDP
 departure still expire after 20 seconds.
 
+### Ethernet, Wi-Fi and interface selection
+
+Ethernet and Wi-Fi can share the same LAN: a computer connected by cable can
+discover and exchange files with a phone connected to that router by Wi-Fi,
+provided the router permits traffic between them. BShare uses the local IP
+address and port for both connection types.
+
+On the affected Windows PC, Hyper-V exposed the LAN address on `vEthernet (LAN)`;
+the physical Ethernet adapter had no IPv4 address of its own. BShare incorrectly
+discarded every `vEthernet` adapter and reported no network. Interface selection
+now uses operating-system metadata: operational state, hardware transport or a
+verified physical uplink for a bridge, address prefixes, default routes and route
+metrics. No PC-specific IP address or adapter label is configured in the app.
+An active physical interface or a bridge with an active physical uplink can form
+a LAN without a gateway or Internet access. A gateway alone does not qualify an
+internal virtual interface, TAP adapter or VPN as a LAN.
+
+The primary address follows the operating system's route preference and metric;
+Wi-Fi does not automatically outrank Ethernet. An explicitly active local
+hotspot retains priority when its address is requested. Android includes Ethernet
+and Wi-Fi networks while excluding VPN and cellular-only networks. Linux checks
+hardware, radio and bridge/bond/VLAN uplinks; macOS reads active hardware ports.
+Public and link-local IPv4 addresses are accepted on eligible interfaces.
+
+Outgoing transfer controls verify eligible source addresses with a connection
+explicitly bound to that interface and that particular receiver. If no such
+connection can be established, a matching
+eligible subnet with the longest prefix can supply the address. A source address
+belonging to an excluded virtual interface is not advertised as the control
+endpoint.
+
+Discovery uses the same eligible interfaces. Multicast and subnet broadcast use
+separate sockets bound to each LAN address, and an unavailable multicast receive
+membership does not disable sending on that interface. When one device announces
+several endpoints, discovery retains the alternatives and selects a consistent
+destination using local subnet and interface preferences. Refresh also checks the
+interface configuration, so a changed secondary interface renews discovery even
+when the primary IP stays the same.
+
+Validation on that Windows PC selected `172.21.53.7` on interface 11, transferred
+and verified a 128 KiB file through the production HTTP services, and received a
+discovery announcement through that address. Both endpoints ran on the same PC;
+this initial probe does not establish connectivity to a second device. Regression
+tests cover interface metadata and route selection, multiple LANs, exclusion of
+internal networks, disconnected physical uplinks, and Ethernet without Wi-Fi or
+a gateway. Physical Linux/macOS Ethernet and Android Ethernet validation remain
+pending; phone Wi-Fi to Windows Ethernet results are recorded separately.
+
+### S22 Ultra and Windows Ethernet checks — 2026-10-29
+
+The S22 Ultra (SM-S908U, Android 14) ran the release APK; its installed SHA-256
+matched the built APK. The phone used Wi-Fi and Windows used Ethernet on the
+same LAN. Both sides discovered each other automatically. A temporary Windows
+diagnostic entrypoint exercised the production transfer, signaling, WebRTC
+decoder and renderer services. It was replaced with the normal application
+after the checks.
+
+| Check | Observed result |
+| --- | --- |
+| Windows → S22 file | 8 MiB completed; destination SHA-256 matched the source. |
+| S22 → Windows file | 8 MiB completed from the production Send UI; destination SHA-256 matched the source and the control endpoint used the phone's Wi-Fi IP. |
+| S22 screen → Windows | H.264 rendered at 1080×2316 with advancing decoded frames. |
+| Windows screen → S22 | H.264 decoded by `c2.qti.avc.decoder`; the production viewer reported rendered dimensions up to 1920×1080. |
+| Rear and front phone cameras → Windows | Both streams rendered H.264 with advancing decoded frames and completed native viewer cleanup. |
+
+Every native media case selected the physical LAN pair `172.21.53.7` ↔
+`172.21.53.37`; WSL and Default Switch were excluded from LAN selection. ADB
+controlled the phone UI and checked file hashes; file and video payloads used
+the actual LAN. These brief checks establish functionality on this pair, not
+camera FPS or resolution guarantees. Physical Windows Wi-Fi, Linux/macOS and
+Android Ethernet checks remain pending. Sanitized statistics, artifact hashes
+and coverage limits are in
+[the Windows/S22 review](performance/windows-ethernet-s22-review.json).
+
 ### Discovery when an adapter has no route
 
 A separate reproduction with only the loopback interface active exposed a

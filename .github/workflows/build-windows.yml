@@ -3,6 +3,10 @@ name: Windows installer
 on:
   workflow_call:
     inputs:
+      release-tag:
+        type: string
+        required: false
+        default: ''
       version:
         type: string
         required: false
@@ -64,7 +68,7 @@ jobs:
       - name: Upload Windows installer to draft release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ inputs.release-tag || github.ref_name }}
         run: |
           $installers = @(Get-ChildItem -LiteralPath 'dist/windows' -Filter '*-windows-x64-setup.exe' -File)
           if ($installers.Count -ne 1) { throw "Expected one Windows installer, found $($installers.Count)." }

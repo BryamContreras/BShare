@@ -31,7 +31,7 @@ def release_files(source: Path, version: str) -> list[Path]:
         raise ValueError(f'ZIP or tarball assets are not allowed: {sorted(archives)}')
     files = [
         path for path in source.rglob('*')
-        if path.is_file() and path.suffix.lower() in {'.apk', '.exe', '.deb', '.rpm', '.dmg'}
+        if path.is_file() and path.suffix.lower() in {'.apk', '.exe', '.deb', '.rpm', '.pkg', '.dmg'}
     ]
     names = [path.name for path in files]
     if len(names) != len(set(names)):
@@ -40,8 +40,8 @@ def release_files(source: Path, version: str) -> list[Path]:
     expected = {
         f'BShare-{version}-android-armv7a.apk',
         f'BShare-{version}-android-arm64-v8a.apk',
-        f'BShare-{version}-macos-arm64.dmg',
-        f'BShare-{version}-macos-x64.dmg',
+        f'BShare-{version}-macos-arm64.pkg',
+        f'BShare-{version}-macos-x64.pkg',
     }
     patterns = {
         '.exe': re.compile(rf'^BShare-{re.escape(version)}\+(\d+)-windows-x64-setup\.exe$'),
@@ -82,6 +82,7 @@ def prepare(source: Path, output: Path, version: str, changelog: Path, notes_pat
     notes = changelog_section(changelog, version)
     notes += '\n\n## Downloads\n\n'
     notes += '\n'.join(f'- `{path.name}`' for path in assets)
+    notes += '\n\n## Support\n\n[Support development on Ko-fi](https://ko-fi.com/SoyBryam06c)'
     notes_path.parent.mkdir(parents=True, exist_ok=True)
     notes_path.write_text(notes + '\n', encoding='utf-8')
     return assets

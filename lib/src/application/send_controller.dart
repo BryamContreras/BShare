@@ -231,8 +231,9 @@ class SendController {
       final client = _ref.read(fileTransferClientProvider);
       final controlPort = await _ensureControlServer();
       if (_stopping || _refDisposed) return;
-      final network = await NetworkService().snapshot(
-        includeLocalInterfaces: true,
+      final controlHost = await NetworkService().localAddressForPeer(
+        target.ip,
+        target.port,
       );
       if (_stopping || _refDisposed) return;
       final controls = {for (final file in files) file.path: TransferControl()};
@@ -254,7 +255,7 @@ class SendController {
         transferIds: transferIds,
         senderId: settings.deviceId,
         senderName: settings.deviceName,
-        controlHost: network.ip,
+        controlHost: controlHost,
         controlPort: controlPort,
       );
       if (_stopping || _refDisposed) return;
@@ -267,7 +268,7 @@ class SendController {
           senderId: settings.deviceId,
           senderName: settings.deviceName,
           control: controls[file.path]!,
-          controlHost: network.ip,
+          controlHost: controlHost,
           controlPort: controlPort,
         );
         _queue.add(item);

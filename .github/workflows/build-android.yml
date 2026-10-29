@@ -3,6 +3,9 @@ name: Build Android installer
 on:
   workflow_call:
     inputs:
+      release-tag:
+        type: string
+        default: ''
       flutter-version:
         description: Flutter SDK version shared by all installers.
         type: string
@@ -260,7 +263,7 @@ jobs:
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ inputs.release-tag || github.ref_name }}
         run: gh release upload "$RELEASE_TAG" dist/android/*.apk --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Write build summary

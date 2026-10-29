@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+"""Stage complete installers before replacing a published version release."""
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import re
+import subprocess
+
+from prepare_release_assets import changelog_section, release_files
+
+
+class GitHub:
+    def __init__(self, repository):
+        if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository):
+            raise ValueError('Invalid repository name')
+        self.repository = repository
+
+    def api(self, method, endpoint, data=None, *, missing_ok=False):
+        command = ['gh', 'api', '--method', method, f'repos/{self.repository}/{endpoint}']
+        if data is not None:
+            command += ['--input', '-']
+        result = subprocess.run(command, input=None if data is None else json.dumps(data),
+                                capture_output=True, text=True, timeout=120)
+        if result.returncode:
+            if missing_ok and 'HTTP 404' in result.stderr:
+                return None
+            raise RuntimeError(result.stderr.strip())
+        return json.loads(result.stdout) if result.stdout.strip() else None
+
+    def upload(self, tag, files):
+        subprocess.run(['gh', 'release', 'upload', tag, *map(str, files),
+                        '--repo', self.repository, '--clobber'], check=True, timeout=900)
+
+
+def validate_tag(tag):
+    if not re.fullmatch(r'v\d+\.\d+\.\d+', tag):
+        raise ValueError('Release tag must be vMAJOR.MINOR.PATCH')
+    return tag[1:]
+
+
+def tag_commit(github, reference):
+    if reference is None:
+        return None
+    value = reference['object']
+    for _ in range(8):
+        if value['type'] == 'commit':
+            return value['sha']
+        if value['type'] != 'tag':
+            break
+        value = github.api('GET', f"git/tags/{value['sha']}")['object']
+    raise ValueError('Release tag must point to a commit')
+
+
+def check_tag_lease(reference, expected_sha, commit, resolved_commit):
+    current = reference['object']['sha'] if reference else ''
+    # A retry after a successful tag move can safely finish publishing assets.
+    if current != expected_sha and resolved_commit != commit:
+        raise ValueError('Release tag changed during the build; refusing to replace it')
+
+
+def installer_hashes(files, checksum_path):
+    hashes = {}
+    for line in checksum_path.read_text(encoding='utf-8').splitlines():
+        fields = line.split(maxsplit=1)
+        if len(fields) != 2 or not re.fullmatch(r'[0-9a-f]{64}', fields[0]) or fields[1] in hashes:
+            raise ValueError('Invalid installer checksum manifest')
+        hashes[fields[1]] = fields[0]
+    if set(hashes) != {path.name for path in files}:
+        raise ValueError('Installer checksum manifest does not match the release files')
+    for path in files:
+        if hashlib.sha256(path.read_bytes()).hexdigest() != hashes[path.name]:
+            raise ValueError(f'Installer checksum mismatch: {path.name}')
+    return hashes
+
+
+def stage(github, tag, version, commit, run_id, attempt, changelog, notes_path):
+    if validate_tag(tag) != version:
+        raise ValueError('Release tag must match the version in pubspec.yaml')
+    if not re.fullmatch(r'[0-9a-f]{40,64}', commit):
+        raise ValueError('Expected an immutable source commit SHA')
+    if not str(run_id).isdigit() or not str(attempt).isdigit():
+        raise ValueError('Expected numeric workflow run identifiers')
+    existing = github.api('GET', f'releases/tags/{tag}', missing_ok=True)
+    if existing and existing.get('immutable'):
+        raise ValueError('GitHub marks this release immutable; it cannot be replaced')
+    reference = github.api('GET', f'git/ref/tags/{tag}', missing_ok=True)
+    upload_tag = f'staging-{tag}-{run_id}-{attempt}' if existing else tag
+    notes = changelog_section(changelog, version)
+    notes_path.parent.mkdir(parents=True, exist_ok=True)
+    notes_path.write_text(notes + '\n', encoding='utf-8')
+    draft = github.api('GET', f'releases/tags/{upload_tag}', missing_ok=True)
+    if draft and (not draft['draft'] or draft['target_commitish'] != commit):
+        raise ValueError('The staging release belongs to another source or is published')
+    data = {'tag_name': upload_tag, 'target_commitish': commit, 'name': tag,
+            'body': notes, 'draft': True, 'prerelease': False}
+    if draft:
+        github.api('PATCH', f"releases/{draft['id']}", data)
+    else:
+        github.api('POST', 'releases', data)
+    return {'release_tag': tag, 'upload_tag': upload_tag,
+            'expected_tag_sha': reference['object']['sha'] if reference else ''}
+
+
+def publish(github, tag, upload_tag, commit, expected_tag_sha, assets, notes_path):
+    version = validate_tag(tag)
+    files = release_files(assets, version)
+    checksums = assets / 'SHA256SUMS.txt'
+    if not checksums.is_file():
+        raise ValueError('Missing verified installer checksums')
+    hashes = installer_hashes(files, checksums)
+    files = [*files, checksums]
+    notes = notes_path.read_text(encoding='utf-8')
+    staging = github.api('GET', f'releases/tags/{upload_tag}')
+    if not staging['draft'] or staging['target_commitish'] != commit:
+        raise ValueError('Expected a draft containing installers for the source commit')
+    reference = github.api('GET', f'git/ref/tags/{tag}', missing_ok=True)
+    resolved = tag_commit(github, reference)
+    check_tag_lease(reference, expected_tag_sha, commit, resolved)
+    canonical = github.api('GET', f'releases/tags/{tag}', missing_ok=True)
+    if canonical is None:
+        canonical = github.api('POST', 'releases', {
+            'tag_name': tag, 'target_commitish': commit, 'name': tag,
+            'draft': True, 'prerelease': False,
+        })
+    # The old public release is untouched until all seven installers are ready.
+    github.api('PATCH', f"releases/{canonical['id']}", {'draft': True})
+    if upload_tag != tag:
+        github.upload(tag, files)
+    else:
+        github.upload(tag, [checksums])
+    desired = {path.name for path in files}
+    current = github.api('GET', f"releases/{canonical['id']}")
+    for asset in current['assets']:
+        if asset['name'] not in desired:
+            github.api('DELETE', f"releases/assets/{asset['id']}")
+    current_names = {asset['name'] for asset in current['assets'] if asset['name'] in desired}
+    if current_names != desired:
+        raise ValueError('Published installer set is incomplete; keeping the release in draft')
+    for asset in current['assets']:
+        if asset['name'] in hashes and asset.get('digest') not in (None, f"sha256:{hashes[asset['name']]}"):
+            raise ValueError('GitHub reports an installer digest mismatch; keeping the release in draft')
+    # Recheck the lease immediately before the intentional version-tag update.
+    reference = github.api('GET', f'git/ref/tags/{tag}', missing_ok=True)
+    resolved = tag_commit(github, reference)
+    check_tag_lease(reference, expected_tag_sha, commit, resolved)
+    if resolved != commit:
+        annotated = github.api('POST', 'git/tags', {
+            'tag': tag, 'object': commit, 'type': 'commit', 'message': tag,
+        })
+        if reference:
+            github.api('PATCH', f'git/refs/tags/{tag}', {'sha': annotated['sha'], 'force': True})
+        else:
+            github.api('POST', 'git/refs', {'ref': f'refs/tags/{tag}', 'sha': annotated['sha']})
+    github.api('PATCH', f"releases/{canonical['id']}", {
+        'name': tag, 'tag_name': tag, 'target_commitish': commit,
+        'body': notes, 'draft': False, 'prerelease': False, 'make_latest': 'true',
+    })
+    if upload_tag != tag:
+        github.api('DELETE', f"releases/{staging['id']}")
+        staged_ref = github.api('GET', f'git/ref/tags/{upload_tag}', missing_ok=True)
+        if staged_ref and tag_commit(github, staged_ref) == commit:
+            github.api('DELETE', f'git/refs/tags/{upload_tag}')
+    return {'tag': tag, 'commit': commit, 'assets': sorted(desired), 'published': True}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest='operation', required=True)
+    for name in ['stage', 'publish']:
+        sub = subparsers.add_parser(name)
+        sub.add_argument('--repo', required=True)
+        sub.add_argument('--tag', required=True)
+        sub.add_argument('--commit', required=True)
+        sub.add_argument('--notes', type=Path, required=True)
+        if name == 'stage':
+            sub.add_argument('--version', required=True)
+            sub.add_argument('--run-id', required=True)
+            sub.add_argument('--attempt', default='1')
+            sub.add_argument('--changelog', type=Path, default=Path('CHANGELOG.md'))
+            sub.add_argument('--github-output', type=Path)
+        else:
+            sub.add_argument('--upload-tag', required=True)
+            sub.add_argument('--expected-tag-sha', default='')
+            sub.add_argument('--assets', type=Path, required=True)
+    args = parser.parse_args()
+    github = GitHub(args.repo)
+    if args.operation == 'stage':
+        values = stage(github, args.tag, args.version, args.commit, args.run_id,
+                       args.attempt, args.changelog, args.notes)
+        if args.github_output:
+            with args.github_output.open('a', encoding='utf-8') as output:
+                for key, value in values.items():
+                    output.write(f'{key}={value}\n')
+    else:
+        values = publish(github, args.tag, args.upload_tag, args.commit,
+                         args.expected_tag_sha, args.assets, args.notes)
+    print(json.dumps(values))
+
+
+if __name__ == '__main__':
+    main()

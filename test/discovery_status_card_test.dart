@@ -147,6 +147,7 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.text('Aún no se encontraron dispositivos'), findsOneWidget);
     expect(find.textContaining('Abre Recibir'), findsOneWidget);
+    expect(find.textContaining('Wi-Fi o Ethernet'), findsOneWidget);
     expect(find.textContaining('cada 3 segundos'), findsNothing);
     expect(tester.binding.hasScheduledFrame, isFalse);
   });
@@ -166,7 +167,11 @@ void main() {
         );
     await tester.pumpWidget(_card(container));
     expect(find.text('No se pudieron buscar dispositivos'), findsOneWidget);
-    expect(find.textContaining('Revisa la conexión Wi-Fi'), findsOneWidget);
+    expect(
+      find.textContaining('Revisa la conexión a la red local'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Wi-Fi o Ethernet'), findsOneWidget);
     expect(find.textContaining('native socket'), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });

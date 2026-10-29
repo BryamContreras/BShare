@@ -61,6 +61,16 @@ add_subdirectory("runner")
 set(CMAKE_DISABLE_FIND_PACKAGE_JNI TRUE)
 include(flutter/generated_plugins.cmake)
 
+# The permissions plugin enables C++20 but also adds the legacy /await flag.
+# Standard coroutines avoid the removed experimental headers in newer MSVC.
+if(TARGET permission_handler_windows_plugin)
+  get_target_property(permission_handler_compile_options
+    permission_handler_windows_plugin COMPILE_OPTIONS)
+  list(REMOVE_ITEM permission_handler_compile_options "/await")
+  set_property(TARGET permission_handler_windows_plugin PROPERTY
+    COMPILE_OPTIONS "${permission_handler_compile_options}")
+endif()
+
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can

@@ -3,6 +3,9 @@ name: Linux installers
 on:
   workflow_call:
     inputs:
+      release-tag:
+        type: string
+        default: ''
       flutter-version:
         description: Pinned Flutter SDK version
         type: string
@@ -109,7 +112,7 @@ jobs:
       - name: Upload DEB and RPM to draft release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ inputs.release-tag || github.ref_name }}
         run: |
           files=(dist/linux/*.deb dist/linux/*.rpm)
           for file in "${files[@]}"; do

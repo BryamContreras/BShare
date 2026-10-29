@@ -15,13 +15,17 @@ on:
         description: Numeric build number; empty uses pubspec.yaml
         type: string
         default: ''
+      release-tag:
+        description: Destination draft release; empty uses the triggering tag
+        type: string
+        default: ''
 
 permissions:
   contents: write
 
 jobs:
   macos:
-    name: macOS ${{ matrix.architecture }} DMG
+    name: macOS ${{ matrix.architecture }} PKG
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +64,7 @@ jobs:
       - name: Resolve locked dependencies
         run: flutter pub get --enforce-lockfile
 
-      - name: Build and package architecture-specific DMG
+      - name: Build and verify architecture-specific PKG installation
         shell: bash
         run: |
           set -euo pipefail
@@ -69,43 +73,13 @@ jobs:
           if [[ -n "$BUILD_NUMBER" ]]; then args+=(--build-number "$BUILD_NUMBER"); fi
           flutter build macos --release --no-pub "${args[@]}"
 
-          app="build/macos/Build/Products/Release/bshare.app"
-          [[ -d "$app" ]] || { echo "Missing macOS app bundle: $app" >&2; exit 1; }
-          executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
-          binary="$app/Contents/MacOS/$executable"
-          architectures="$(lipo -archs "$binary")"
-          [[ "$architectures" == "$MACOS_EXPECTED_ARCH" ]] || {
-            echo "Expected only $MACOS_EXPECTED_ARCH binary, found: $architectures" >&2
-            exit 1
-          }
-
-          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' pubspec.yaml | head -n1)"
-          version="${BUILD_VERSION:-$pubspec_version}"
-          output="dist/macos"
-          staging="$RUNNER_TEMP/bshare-dmg-root"
-          mountpoint="$RUNNER_TEMP/bshare-dmg-mount"
-          dmg="$output/BShare-${version}-macos-${MACOS_ARCH}.dmg"
-          mkdir -p "$output" "$staging" "$mountpoint"
-          ditto "$app" "$staging/BShare.app"
-          ln -s /Applications "$staging/Applications"
-          hdiutil create -quiet -volname BShare -srcfolder "$staging" -format UDZO -ov "$dmg"
-
-          hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mountpoint" "$dmg"
-          cleanup() { hdiutil detach -quiet "$mountpoint" || true; }
-          trap cleanup EXIT
-          test -d "$mountpoint/BShare.app"
-          dmg_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$mountpoint/BShare.app/Contents/Info.plist")"
-          dmg_architectures="$(lipo -archs "$mountpoint/BShare.app/Contents/MacOS/$dmg_executable")"
-          [[ "$dmg_architectures" == "$MACOS_EXPECTED_ARCH" ]] || {
-            echo "Expected only $MACOS_EXPECTED_ARCH in DMG, found: $dmg_architectures" >&2
-            exit 1
-          }
-          cleanup
-          trap - EXIT
-          shasum -a 256 "$dmg" > "$dmg.sha256"
+          package_args=(--architecture "$MACOS_ARCH" --verify-install)
+          if [[ -n "$BUILD_VERSION" ]]; then package_args+=(--version "$BUILD_VERSION"); fi
+          if [[ -n "$BUILD_NUMBER" ]]; then package_args+=(--build-number "$BUILD_NUMBER"); fi
+          python3 tool/packaging_macos.py "${package_args[@]}"
 
       - name: Upload macOS installer to draft release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release upload "$RELEASE_TAG" "dist/macos/BShare-"*.dmg --repo "$GITHUB_REPOSITORY" --clobber
+          RELEASE_TAG: ${{ inputs.release-tag || github.ref_name }}
+        run: gh release upload "$RELEASE_TAG" "dist/macos/BShare-"*.pkg --repo "$GITHUB_REPOSITORY" --clobber

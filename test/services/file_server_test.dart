@@ -14,8 +14,16 @@ void main() {
   late FileServer server;
   late HttpClient client;
   late Map<String, TransferControl> controls;
+  late Map<String, Completer<TransferProgressStatus>> terminalProgress;
   late List<({IncomingTransfer transfer, TransferProgressStatus status})>
   progress;
+
+  // Receiving an HTTP response does not order the client's continuation after
+  // the server's progress callback. Wait for the particular transfer to finish.
+  Future<TransferProgressStatus> terminalFor(String id) => terminalProgress
+      .putIfAbsent(id, Completer<TransferProgressStatus>.new)
+      .future
+      .timeout(const Duration(seconds: 2));
 
   Future<int> start({
     bool autoAccept = true,
@@ -39,6 +47,13 @@ void main() {
             savedPath,
           }) {
             progress.add((transfer: transfer, status: status));
+            if (status.isTerminal) {
+              final terminal = terminalProgress.putIfAbsent(
+                transfer.id,
+                Completer<TransferProgressStatus>.new,
+              );
+              if (!terminal.isCompleted) terminal.complete(status);
+            }
           },
       onQueue:
           ({
@@ -78,6 +93,7 @@ void main() {
     server = FileServer(const AppLogger());
     client = HttpClient();
     controls = {};
+    terminalProgress = {};
     progress = [];
   });
 
@@ -133,12 +149,14 @@ void main() {
       );
       server.fileAccessHandler = (_) async => false;
       expect((await send(port, 'denied', [1])).status, HttpStatus.forbidden);
+      expect(await terminalFor('denied'), TransferProgressStatus.failed);
       server.fileAccessHandler = (_) async =>
           throw StateError('permission revoked');
       expect(
         (await send(port, 'unavailable', [1])).status,
         HttpStatus.forbidden,
       );
+      expect(await terminalFor('unavailable'), TransferProgressStatus.failed);
       expect(prompts, 0);
       expect(controls, isEmpty);
       expect(progress.map((item) => item.transfer.id), [
@@ -175,7 +193,10 @@ void main() {
       final result = await sending;
       expect(result.status, HttpStatus.forbidden);
       expect(checks, 2);
-      expect(progress.last.status, TransferProgressStatus.failed);
+      expect(
+        await terminalFor('revoked-at-decision'),
+        TransferProgressStatus.failed,
+      );
       expect(await directory.list().toList(), isEmpty);
 
       allowed = true;
@@ -389,7 +410,7 @@ void main() {
       );
       final result = await send(port, 'rejected', [1, 2, 3]);
       expect(result.status, HttpStatus.forbidden);
-      expect(progress.last.status.isTerminal, isTrue);
+      expect(await terminalFor('rejected'), TransferProgressStatus.failed);
       expect(await directory.list().toList(), isEmpty);
     },
   );

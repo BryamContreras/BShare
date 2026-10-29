@@ -1,5 +1,7 @@
 # BShare
 
+[Support development on Ko-fi](https://ko-fi.com/SoyBryam06c)
+
 BShare is a Flutter/Dart LAN file sharing app inspired by LocalSend. It discovers nearby devices on the same WiFi/LAN and transfers files directly over local HTTP streams.
 
 Current version: **1.0.4**
@@ -28,6 +30,13 @@ Current version: **1.0.4**
 - Devices must be on the same LAN/WiFi.
 - Firewalls must allow BShare's inbound TCP listener (default `53317`), UDP discovery on `53318`, and negotiated UDP ports for screen/camera video. The Windows installer offers optional access limited to private local networks; see [network troubleshooting](docs/STREAMING_COMPATIBILITY.md) and [firewall setup](docs/RELEASE.md#windows).
 
+Ethernet and Wi-Fi devices can share the same local network. BShare selects
+active LAN interfaces using operating-system link and routing information,
+including external virtual switches carrying the physical LAN. Transfer controls
+use the source address for the selected receiver. See the
+[interface selection notes](docs/STREAMING_COMPATIBILITY.md#ethernet-wi-fi-and-interface-selection)
+for details and validation limits.
+
 ## Run
 
 ```bash
@@ -40,8 +49,11 @@ flutter run
 Version tags such as `v1.0.4` build and publish individual installer files in
 [GitHub Releases](https://github.com/BryamContreras/BShare/releases): ARM32 and
 ARM64 Android APKs, a Windows installer, Linux DEB/RPM packages, and macOS ARM64
-and x64 DMGs. The build jobs upload each installer directly to a draft Release;
+and x64 PKG installers. The build jobs upload each installer directly to a draft Release;
 after all builds pass, the workflow publishes the individual files and checksums.
+Release titles match the version tag, such as `v1.0.4`. An existing version can
+be rebuilt through the workflow's `release_tag` input; new installers are staged
+separately until validation finishes.
 It does not generate ZIP installer artifacts. Pushes and pull requests run the
 quality gate plus native streaming verification on Windows and Linux and an
 Android release compilation. These verification builds do not publish installers. This repository is open source under the MIT License;
@@ -85,10 +97,12 @@ see [docs/LINUX.md](docs/LINUX.md).
 flutter build macos
 ```
 
-GitHub Releases include separate `.dmg` installers for Apple Silicon (`arm64`)
+GitHub Releases include separate `.pkg` installers for Apple Silicon (`arm64`)
 and Intel (`x64`). Local `scripts/build_releases.sh --macos-only` packages the
-architecture of the Mac where it runs. macOS apps are ad-hoc signed and are not
-notarized; Gatekeeper may require opening the app from Finder's context menu.
+architecture of the Mac where it runs. The installer places `BShare.app` in
+`/Applications`. The app is ad-hoc signed; the installer is unsigned unless a
+Developer ID Installer identity is configured. These builds are not notarized,
+so macOS may require approval in Privacy & Security before opening the installer.
 
 ### Android
 

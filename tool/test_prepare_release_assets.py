@@ -22,8 +22,8 @@ class PrepareReleaseAssetsTest(unittest.TestCase):
             'BShare-1.0.3+47-windows-x64-setup.exe',
             'bshare_1.0.3-47_amd64.deb',
             'bshare-1.0.3-47.x86_64.rpm',
-            'BShare-1.0.3-macos-arm64.dmg',
-            'BShare-1.0.3-macos-x64.dmg',
+            'BShare-1.0.3-macos-arm64.pkg',
+            'BShare-1.0.3-macos-x64.pkg',
         ):
             (self.source / name).write_bytes(name.encode())
 
@@ -33,14 +33,19 @@ class PrepareReleaseAssetsTest(unittest.TestCase):
     def test_collects_seven_separate_native_installers_and_checksums(self):
         assets = prepare(self.source, self.output, '1.0.3', self.changelog, self.notes)
         self.assertEqual(len(assets), 8)
-        self.assertEqual(sum(path.suffix in {'.apk', '.exe', '.deb', '.rpm', '.dmg'} for path in assets), 7)
+        self.assertEqual(sum(path.suffix in {'.apk', '.exe', '.deb', '.rpm', '.pkg'} for path in assets), 7)
         self.assertFalse(any(path.suffix == '.zip' for path in assets))
         lines = (self.output / 'SHA256SUMS.txt').read_text().splitlines()
         self.assertEqual(len(lines), 7)
         for path in assets[:-1]:
             self.assertIn(hashlib.sha256(path.read_bytes()).hexdigest(), (self.output / 'SHA256SUMS.txt').read_text())
         self.assertIn('Release note.', self.notes.read_text())
-        self.assertIn('BShare-1.0.3-macos-arm64.dmg', self.notes.read_text())
+        self.assertIn('BShare-1.0.3-macos-arm64.pkg', self.notes.read_text())
+
+    def test_rejects_old_dmg_delivery_after_switching_to_pkg(self):
+        (self.source / 'BShare-1.0.3-macos-arm64.pkg').rename(self.source / 'BShare-1.0.3-macos-arm64.dmg')
+        with self.assertRaisesRegex(ValueError, 'Unexpected installer set'):
+            release_files(self.source, '1.0.3')
 
     def test_rejects_universal_or_missing_architecture_apks(self):
         (self.source / 'BShare-1.0.3-android-armv7a.apk').unlink()

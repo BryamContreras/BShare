@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/app_settings.dart';
@@ -148,6 +149,37 @@ DeviceInfo _remote(DateTime lastSeen, {String id = 'peer'}) => DeviceInfo(
   lastSeen: lastSeen,
 );
 
+NetworkSnapshot _multiLanNetwork({
+  String secondaryIp = '10.40.0.2',
+  int secondaryIndex = 8,
+  int secondaryPrefix = 24,
+  int secondaryMetric = 30,
+}) => NetworkSnapshot(
+  ip: '192.168.50.2',
+  interfaces: [
+    LanInterface(
+      name: 'Preferred office connection',
+      index: 4,
+      addresses: [InternetAddress('192.168.50.2')],
+      prefixLengths: const {'192.168.50.2': 24},
+      kind: 'ethernet',
+      isLan: true,
+      hasDefaultRoute: true,
+      metric: 10,
+    ),
+    LanInterface(
+      name: 'Secondary connection',
+      index: secondaryIndex,
+      addresses: [InternetAddress(secondaryIp)],
+      prefixLengths: {secondaryIp: secondaryPrefix},
+      kind: 'wifi',
+      isLan: true,
+      hasDefaultRoute: true,
+      metric: secondaryMetric,
+    ),
+  ],
+);
+
 void _withDiscovery(
   void Function(
     FakeAsync time,
@@ -158,6 +190,7 @@ void _withDiscovery(
   )
   body, {
   NetworkSnapshot network = const NetworkSnapshot(ip: '127.0.0.1'),
+  NetworkSnapshot Function()? readNetwork,
 }) {
   fakeAsync((time) {
     final service = _DiscoveryService()..gate.complete();
@@ -166,7 +199,9 @@ void _withDiscovery(
       overrides: [
         settingsProvider.overrideWith(_Settings.new),
         discoveryServiceProvider.overrideWithValue(service),
-        networkProvider.overrideWith((ref) async => network),
+        networkProvider.overrideWith(
+          (ref) async => readNetwork?.call() ?? network,
+        ),
         discoveryProvider.overrideWith(() => DiscoveryController(clock: now)),
       ],
     );
@@ -320,6 +355,20 @@ void main() {
     });
   });
 
+  test('an expired announcement cannot restore an outdated endpoint', () {
+    _withDiscovery((time, service, container, controller, now) {
+      _expectCompleted(controller.start(), time);
+      final outdated = _remote(now());
+      service.events.add(outdated);
+      time.elapse(const Duration(seconds: 21));
+      expect(container.read(discoveryProvider), isEmpty);
+      service.events.add(outdated);
+      _flush(time);
+      expect(container.read(discoveryProvider), isEmpty);
+      _expectCompleted(controller.stop(), time);
+    });
+  });
+
   test('goodbye removes only the exact endpoint and clears its selection', () {
     _withDiscovery((time, service, container, controller, now) {
       _expectCompleted(controller.start(), time);
@@ -425,6 +474,171 @@ void main() {
       time.elapse(const Duration(seconds: 21));
       expect(container.read(discoveryProvider), isEmpty);
       expect(container.read(selectedDeviceProvider), same(qrTarget));
+      _expectCompleted(controller.stop(), time);
+    });
+  });
+
+  test('two LAN announcements keep the preferred endpoint and selection', () {
+    _withDiscovery((time, service, container, controller, now) {
+      _expectCompleted(controller.start(), time);
+      final preferred = _remote(now()).copyWith(ip: '192.168.50.9');
+      final alternate = preferred.copyWith(ip: '10.40.0.9');
+      container.read(selectedDeviceProvider.notifier).set(preferred);
+      service.events.add(preferred);
+      for (var index = 0; index < 3; index++) {
+        time.elapse(const Duration(seconds: 1));
+        service.events.add(alternate.copyWith(lastSeen: now()));
+        _flush(time);
+        expect(container.read(discoveryProvider).single.ip, preferred.ip);
+        expect(container.read(selectedDeviceProvider), same(preferred));
+      }
+      _expectCompleted(controller.stop(), time);
+    }, network: _multiLanNetwork());
+  });
+
+  test('a matching secondary LAN wins over an unrelated newer endpoint', () {
+    _withDiscovery((time, service, container, controller, now) {
+      _expectCompleted(controller.start(), time);
+      final reachable = _remote(now()).copyWith(ip: '10.40.0.9');
+      service.events.add(reachable);
+      time.elapse(const Duration(seconds: 1));
+      service.events.add(reachable.copyWith(ip: '172.16.0.9', lastSeen: now()));
+      _flush(time);
+      expect(container.read(discoveryProvider).single, same(reachable));
+      _expectCompleted(controller.stop(), time);
+    }, network: _multiLanNetwork());
+  });
+
+  test('a departing preferred endpoint falls back to its other live LAN', () {
+    _withDiscovery((time, service, container, controller, now) {
+      _expectCompleted(controller.start(), time);
+      final preferred = _remote(now()).copyWith(ip: '192.168.50.9');
+      final alternate = preferred.copyWith(ip: '10.40.0.9');
+      service.events.add(alternate);
+      service.events.add(preferred);
+      container.read(selectedDeviceProvider.notifier).set(preferred);
+      service.departureEvents.add(preferred.copyWith(port: 54000));
+      _flush(time);
+      expect(container.read(discoveryProvider).single, same(preferred));
+      service.departureEvents.add(preferred);
+      _flush(time);
+      expect(container.read(discoveryProvider).single, same(alternate));
+      expect(container.read(selectedDeviceProvider), same(alternate));
+      _expectCompleted(controller.stop(), time);
+    }, network: _multiLanNetwork());
+  });
+
+  test('an expired preferred endpoint falls back without losing selection', () {
+    _withDiscovery((time, service, container, controller, now) {
+      _expectCompleted(controller.start(), time);
+      final preferred = _remote(now()).copyWith(ip: '192.168.50.9');
+      service.events.add(preferred);
+      container.read(selectedDeviceProvider.notifier).set(preferred);
+      time.elapse(const Duration(seconds: 10));
+      final alternate = preferred.copyWith(ip: '10.40.0.9', lastSeen: now());
+      service.events.add(alternate);
+      _flush(time);
+      expect(container.read(discoveryProvider).single, same(preferred));
+      time.elapse(const Duration(seconds: 10));
+      _flush(time);
+      expect(container.read(discoveryProvider).single, same(alternate));
+      expect(container.read(selectedDeviceProvider), same(alternate));
+      _expectCompleted(controller.stop(), time);
+    }, network: _multiLanNetwork());
+  });
+
+  test('a newer address in the same LAN replaces the DHCP endpoint', () {
+    _withDiscovery((time, service, container, controller, now) {
+      _expectCompleted(controller.start(), time);
+      final oldAddress = _remote(now()).copyWith(ip: '192.168.50.9');
+      service.events.add(oldAddress);
+      container.read(selectedDeviceProvider.notifier).set(oldAddress);
+      time.elapse(const Duration(seconds: 2));
+      final renewed = oldAddress.copyWith(ip: '192.168.50.19', lastSeen: now());
+      service.events.add(renewed);
+      // A late announcement with an older timestamp cannot undo the renewal.
+      service.events.add(oldAddress);
+      service.departureEvents.add(oldAddress);
+      _flush(time);
+      expect(container.read(discoveryProvider).single, same(renewed));
+      expect(container.read(selectedDeviceProvider), same(renewed));
+      expect(oldAddress.ip, '192.168.50.9');
+      _expectCompleted(controller.stop(), time);
+    }, network: _multiLanNetwork());
+  });
+
+  test('changed secondary interface facts renew discovery memberships', () {
+    var network = _multiLanNetwork();
+    _withDiscovery((time, service, container, controller, now) {
+      _expectCompleted(controller.start(advertise: true), time);
+      expect(service.starts, 1);
+      final revisions = [
+        _multiLanNetwork(secondaryIp: '10.41.0.2'),
+        _multiLanNetwork(secondaryIp: '10.41.0.2', secondaryPrefix: 25),
+        _multiLanNetwork(
+          secondaryIp: '10.41.0.2',
+          secondaryPrefix: 25,
+          secondaryMetric: 40,
+        ),
+        _multiLanNetwork(
+          secondaryIp: '10.41.0.2',
+          secondaryPrefix: 25,
+          secondaryMetric: 40,
+          secondaryIndex: 12,
+        ),
+      ];
+      for (var index = 0; index < revisions.length; index++) {
+        network = revisions[index];
+        final refresh = controller.refresh();
+        _flush(time);
+        expect(network.ip, '192.168.50.2');
+        expect(service.starts, index + 2);
+        expect(service.advertisements.last, isTrue);
+        time.elapse(DiscoveryController.searchWindow);
+        _expectCompleted(refresh, time);
+      }
+      _expectCompleted(controller.stop(), time);
+    }, readNetwork: () => network);
+  });
+
+  test('equivalent interface metadata preserves socket and known peers', () {
+    var network = _multiLanNetwork();
+    _withDiscovery((time, service, container, controller, now) {
+      _expectCompleted(controller.start(), time);
+      final preferred = _remote(now()).copyWith(ip: '192.168.50.9');
+      service.events.add(preferred);
+      network = _multiLanNetwork();
+      final refresh = controller.refresh();
+      _flush(time);
+      expect(service.starts, 1);
+      expect(service.queries, 1);
+      expect(container.read(discoveryProvider).single, same(preferred));
+      time.elapse(DiscoveryController.searchWindow);
+      _expectCompleted(refresh, time);
+      _expectCompleted(controller.stop(), time);
+    }, readNetwork: () => network);
+  });
+
+  test('discovery candidate storage stays bounded on a noisy network', () {
+    _withDiscovery((time, service, container, controller, now) {
+      _expectCompleted(controller.start(), time);
+      for (var index = 0; index < 520; index++) {
+        service.events.add(_remote(now(), id: 'peer-$index'));
+      }
+      _flush(time);
+      expect(container.read(discoveryProvider), hasLength(512));
+      expect(
+        container
+            .read(discoveryProvider)
+            .any((device) => device.id == 'peer-0'),
+        isFalse,
+      );
+      expect(
+        container
+            .read(discoveryProvider)
+            .any((device) => device.id == 'peer-519'),
+        isTrue,
+      );
       _expectCompleted(controller.stop(), time);
     });
   });

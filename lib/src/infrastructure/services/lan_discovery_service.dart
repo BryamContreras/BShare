@@ -4,12 +4,17 @@ import 'dart:io';
 
 import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
+import 'package:bshare/src/infrastructure/services/network_service.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 class LanDiscoveryService {
-  LanDiscoveryService(this._logger, {bool? isAndroid})
-    : _isAndroid = isAndroid ?? Platform.isAndroid;
+  LanDiscoveryService(
+    this._logger, {
+    bool? isAndroid,
+    NetworkService? networkService,
+  }) : _isAndroid = isAndroid ?? Platform.isAndroid,
+       _networkService = networkService ?? NetworkService();
 
   static const int multicastPort = 53318;
   static const announceInterval = Duration(seconds: 3);
@@ -24,6 +29,7 @@ class LanDiscoveryService {
 
   final AppLogger _logger;
   final bool _isAndroid;
+  final NetworkService _networkService;
   RawDatagramSocket? _socket;
   StreamSubscription<RawSocketEvent>? _subscription;
   Timer? _announceTimer;
@@ -34,6 +40,8 @@ class LanDiscoveryService {
   bool _multicastAcquired = false;
   DeviceInfo? _self;
   List<InternetAddress> _outgoingAddresses = const [];
+  List<LanInterface> _lanInterfaces = const [];
+  final _broadcastDestinations = <String, InternetAddress>{};
   final _senders = <String, _DiscoverySender>{};
   final _recentPackets = <String, DateTime>{};
   final _peerSessions = <String, String>{};
@@ -87,43 +95,41 @@ class LanDiscoveryService {
     final interfaces = await NetworkInterface.list(
       type: InternetAddressType.IPv4,
       includeLoopback: true,
+      includeLinkLocal: true,
     );
+    final lan = await _networkService.lanInterfaces();
+    _lanInterfaces = lan;
+    final eligibleAddresses = <String, int?>{
+      for (final interface in lan)
+        for (final address in interface.addresses)
+          address.address: interface.prefixLengths[address.address],
+    };
     final outgoing = <InternetAddress>[];
     for (final interface in interfaces) {
-      final name = interface.name.toLowerCase();
-      if (!interface.addresses.any((address) => address.address == self.ip) &&
-          (name.startsWith('docker') ||
-              name.startsWith('veth') ||
-              name.startsWith('br-') ||
-              name.startsWith('virbr') ||
-              name.startsWith('vmnet') ||
-              name.contains('vmware') ||
-              name.contains('virtualbox') ||
-              name.startsWith('tun') ||
-              name.startsWith('tap') ||
-              name.startsWith('wg') ||
-              name.startsWith('tailscale'))) {
-        continue;
-      }
-      final addresses = interface.addresses.where(
-        (address) => address.address == self.ip || _isLanAddress(address),
-      );
+      final addresses = interface.addresses
+          .where(
+            (address) =>
+                eligibleAddresses.containsKey(address.address) ||
+                (address.isLoopback && address.address == self.ip),
+          )
+          .toList();
       if (addresses.isEmpty) continue;
+      // Sending on an interface does not depend on multicast reception.
+      outgoing.addAll(addresses);
+      for (final address in addresses) {
+        if (address.isLoopback) continue;
+        final prefix = eligibleAddresses[address.address];
+        if (prefix == 31 || prefix == 32) continue;
+        _broadcastDestinations[address.address] =
+            _subnetBroadcast(address, prefix) ?? _broadcastAddress;
+      }
       try {
         socket.joinMulticast(multicastAddress, interface);
-        outgoing.addAll(addresses);
       } catch (error) {
         _logger.warn('Multicast join on ${interface.name} unavailable: $error');
       }
     }
     _outgoingAddresses = outgoing;
-    if (outgoing.isEmpty) {
-      try {
-        socket.joinMulticast(multicastAddress);
-      } catch (error) {
-        _logger.warn('Multicast join unavailable: $error');
-      }
-    }
     final advertisement = {
       ...self.toJson(),
       'service': serviceType,
@@ -152,9 +158,18 @@ class LanDiscoveryService {
                 // to the persistent discovery listener. Older query senders
                 // can still receive a reply at their original source port.
                 final replyPort = json['replyPort'] ?? datagram.port;
-                if (replyPort is int && replyPort > 0 && replyPort <= 65535) {
+                final localAddress = _replyAddress(datagram.address);
+                if (replyPort is int &&
+                    replyPort > 0 &&
+                    replyPort <= 65535 &&
+                    localAddress != null) {
                   unawaited(
-                    _sender('unicast').send(data, datagram.address, replyPort),
+                    _sender('unicast:${localAddress.address}').send(
+                      data,
+                      datagram.address,
+                      replyPort,
+                      localAddress: localAddress,
+                    ),
                   );
                 }
               }
@@ -214,12 +229,42 @@ class LanDiscoveryService {
     }
   }
 
-  bool _isLanAddress(InternetAddress address) {
+  InternetAddress? _subnetBroadcast(
+    InternetAddress address,
+    int? prefixLength,
+  ) {
+    if (prefixLength == null || prefixLength < 1 || prefixLength > 30) {
+      return null;
+    }
     final bytes = address.rawAddress;
-    return !address.isLoopback &&
-        (bytes[0] == 10 ||
-            (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) ||
-            (bytes[0] == 192 && bytes[1] == 168));
+    return InternetAddress.fromRawAddress(
+      Uint8List.fromList([
+        for (var i = 0; i < bytes.length; i++)
+          bytes[i] | (0xff >> (prefixLength - i * 8).clamp(0, 8)),
+      ]),
+    );
+  }
+
+  InternetAddress? _replyAddress(InternetAddress remote) {
+    if (remote.isLoopback) {
+      return _outgoingAddresses
+          .where((address) => address.isLoopback)
+          .firstOrNull;
+    }
+    InternetAddress? best;
+    var longestPrefix = -1;
+    for (final interface in _lanInterfaces) {
+      for (final local in interface.addresses) {
+        final prefix = interface.prefixLengths[local.address];
+        if (prefix != null &&
+            prefix > longestPrefix &&
+            sameIpv4Subnet(local, remote, prefix)) {
+          best = local;
+          longestPrefix = prefix;
+        }
+      }
+    }
+    return best ?? _lanInterfaces.firstOrNull?.addresses.firstOrNull;
   }
 
   bool _acceptPacket(String key) {
@@ -268,10 +313,15 @@ class LanDiscoveryService {
           multicastAddress,
           multicastPort,
           multicastInterface: address,
+          localAddress: address,
         ),
-      if (_outgoingAddresses.isEmpty)
-        _sender('multicast').send(data, multicastAddress, multicastPort),
-      _sender('broadcast').send(data, _broadcastAddress, multicastPort),
+      for (final entry in _broadcastDestinations.entries)
+        _sender('broadcast:${entry.key}').send(
+          data,
+          entry.value,
+          multicastPort,
+          localAddress: InternetAddress(entry.key),
+        ),
     ]);
   }
 
@@ -297,6 +347,8 @@ class LanDiscoveryService {
     _senders.clear();
     await Future.wait(senders.map((sender) => sender.close()));
     _outgoingAddresses = const [];
+    _lanInterfaces = const [];
+    _broadcastDestinations.clear();
     _recentPackets.clear();
     _peerSessions.clear();
     if (_multicastAcquired) {
@@ -320,8 +372,8 @@ class LanDiscoveryService {
   });
 }
 
-// Owns one outbound transport. It never shares the discovery receive socket,
-// and failed sends are retried only on the next requested announcement/query.
+// Owns one outbound transport. It never shares the discovery receive socket.
+// Would-block writes get a bounded retry; socket errors wait for the next send.
 class _DiscoverySender {
   _DiscoverySender(this._logger, this._name);
 
@@ -337,6 +389,7 @@ class _DiscoverySender {
     InternetAddress destination,
     int port, {
     InternetAddress? multicastInterface,
+    InternetAddress? localAddress,
   }) {
     if (_closed) return Future<void>.value();
     _pending = _pending.then((_) async {
@@ -346,7 +399,10 @@ class _DiscoverySender {
         if (socket == null) {
           await _subscription?.cancel();
           _subscription = null;
-          socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+          socket = await RawDatagramSocket.bind(
+            localAddress ?? InternetAddress.anyIPv4,
+            0,
+          );
           if (_closed) {
             socket.close();
             return;
@@ -376,7 +432,26 @@ class _DiscoverySender {
             ),
           );
         }
-        socket.send(data, destination, port);
+        final retryClock = Stopwatch()..start();
+        while (!_closed && identical(_socket, socket)) {
+          final sent = socket.send(data, destination, port);
+          if (sent == data.length) return;
+          if (sent != 0) {
+            _logger.warn(
+              'Discovery $_name dropped a datagram after a short UDP write',
+            );
+            return;
+          }
+          if (retryClock.elapsed >= const Duration(milliseconds: 250)) {
+            _logger.warn(
+              'Discovery $_name dropped a datagram: UDP remained blocked for 250 ms',
+            );
+            return;
+          }
+          // Windows can have an outstanding native send even though this
+          // transport serializes Dart calls. Let its completion run first.
+          await Future<void>.delayed(const Duration(milliseconds: 1));
+        }
       } catch (error) {
         _logger.warn('Discovery $_name unavailable: $error');
         _socket?.close();

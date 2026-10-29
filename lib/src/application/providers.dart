@@ -226,6 +226,11 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
   StreamSubscription<DeviceInfo>? _departureSubscription;
   LanDiscoveryService? _service;
   DeviceInfo? _self;
+  List<LanInterface> _interfaces = const [];
+  String _networkSignature = '';
+  final _candidates = <String, ({DeviceInfo device, int sequence})>{};
+  int _announcementSequence = 0;
+  static const _maximumCandidates = 512;
   bool _advertise = false;
   bool _running = false;
   Timer? _searchTimer;
@@ -253,6 +258,8 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
       _subscription = null;
       unawaited(_departureSubscription?.cancel());
       _departureSubscription = null;
+      _candidates.clear();
+      _interfaces = const [];
     });
     return const [];
   }
@@ -270,7 +277,13 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
     try {
       final settings = await ref.read(settingsProvider.future);
       if (!ref.mounted) return;
-      final ip = ipOverride ?? (await ref.read(networkProvider.future)).ip;
+      final network = ipOverride == null
+          ? await ref.read(networkProvider.future)
+          : ref.exists(networkProvider)
+          ? ref.read(networkProvider).asData?.value ??
+                NetworkSnapshot(ip: ipOverride)
+          : NetworkSnapshot(ip: ipOverride);
+      final ip = ipOverride ?? network.ip;
       if (!ref.mounted) return;
       if (ip == null || ip.isEmpty) {
         throw StateError('No local network address is available');
@@ -287,14 +300,22 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
       // A sending/discovery screen must not turn off an active receiver's
       // advertisements when it also requests discovery.
       final shouldAdvertise = _advertise || advertise;
+      final signature = _interfaceSignature(network.interfaces);
       if (_running &&
           _sameEndpoint(self, _self) &&
+          signature == _networkSignature &&
           shouldAdvertise == _advertise) {
         return;
       }
       final service = ref.read(discoveryServiceProvider);
       _service = service;
-      if (_self?.ip != self.ip) state = const [];
+      if (_self?.ip != self.ip) {
+        _candidates.clear();
+        state = const [];
+      }
+      _interfaces = network.interfaces;
+      _pruneCandidates();
+      _publishCandidates();
       // Subscribe before binding: a receiver may announce immediately.
       _subscription ??= service.devices.listen(_onDevice);
       _departureSubscription ??= service.departures.listen(_onDeparture);
@@ -304,6 +325,7 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
         return;
       }
       _self = self;
+      _networkSignature = signature;
       _advertise = shouldAdvertise;
       _running = true;
       _expiryTimer ??= Timer.periodic(
@@ -327,47 +349,132 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
       self.name == previous.name &&
       self.platform == previous.platform;
 
+  String _interfaceSignature(List<LanInterface> interfaces) => interfaces
+      .map((interface) {
+        final addresses = [
+          for (final address in interface.addresses)
+            '${address.address}/${interface.prefixLengths[address.address]}',
+        ]..sort();
+        return '${interface.index}:${interface.metric}:'
+            '${interface.hasDefaultRoute}:${interface.kind}:'
+            '${addresses.join(',')}';
+      })
+      .join('|');
+
+  String _candidateKey(DeviceInfo device) =>
+      '${device.id}:${device.ip}:${device.port}';
+
   void _onDevice(DeviceInfo device) {
     if (!ref.mounted) return;
-    final now = _clock();
-    final fresh = state
-        .where(
-          (item) =>
-              now.difference(item.lastSeen) < deviceLifetime &&
-              item.id != device.id,
-        )
-        .toList();
-    state = [...fresh, device]..sort((a, b) => a.name.compareTo(b.name));
+    final pruned = _pruneCandidates();
+    if (_clock().difference(device.lastSeen) >= deviceLifetime) {
+      if (pruned) _publishCandidates();
+      return;
+    }
+    final key = _candidateKey(device);
+    // Refresh insertion order so a bounded cache keeps recently heard endpoints.
+    _candidates.remove(key);
+    _candidates[key] = (device: device, sequence: ++_announcementSequence);
+    while (_candidates.length > _maximumCandidates) {
+      _candidates.remove(_candidates.keys.first);
+    }
+    _publishCandidates();
+  }
+
+  ({int interfaceRank, int prefixLength}) _routePreference(DeviceInfo device) {
+    final remote = InternetAddress.tryParse(device.ip);
+    if (remote != null) {
+      for (var index = 0; index < _interfaces.length; index++) {
+        var matchingPrefix = 0;
+        final interface = _interfaces[index];
+        for (final local in interface.addresses) {
+          final prefix = interface.prefixLengths[local.address];
+          if (prefix != null &&
+              sameIpv4Subnet(local, remote, prefix) &&
+              prefix > matchingPrefix) {
+            matchingPrefix = prefix;
+          }
+        }
+        if (matchingPrefix > 0) {
+          return (interfaceRank: index, prefixLength: matchingPrefix);
+        }
+      }
+    }
+    return (interfaceRank: _interfaces.length, prefixLength: 0);
+  }
+
+  int _compareCandidates(
+    ({DeviceInfo device, int sequence}) a,
+    ({DeviceInfo device, int sequence}) b,
+  ) {
+    if (_interfaces.isNotEmpty) {
+      final firstRoute = _routePreference(a.device);
+      final secondRoute = _routePreference(b.device);
+      final byInterface = firstRoute.interfaceRank.compareTo(
+        secondRoute.interfaceRank,
+      );
+      if (byInterface != 0) return byInterface;
+      final byPrefix = secondRoute.prefixLength.compareTo(
+        firstRoute.prefixLength,
+      );
+      if (byPrefix != 0) return byPrefix;
+      final bySeen = b.device.lastSeen.compareTo(a.device.lastSeen);
+      if (bySeen != 0) return bySeen;
+    }
+    // Without OS metadata retain the existing last-announcement behavior.
+    return b.sequence.compareTo(a.sequence);
+  }
+
+  void _publishCandidates() {
+    if (!ref.mounted) return;
+    final previous = state;
+    final winners = <String, ({DeviceInfo device, int sequence})>{};
+    for (final candidate in _candidates.values) {
+      final current = winners[candidate.device.id];
+      if (current == null || _compareCandidates(candidate, current) < 0) {
+        winners[candidate.device.id] = candidate;
+      }
+    }
+    state = winners.values.map((candidate) => candidate.device).toList()
+      ..sort((a, b) {
+        final byName = a.name.compareTo(b.name);
+        return byName == 0 ? a.id.compareTo(b.id) : byName;
+      });
     // Keep the selected destination aligned with renewed announcements after
     // DHCP or receiver configuration changes. Running transfers retain their
     // immutable destination captured when send() started.
     final selected = ref.read(selectedDeviceProvider);
-    if (selected?.id == device.id && !_sameEndpoint(device, selected)) {
-      ref.read(selectedDeviceProvider.notifier).set(device);
+    if (selected == null) return;
+    final winner = winners[selected.id]?.device;
+    if (winner != null && !_sameEndpoint(winner, selected)) {
+      ref.read(selectedDeviceProvider.notifier).set(winner);
+    } else if (winner == null &&
+        previous.any((device) => _sameEndpoint(device, selected))) {
+      // A manually selected QR endpoint never heard by discovery is retained.
+      ref.read(selectedDeviceProvider.notifier).set(null);
     }
+  }
+
+  bool _pruneCandidates() {
+    final before = _candidates.length;
+    final now = _clock();
+    _candidates.removeWhere(
+      (_, candidate) =>
+          now.difference(candidate.device.lastSeen) >= deviceLifetime,
+    );
+    return before != _candidates.length;
   }
 
   void _pruneDevices() {
     if (!ref.mounted) return;
-    final now = _clock();
-    final fresh = state
-        .where((item) => now.difference(item.lastSeen) < deviceLifetime)
-        .toList();
-    if (fresh.length != state.length) state = fresh;
+    if (_pruneCandidates()) _publishCandidates();
   }
 
   void _onDeparture(DeviceInfo device) {
     if (!ref.mounted) return;
-    bool matches(DeviceInfo item) =>
-        item.id == device.id &&
-        item.ip == device.ip &&
-        item.port == device.port;
-    if (!state.any(matches)) return;
-    state = state.where((item) => !matches(item)).toList();
-    final selected = ref.read(selectedDeviceProvider);
-    if (selected != null && matches(selected)) {
-      ref.read(selectedDeviceProvider.notifier).set(null);
-    }
+    if (_candidates.remove(_candidateKey(device)) == null) return;
+    _pruneCandidates();
+    _publishCandidates();
   }
 
   void _setStatus(DiscoveryPhase phase, {Object? error}) {
@@ -451,6 +558,9 @@ class DiscoveryController extends Notifier<List<DeviceInfo>> {
     _running = false;
     _advertise = false;
     _self = null;
+    _networkSignature = '';
+    _interfaces = const [];
+    _candidates.clear();
     await _subscription?.cancel();
     _subscription = null;
     await _departureSubscription?.cancel();

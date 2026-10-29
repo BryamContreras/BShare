@@ -9,10 +9,10 @@ extension CameraUiLocalizations on AppLocalizations {
 
 const _cameraUiValues = {
   'en': {
-    'wifi': 'Wi-Fi',
+    'wifi': 'Wi-Fi / LAN',
     'usb': 'USB',
     'wifiHelp':
-        'Connect the phone and computer to the same Wi-Fi network. Start the camera on the phone, then choose it here on the computer.',
+        'Connect the phone and computer to the same local network using Wi-Fi or Ethernet. Start the camera on the phone, then choose it here on the computer.',
     'usbHelp':
         'Connect a data cable and enable USB tethering on the phone. On the computer, enter the USB address and port shown on the phone. Video uses the cable network.',
     'usbUnavailable':
@@ -55,10 +55,10 @@ const _cameraUiValues = {
     'retry': 'Try again',
   },
   'es': {
-    'wifi': 'Wi-Fi',
+    'wifi': 'Wi-Fi / LAN',
     'usb': 'USB',
     'wifiHelp':
-        'Conecta el teléfono y la computadora a la misma red Wi-Fi. Inicia la cámara en el teléfono y luego selecciónalo aquí en la computadora.',
+        'Conecta el teléfono y la computadora a la misma red local mediante Wi-Fi o Ethernet. Inicia la cámara en el teléfono y luego selecciónalo aquí en la computadora.',
     'usbHelp':
         'Conecta un cable de datos y activa el anclaje a red USB en el teléfono. En la computadora, ingresa la dirección USB y el puerto que muestra el teléfono. El video usa la red del cable.',
     'usbUnavailable':

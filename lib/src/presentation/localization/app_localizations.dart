@@ -95,9 +95,9 @@ class AppLocalizations {
           'Saved destination; not detected on this network yet.',
       'discoveryFailed': 'Could not search for devices',
       'discoveryFailedHelp':
-          'Check your Wi-Fi connection, then refresh to try again.',
+          'Check your local network connection (Wi-Fi or Ethernet), then refresh to try again.',
       'discoveryAutomaticHelp':
-          'Open Receive on the other device and use the same Wi-Fi network. If you change networks, tap Refresh.',
+          'Open Receive on the other device and use the same local network (Wi-Fi or Ethernet). If you change networks, tap Refresh.',
       'scanDirectQr': 'Scan direct QR',
       'scanQr': 'Scan QR',
       'pointCameraAtQr': 'Point the camera at the BShare QR code',
@@ -277,9 +277,9 @@ class AppLocalizations {
           'Destino guardado; aún no detectado en esta red.',
       'discoveryFailed': 'No se pudieron buscar dispositivos',
       'discoveryFailedHelp':
-          'Revisa la conexión Wi-Fi y pulsa actualizar para volver a intentar.',
+          'Revisa la conexión a la red local (Wi-Fi o Ethernet) y pulsa actualizar para volver a intentar.',
       'discoveryAutomaticHelp':
-          'Abre Recibir en el otro dispositivo y usa la misma red Wi-Fi. Si cambias de red, pulsa Actualizar.',
+          'Abre Recibir en el otro dispositivo y usa la misma red local (Wi-Fi o Ethernet). Si cambias de red, pulsa Actualizar.',
       'scanDirectQr': 'Escanear QR directo',
       'scanQr': 'Escanear QR',
       'pointCameraAtQr': 'Apunta la cámara al código QR de BShare',

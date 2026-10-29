@@ -2,6 +2,11 @@
 
 ## 1.0.4
 
+- Select active LAN interfaces from OS hardware, bridge, prefix and route metadata; support Ethernet without Wi-Fi, including Windows external switches and Android Ethernet, while excluding internal virtual networks and VPNs.
+- Bind transfer-control route checks to eligible source addresses for each receiver; discover peers over every eligible LAN and retain stable multi-interface destinations.
+- Verify bidirectional 8 MiB transfers with matching SHA-256, screen sharing in both directions and front/rear phone camera reception between an Android 14 S22 Ultra over Wi-Fi and Windows over Ethernet.
+- Publish native macOS ARM64/Intel PKG installers that install BShare.app into /Applications and validate the installed payload on native CI runners.
+- Name releases after their version tags, rebuild existing versions through a separate staging draft, and add the Ko-fi sponsorship link to the repository.
 - Fix LAN discovery across Wi-Fi/Ethernet adapters and Android multicast filtering; refresh now queries peers directly and stopped receivers withdraw their announcements.
 - Refresh Home's network address after returning from the background, including DHCP changes, without duplicating refreshes for permission dialogs or app shutdown.
 - Use exclusive HTTP listeners and show the actual destination and actionable connection errors instead of raw socket messages.

@@ -111,7 +111,7 @@ $manifest = [ordered]@{
     artifacts = $artifacts
     notes = @(
         'Android ARM APKs and the Windows x64 installer are separate files; this script does not create ZIP bundles.',
-        'Linux DEB/RPM and macOS ARM64/x64 DMGs require their native build scripts on native hosts.',
+        'Linux DEB/RPM and macOS ARM64/x64 PKGs require their native build scripts on native hosts.',
         'Google Play upload requires android/key.properties with a real upload key.'
     )
 }

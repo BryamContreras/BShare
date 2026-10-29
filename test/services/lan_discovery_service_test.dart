@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/lan_discovery_service.dart';
+import 'package:bshare/src/infrastructure/services/network_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,6 +20,18 @@ void main() {
     lastSeen: DateTime.now(),
   );
 
+  // Socket behavior is exercised on loopback. Keep host NICs, native plugins
+  // and OS routes out of the interface selection used by these tests.
+  LanDiscoveryService createService({bool? isAndroid}) => LanDiscoveryService(
+    const AppLogger(),
+    isAndroid: isAndroid,
+    networkService: NetworkService(
+      operatingSystem: 'test',
+      readWifiIp: () async => null,
+      listInterfaces: () async => const [],
+    ),
+  );
+
   Future<RawDatagramSocket> probe() async {
     final socket = await RawDatagramSocket.bind(
       InternetAddress.loopbackIPv4,
@@ -28,16 +41,27 @@ void main() {
     return socket;
   }
 
-  void send(RawDatagramSocket socket, Map<String, dynamic> packet) {
-    socket.send(
-      utf8.encode(jsonEncode(packet)),
-      InternetAddress.loopbackIPv4,
-      LanDiscoveryService.multicastPort,
-    );
+  Future<void> send(
+    RawDatagramSocket socket,
+    Map<String, dynamic> packet,
+  ) async {
+    final data = utf8.encode(jsonEncode(packet));
+    final deadline = DateTime.now().add(const Duration(seconds: 1));
+    while (socket.send(
+          data,
+          InternetAddress.loopbackIPv4,
+          LanDiscoveryService.multicastPort,
+        ) ==
+        0) {
+      if (!DateTime.now().isBefore(deadline)) {
+        fail('UDP probe could not send a discovery packet within one second');
+      }
+      await Future<void>.delayed(Duration.zero);
+    }
   }
 
   test('concurrent starts and stop release all discovery sockets', () async {
-    final service = LanDiscoveryService(const AppLogger());
+    final service = createService();
     addTearDown(service.dispose);
     final self = DeviceInfo(
       id: 'local',
@@ -65,14 +89,14 @@ void main() {
   test(
     'LAN packet source replaces stale or other-adapter advertised IP',
     () async {
-      final service = LanDiscoveryService(const AppLogger());
+      final service = createService();
       addTearDown(service.dispose);
       await service.start(self, advertise: false);
       final socket = await probe();
       final received = service.devices.first.timeout(
         const Duration(seconds: 2),
       );
-      send(socket, {
+      await send(socket, {
         ...self.toJson(),
         'id': 'remote',
         'ip': '10.10.99.1',
@@ -87,7 +111,7 @@ void main() {
   test(
     'query receives a unicast announcement without multicast reception',
     () async {
-      final service = LanDiscoveryService(const AppLogger());
+      final service = createService();
       addTearDown(service.dispose);
       await service.start(self, advertise: true);
       final socket = await probe();
@@ -102,7 +126,7 @@ void main() {
         }
       });
       addTearDown(subscription.cancel);
-      send(socket, {
+      await send(socket, {
         'id': 'querying-viewer',
         'service': LanDiscoveryService.queryServiceType,
       });
@@ -114,7 +138,7 @@ void main() {
   );
 
   test('query can request a persistent reply port', () async {
-    final service = LanDiscoveryService(const AppLogger());
+    final service = createService();
     addTearDown(service.dispose);
     await service.start(self, advertise: true);
     final querySender = await probe();
@@ -130,7 +154,7 @@ void main() {
       }
     });
     addTearDown(subscription.cancel);
-    send(querySender, {
+    await send(querySender, {
       'id': 'querying-viewer',
       'service': LanDiscoveryService.queryServiceType,
       'replyPort': replyListener.port,
@@ -153,7 +177,7 @@ void main() {
       InternetAddress.anyIPv4,
       LanDiscoveryService.multicastPort,
       reuseAddress: true,
-      reusePort: true,
+      reusePort: !Platform.isWindows,
     );
     addTearDown(observer.close);
     observer.joinMulticast(LanDiscoveryService.multicastAddress, loopback);
@@ -173,7 +197,7 @@ void main() {
       }
     });
     addTearDown(subscription.cancel);
-    final service = LanDiscoveryService(const AppLogger());
+    final service = createService();
     addTearDown(service.dispose);
     await service.start(self, advertise: false);
     final query = await queried.future.timeout(const Duration(seconds: 2));
@@ -198,10 +222,62 @@ void main() {
     expect((await device).id, 'query-response');
   });
 
+  test('a loopback query burst survives UDP write backpressure', () async {
+    final interfaces = await NetworkInterface.list(
+      type: InternetAddressType.IPv4,
+      includeLoopback: true,
+    );
+    final loopback = interfaces.firstWhere(
+      (interface) => interface.addresses.any((address) => address.isLoopback),
+    );
+    final observer = await RawDatagramSocket.bind(
+      InternetAddress.anyIPv4,
+      LanDiscoveryService.multicastPort,
+      reuseAddress: true,
+      reusePort: !Platform.isWindows,
+    );
+    addTearDown(observer.close);
+    observer.joinMulticast(LanDiscoveryService.multicastAddress, loopback);
+    const count = 32;
+    final ready = Completer<void>();
+    final received = Completer<void>();
+    var observed = 0;
+    final subscription = observer.listen((event) {
+      if (event != RawSocketEvent.read) return;
+      Datagram? packet;
+      while ((packet = observer.receive()) != null) {
+        final message =
+            jsonDecode(utf8.decode(packet!.data)) as Map<String, dynamic>;
+        if (message['id'] != self.id ||
+            message['service'] != LanDiscoveryService.queryServiceType) {
+          continue;
+        }
+        if (!ready.isCompleted) {
+          ready.complete();
+        } else if (++observed == count && !received.isCompleted) {
+          received.complete();
+        }
+      }
+    });
+    addTearDown(subscription.cancel);
+    final service = createService();
+    addTearDown(service.dispose);
+    await service.start(self, advertise: false);
+    // Wait for the initial query to establish the transport before sending
+    // enough packets in one turn to exercise Windows' pending native write.
+    await ready.future.timeout(const Duration(seconds: 2));
+    for (var index = 0; index < count; index++) {
+      service.requestDiscovery();
+    }
+    await received.future.timeout(const Duration(seconds: 3));
+    expect(observed, count);
+    await service.stop().timeout(const Duration(seconds: 1));
+  });
+
   test(
     'duplicate transport packets emit once and malformed packet does not stop discovery',
     () async {
-      final service = LanDiscoveryService(const AppLogger());
+      final service = createService();
       addTearDown(service.dispose);
       await service.start(self, advertise: false);
       final socket = await probe();
@@ -217,9 +293,9 @@ void main() {
         'id': 'remote',
         'service': LanDiscoveryService.serviceType,
       };
-      send(socket, {...packet, 'port': 70000});
-      send(socket, packet);
-      send(socket, packet);
+      await send(socket, {...packet, 'port': 70000});
+      await send(socket, packet);
+      await send(socket, packet);
       await received.future.timeout(const Duration(seconds: 2));
       // The read handler drains all datagrams in one event.
       await Future<void>.delayed(const Duration(milliseconds: 30));
@@ -242,7 +318,7 @@ void main() {
         () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, null),
       );
-      final service = LanDiscoveryService(const AppLogger(), isAndroid: true);
+      final service = createService(isAndroid: true);
       addTearDown(service.dispose);
       await service.start(self, advertise: true);
       await service.start(self, advertise: false);
@@ -276,7 +352,7 @@ void main() {
       reusePort: false,
     );
     addTearDown(occupied.close);
-    final service = LanDiscoveryService(const AppLogger(), isAndroid: true);
+    final service = createService(isAndroid: true);
     addTearDown(service.dispose);
     await expectLater(
       service.start(self, advertise: true),
@@ -298,14 +374,14 @@ void main() {
         () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, null),
       );
-      final service = LanDiscoveryService(const AppLogger(), isAndroid: true);
+      final service = createService(isAndroid: true);
       addTearDown(service.dispose);
       await service.start(self, advertise: false);
       final socket = await probe();
       final received = service.devices.first.timeout(
         const Duration(seconds: 2),
       );
-      send(socket, {
+      await send(socket, {
         ...self.toJson(),
         'id': 'remote',
         'service': LanDiscoveryService.serviceType,
@@ -317,7 +393,7 @@ void main() {
   test(
     'late goodbye cannot remove a new session at the same endpoint',
     () async {
-      final service = LanDiscoveryService(const AppLogger());
+      final service = createService();
       addTearDown(service.dispose);
       await service.start(self, advertise: false);
       final socket = await probe();
@@ -327,10 +403,10 @@ void main() {
         'service': LanDiscoveryService.serviceType,
       };
       final first = service.devices.first.timeout(const Duration(seconds: 2));
-      send(socket, {...packet, 'session': 'previous-listener'});
+      await send(socket, {...packet, 'session': 'previous-listener'});
       await first;
       final second = service.devices.first.timeout(const Duration(seconds: 2));
-      send(socket, {...packet, 'session': 'new-listener'});
+      await send(socket, {...packet, 'session': 'new-listener'});
       await second;
       final departures = <DeviceInfo>[];
       final removed = Completer<void>();
@@ -339,14 +415,14 @@ void main() {
         if (!removed.isCompleted) removed.complete();
       });
       addTearDown(subscription.cancel);
-      send(socket, {
+      await send(socket, {
         ...packet,
         'service': LanDiscoveryService.goodbyeServiceType,
         'session': 'previous-listener',
       });
       await Future<void>.delayed(const Duration(milliseconds: 30));
       expect(departures, isEmpty);
-      send(socket, {
+      await send(socket, {
         ...packet,
         'service': LanDiscoveryService.goodbyeServiceType,
         'session': 'new-listener',
@@ -369,7 +445,7 @@ void main() {
       InternetAddress.anyIPv4,
       LanDiscoveryService.multicastPort,
       reuseAddress: true,
-      reusePort: true,
+      reusePort: !Platform.isWindows,
     );
     addTearDown(observer.close);
     observer.joinMulticast(LanDiscoveryService.multicastAddress, loopback);
@@ -395,7 +471,7 @@ void main() {
       }
     });
     addTearDown(subscription.cancel);
-    final service = LanDiscoveryService(const AppLogger());
+    final service = createService();
     addTearDown(service.dispose);
     await service.start(self, advertise: true);
     final session = await announced.future.timeout(const Duration(seconds: 2));

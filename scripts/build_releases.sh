@@ -51,15 +51,8 @@ if [[ "$OS" == "Darwin" && "$LINUX_ONLY" != "1" ]]; then
     echo "Expected $EXPECTED_ARCH macOS binary, found: $MACOS_ARCHS" >&2
     exit 1
   }
-  MACOS_STAGING="$RELEASE_ROOT/macos/BShare-dmg-root"
-  MACOS_DMG="$RELEASE_ROOT/macos/BShare-$SAFE_VERSION-macos-$MACOS_ARCH.dmg"
-  rm -rf "$MACOS_STAGING"
-  mkdir -p "$MACOS_STAGING"
-  ditto "$MACOS_APP" "$MACOS_STAGING/BShare.app"
-  ln -s /Applications "$MACOS_STAGING/Applications"
-  hdiutil create -quiet -volname BShare -srcfolder "$MACOS_STAGING" -format UDZO -ov "$MACOS_DMG"
-  rm -rf "$MACOS_STAGING"
-  shasum -a 256 "$MACOS_DMG" > "$MACOS_DMG.sha256"
+  python3 "$ROOT/tool/packaging_macos.py" --app "$MACOS_APP" \
+    --architecture "$MACOS_ARCH" --output "$RELEASE_ROOT/macos"
   echo "macOS release ready: $RELEASE_ROOT/macos"
 fi
 

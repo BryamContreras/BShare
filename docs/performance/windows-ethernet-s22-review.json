@@ -1,0 +1,356 @@
+{
+  "date": "2026-10-29",
+  "timezone": "America/Managua",
+  "sourceRevision": "47d238a9cfccce70be88a2588dcede3a7d8aedae",
+  "scope": "Physical Windows Ethernet to Samsung S22 Ultra Wi-Fi on one LAN; production file and media services",
+  "physicalTopology": {
+    "windowsTransport": "Ethernet",
+    "windowsIpv4": "172.21.53.7",
+    "phoneTransport": "Wi-Fi",
+    "phoneIpv4": "172.21.53.37",
+    "phoneModel": "SM-S908U",
+    "androidRelease": "14"
+  },
+  "coverageLimits": [
+    "One Windows PC and one Android 14 S22 Ultra; this is not a guarantee for all hardware, OS versions or routers",
+    "Windows Wi-Fi, Linux, macOS and physical Android Ethernet were not exercised in this run",
+    "The media measurements are brief functional checks, not a camera or screen FPS benchmark",
+    "The committed review contains statistics and hashes, without media imagery, recordings or raw device logs"
+  ],
+  "androidArtifact": {
+    "builtApkSha256": "bba20566a64e6e5107804b3dc075a4ea5c7c855962fc7fcc75acafd0983adcb7",
+    "installedApkSha256": "bba20566a64e6e5107804b3dc075a4ea5c7c855962fc7fcc75acafd0983adcb7",
+    "installedApkMatchesBuiltFile": true,
+    "builtApkPath": "build/app/outputs/flutter-apk/app-release.apk"
+  },
+  "windowsDiagnosticArtifactAtSummary": {
+    "executableSha256": "4380c2b207a59fb5af4599111f7ba1bcbefd9669330634db83d420ae5eef725b",
+    "kernelBlobSha256": "69012e96c4ef3bfcff8f4b3e5a6710df69efaa72dff4555da6d6dd43574beae1",
+    "kernelBlobPath": "build/windows/x64/runner/Debug/data/flutter_assets/kernel_blob.bin",
+    "artifactScope": "Temporary native diagnostic target using production services, before restoring the normal application bundle"
+  },
+  "discovery": {
+    "windowsDiscoveredPhone": true,
+    "phoneDiscoveredWindows": true,
+    "phoneEvidence": "Production Send UI selected the Windows LAN test peer"
+  },
+  "files": {
+    "passed": true,
+    "transfers": [
+      {
+        "direction": "Windows to S22",
+        "bytes": 8388608,
+        "sourceSha256": "7d212b9c884f5c77896de960ae17cc341cda43b14d6a971f34ca29ebd4badf7f",
+        "destinationSha256": "7d212b9c884f5c77896de960ae17cc341cda43b14d6a971f34ca29ebd4badf7f",
+        "hashesMatch": true,
+        "sourceIp": "172.21.53.7",
+        "controlHost": null
+      },
+      {
+        "direction": "S22 to Windows",
+        "bytes": 8388608,
+        "sourceSha256": "7d212b9c884f5c77896de960ae17cc341cda43b14d6a971f34ca29ebd4badf7f",
+        "destinationSha256": "7d212b9c884f5c77896de960ae17cc341cda43b14d6a971f34ca29ebd4badf7f",
+        "hashesMatch": true,
+        "sourceIp": null,
+        "controlHost": "172.21.53.37"
+      }
+    ]
+  },
+  "media": {
+    "screenPhoneToWindows": {
+      "reportedPassed": true,
+      "roleOnWindows": "receiver",
+      "codecs": [
+        "video/H264"
+      ],
+      "observedDimensions": [
+        {
+          "width": 1080,
+          "height": 2316
+        }
+      ],
+      "maximumDimensionsByArea": {
+        "width": 1080,
+        "height": 2316
+      },
+      "maximumDecodedFrames": 29,
+      "maximumEncodedFrames": 0,
+      "maximumMediaBytesReceived": 195275,
+      "maximumMediaBytesSent": 0,
+      "firstRenderedSampleAfterProbeClockMs": 3011,
+      "advancingVideo": true,
+      "continuousVideo": true,
+      "selectedIceRoutes": [
+        {
+          "windowsIp": "172.21.53.7",
+          "phoneIp": "172.21.53.37",
+          "protocol": "udp",
+          "windowsNetworkType": "ethernet",
+          "localCandidateType": "host",
+          "remoteCandidateType": "host",
+          "matchesPhysicalLanAddresses": true
+        }
+      ],
+      "physicalLanRouteVerified": true,
+      "cleanup": {
+        "mediaResourcesReleased": true,
+        "targetCleanupComplete": true,
+        "nativeWindowCloseRequested": true,
+        "processExitCode": 0,
+        "reportedCleanupPassed": true
+      },
+      "durationSeconds": 17.05,
+      "diagnosticBinarySha256": "4380c2b207a59fb5af4599111f7ba1bcbefd9669330634db83d420ae5eef725b",
+      "passed": true
+    },
+    "cameraRearPhoneToWindows": {
+      "reportedPassed": true,
+      "roleOnWindows": "receiver",
+      "codecs": [
+        "video/H264"
+      ],
+      "observedDimensions": [
+        {
+          "width": 320,
+          "height": 180
+        },
+        {
+          "width": 480,
+          "height": 270
+        }
+      ],
+      "maximumDimensionsByArea": {
+        "width": 480,
+        "height": 270
+      },
+      "maximumDecodedFrames": 108,
+      "maximumEncodedFrames": 0,
+      "maximumMediaBytesReceived": 1181477,
+      "maximumMediaBytesSent": 0,
+      "firstRenderedSampleAfterProbeClockMs": 2011,
+      "advancingVideo": true,
+      "continuousVideo": true,
+      "selectedIceRoutes": [
+        {
+          "windowsIp": "172.21.53.7",
+          "phoneIp": "172.21.53.37",
+          "protocol": "udp",
+          "windowsNetworkType": "ethernet",
+          "localCandidateType": "host",
+          "remoteCandidateType": "host",
+          "matchesPhysicalLanAddresses": true
+        }
+      ],
+      "physicalLanRouteVerified": true,
+      "cleanup": {
+        "mediaResourcesReleased": true,
+        "targetCleanupComplete": true,
+        "nativeWindowCloseRequested": true,
+        "processExitCode": 0,
+        "reportedCleanupPassed": true
+      },
+      "durationSeconds": 14.08,
+      "diagnosticBinarySha256": "4380c2b207a59fb5af4599111f7ba1bcbefd9669330634db83d420ae5eef725b",
+      "passed": true
+    },
+    "cameraFrontPhoneToWindows": {
+      "reportedPassed": true,
+      "roleOnWindows": "receiver",
+      "codecs": [
+        "video/H264"
+      ],
+      "observedDimensions": [
+        {
+          "width": 480,
+          "height": 270
+        },
+        {
+          "width": 640,
+          "height": 360
+        }
+      ],
+      "maximumDimensionsByArea": {
+        "width": 640,
+        "height": 360
+      },
+      "maximumDecodedFrames": 164,
+      "maximumEncodedFrames": 0,
+      "maximumMediaBytesReceived": 1012103,
+      "maximumMediaBytesSent": 0,
+      "firstRenderedSampleAfterProbeClockMs": 2011,
+      "advancingVideo": true,
+      "continuousVideo": true,
+      "selectedIceRoutes": [
+        {
+          "windowsIp": "172.21.53.7",
+          "phoneIp": "172.21.53.37",
+          "protocol": "udp",
+          "windowsNetworkType": "ethernet",
+          "localCandidateType": "host",
+          "remoteCandidateType": "host",
+          "matchesPhysicalLanAddresses": true
+        }
+      ],
+      "physicalLanRouteVerified": true,
+      "cleanup": {
+        "mediaResourcesReleased": true,
+        "targetCleanupComplete": true,
+        "nativeWindowCloseRequested": true,
+        "processExitCode": 0,
+        "reportedCleanupPassed": true
+      },
+      "durationSeconds": 14.08,
+      "diagnosticBinarySha256": "4380c2b207a59fb5af4599111f7ba1bcbefd9669330634db83d420ae5eef725b",
+      "passed": true
+    },
+    "screenWindowsToPhone": {
+      "reportedPassed": true,
+      "roleOnWindows": "sender",
+      "codecs": [
+        "video/H264"
+      ],
+      "observedDimensions": [
+        {
+          "width": 640,
+          "height": 360
+        },
+        {
+          "width": 960,
+          "height": 540
+        },
+        {
+          "width": 1280,
+          "height": 720
+        },
+        {
+          "width": 1920,
+          "height": 1080
+        }
+      ],
+      "maximumDimensionsByArea": {
+        "width": 1920,
+        "height": 1080
+      },
+      "maximumDecodedFrames": 0,
+      "maximumEncodedFrames": 561,
+      "maximumMediaBytesReceived": 0,
+      "maximumMediaBytesSent": 6611164,
+      "firstRenderedSampleAfterProbeClockMs": null,
+      "advancingVideo": true,
+      "continuousVideo": true,
+      "selectedIceRoutes": [
+        {
+          "windowsIp": "172.21.53.7",
+          "phoneIp": "172.21.53.37",
+          "protocol": "udp",
+          "windowsNetworkType": "ethernet",
+          "localCandidateType": "host",
+          "remoteCandidateType": "host",
+          "matchesPhysicalLanAddresses": true
+        }
+      ],
+      "physicalLanRouteVerified": true,
+      "cleanup": {
+        "mediaResourcesReleased": true,
+        "targetCleanupComplete": true,
+        "nativeWindowCloseRequested": true,
+        "processExitCode": 0,
+        "reportedCleanupPassed": true
+      },
+      "durationSeconds": 62.2,
+      "diagnosticBinarySha256": "4380c2b207a59fb5af4599111f7ba1bcbefd9669330634db83d420ae5eef725b",
+      "phoneReceiver": {
+        "verified": true,
+        "firstFrameRendered": true,
+        "decodedFrames": 22,
+        "codec": "H264",
+        "dimensions": {
+          "width": 1920,
+          "height": 1080
+        },
+        "evidenceSource": "Physical Android production viewer logs and focused viewer UI"
+      },
+      "passed": true,
+      "senderCounterScope": "Encoder and network counters alone do not establish Android decoding or rendering"
+    }
+  },
+  "sourceHashesAtSummary": {
+    "lib/src/infrastructure/services/network_service.dart": "49433edaf0e1d0e21d733bd3445cbf75d715eae5347863294b196dfee2c55f8e",
+    "lib/src/infrastructure/services/lan_interface.dart": "2c8c29096fee8c9d392c7986343c3deb2ccf98a300f48612307b2104abfd1fea",
+    "lib/src/infrastructure/services/lan_interface_reader.dart": "cbcd1cd9dde82662aeb5dbb549b2e98c2dc6e7da35eabfcca80727df84a37077",
+    "lib/src/infrastructure/services/lan_discovery_service.dart": "0718ae21ee2714cf0d31ad185e648159829dc31c21429b67775f51f582dd9e9b",
+    "lib/src/infrastructure/services/screen_share_service.dart": "1cc0c36664f4297bc9d51383d9ef5df0bb8cb29dc3d40224e9283fe5010592e7",
+    "lib/src/infrastructure/services/file_server.dart": "1159f62f75c6c5afa23d44e5acbb492b574d64fb36b1ae231f188a0b4e40b84d",
+    "lib/src/infrastructure/services/file_transfer_client.dart": "9a4015099e65fd028e40562579219b73d06c2974cc02949b9d3efa44109cc565",
+    "lib/src/application/providers.dart": "7404c5d14b606bacc91abf6f7ca0864023df89b42e611a3e15c177c61ac9604b",
+    "lib/src/application/send_controller.dart": "3887bb133d7ebd7831ceb2f441e9cde9437b3a1c934a134a8fe051ce8d9dffe8",
+    "lib/src/application/receive_controller.dart": "c0ad0f1065e74f5b94eea11daa2e55d15ddddcbcf24756ca44eced8f0bea9e46",
+    "android/app/src/main/kotlin/com/bshare/bshare/MainActivity.kt": "9da8c58df0065a1fc1daee659c6e7684bf492843d98a610fcdd843cda8008b52",
+    "windows/CMakeLists.txt": "618acbb82a4dc943115682911db97cd685820d119a3787bedcbf2c8fe8085925",
+    "windows/runner/network_channel.cpp": "c91e7b57fdda07a2b413d457625fad90eaedd3c817e1f527fd45a53b4159ce0f",
+    "windows/runner/network_channel.h": "26742dfa2465f9d0e090700fb847b374637fd1fa5f20c595178d6b6d356f3c0e",
+    "windows/runner/flutter_window.cpp": "fc87256f6a08cf32c8dbf6082457107179d201d1f9101843b81b69a5d76a6f55",
+    "windows/runner/flutter_window.h": "59dac617638aeb09973146195f1486b2b57271f047333a213235efaa68142522",
+    "test/services/network_service_test.dart": "e10f46e33ba58d8b64053a1529800671c71d9e9193fd0ead2d40ecde7d8f1d58",
+    "test/services/lan_discovery_service_test.dart": "77b67c845d170a84a28d13da377af83b8bfb8516327be164cbdc87ffdcb698d8",
+    "test/discovery_controller_test.dart": "e14e4cc92ea560f30d85b3d4bfbfc9d55d4d11a84ab9f1ef70a78fdcf1bda7ef",
+    "windows/runner/lan_interface_policy.h": "18f7581e849054d9d6d6919a767ae8c34f7b59b5a9573dcbbf74e3c03cfd1ab2",
+    "windows/runner/route_metric_policy.h": "4918bb5e7fa4b6561ce71158bbb79f03c4dbc5f756a8bd294fcb46f08b1ce54f",
+    "test/native/test_windows_lan_interface_policy.py": "f5572a2ab2b7bdc92ee864be9ff0983ffb4939d2f25209a49168530bc28b8941",
+    "test/native/windows_lan_interface_policy_test.cpp": "814e60e14090f734c506bc7cff4f8e4046a03382bde1149c106cf89c6f4f0267",
+    "test/native/windows_route_metric_policy_test.cpp": "e813f85b450139014a80a5b26db94706422d9e7eeccd74666680af9c0d49f09f",
+    "test/receive_controller_test.dart": "f47129c273b3d1bd8a8283e92e169bf354b73e4aba87b58e64989b0cb47f59d5",
+    "test/services/file_server_test.dart": "667251618af5d549ac500726db53d42504ccb993c60e99f46d770c26d62068c7"
+  },
+  "diagnosticSourceHashesAtSummary": {
+    ".dart_tool/lan_audit/native_media_probe.dart": "05ccb99629b5e31dcf793661286690418d02749a521d555027ccda5b9ae9a6f1",
+    ".dart_tool/lan_audit/run_native_media_probe.py": "a44dadd0872a5b3356226eb445c0f0a8721265e99fd023ada6a7412ac3582993",
+    ".dart_tool/lan_audit/file_peer_probe.dart": "4838fb0e4f5bae5aca3bfdc06d46a7cf20083701996df5e034f3039341223f13",
+    ".dart_tool/lan_audit/record_file_evidence.py": "ca6a45c0ad70840362a176a9b41ddaa661459940d96517ec7d1f27eb54b44ca8"
+  },
+  "sourceHashScope": "Final reviewed sources are fingerprinted separately from diagnostic and delivered artifacts",
+  "inputEvidenceSha256": {
+    "screen-native-final.json": "bc1e85355a35bafd3eaf52d932fd0cc412be3f7d02d387ad510bb8fa11ae2420",
+    "camera-rear-native-final.json": "81ee2e6b75c4ac0acf6c40b889d2cc210e46d7829a427925cbdfc605a585ab0b",
+    "camera-front-native-final.json": "4b166797877975e13d92039bc1a14b3a430bbd2d447e3c42a70e4722521e15b5",
+    "screen-windows-to-s22-final.json": "82e574aa23ab5857f29ca03f06632080625d39703e00f99899caa87edbc5aed3",
+    "files-physical.json": "d035ecd02ced802478a970ed5923bbd48c98670a77eaa33ebf079727acb72016"
+  },
+  "passed": true,
+  "automated": {
+    "flutterTestsPassed": 197,
+    "networkDiscoveryAndCameraTestsPassed": 94,
+    "transferStreamingAndLifecycleTestsPassed": 103,
+    "nativePolicyTestsPassed": 2,
+    "nativeAdapterClassificationFixturesPassed": 24,
+    "nativeRouteMetricScenariosPassed": true,
+    "flutterAnalyzePassed": true,
+    "windowsDebugBuildPassed": true,
+    "windowsReleaseBuildPassed": true,
+    "androidArm64ReleaseBuildPassed": true
+  },
+  "deliveredWindowsApplication": {
+    "entrypoint": "lib/main.dart",
+    "executablePath": "build/windows/x64/runner/Release/BShare.exe",
+    "executableSha256": "fd9358ef41d32bbc28961d5cd412c0b834c71afd1323d3547f66a94ed012e01d",
+    "aotSha256": "9acb50f6baa0f147232a87bc9d3601d358514c5b7fdc605dde356c2e3f9f5d9d",
+    "normalHomeWindowVerified": true,
+    "homeDisplayedConnectedToLan": true,
+    "homeDisplayedPrimaryIp": "172.21.53.7",
+    "verification": "Visual inspection of only the owned BShare window",
+    "gracefulCloseExitCode": 0
+  },
+  "cleanup": {
+    "diagnosticMediaSessionsReleased": true,
+    "windowsFilePeerStopped": true,
+    "phoneForegroundServicesAfterTests": 0,
+    "phoneMediaProjectionAfterTests": null,
+    "ownedPhonePayloadFixturesRemoved": true,
+    "normalApplicationBundlesRestored": [
+      "Windows Debug",
+      "Windows Release"
+    ],
+    "testReleaseApkInstalledOnPhone": true
+  }
+}
