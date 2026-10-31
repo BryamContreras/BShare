@@ -5,6 +5,7 @@ import 'package:bshare/src/presentation/screens/send_files_screen.dart';
 import 'package:bshare/src/presentation/screens/screen_share_screen.dart';
 import 'package:bshare/src/infrastructure/services/android_screen_share_execution_service.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
+import 'package:bshare/src/infrastructure/services/network_service.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
 import 'package:bshare/src/presentation/widgets/discovery_status_card.dart';
 import 'package:flutter/material.dart';
@@ -82,6 +83,11 @@ void main() {
         overrides: [
           discoveryProvider.overrideWith(() => discovery),
           screenShareServiceProvider.overrideWithValue(service),
+          // The address card must not enumerate the host's interfaces in this
+          // widget test of discovery resumption and listener cleanup.
+          networkProvider.overrideWith(
+            (_) async => const NetworkSnapshot(ip: '192.0.2.1'),
+          ),
         ],
       );
       addTearDown(container.dispose);
