@@ -1,10 +1,13 @@
 import copy
 import hashlib
+import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
-from github_release import check_tag_lease, installer_hashes, publish, release_for_tag, stage, validate_tag
+from github_release import GitHub, check_tag_lease, installer_hashes, publish, release_for_tag, stage, validate_tag
 
 
 OLD = 'a' * 40
@@ -37,6 +40,9 @@ class FakeGitHub:
         if method == 'PATCH' and endpoint == 'git/refs/tags/v1.0.4':
             self.reference = {'object': {'type': 'tag', 'sha': data['sha']}}
             return self.reference
+        if method == 'POST' and endpoint == 'git/refs':
+            self.reference = {'object': {'type': 'tag', 'sha': data['sha']}}
+            return self.reference
         if endpoint in ['releases/1', 'releases/2'] and method in ['GET', 'PATCH']:
             release = next(release for release in self.releases.values() if release['id'] == int(endpoint.split('/')[1]))
             if method == 'PATCH':
@@ -53,13 +59,26 @@ class FakeGitHub:
             return self.releases[data['tag_name']]
         raise AssertionError(f'Unexpected request: {method} {endpoint}')
 
-    def upload(self, tag, files):
-        assert self.releases[tag]['draft']
-        self.events.append(('UPLOAD', tag, [p.name for p in files]))
-        self.releases[tag]['assets'] += [{'id': 10 + i, 'name': path.name} for i, path in enumerate(files)]
+    def upload(self, release_id, files):
+        release = next(value for value in self.releases.values() if value['id'] == release_id)
+        assert release['draft']
+        self.events.append(('UPLOAD', release_id, [p.name for p in files]))
+        release['assets'] += [{'id': 10 + i, 'name': path.name} for i, path in enumerate(files)]
 
 
 class GitHubReleaseTest(unittest.TestCase):
+    def write_assets(self, root):
+        names = ['BShare-1.0.4-android-armv7a.apk', 'BShare-1.0.4-android-arm64-v8a.apk',
+                 'BShare-1.0.4+42-windows-x64-setup.exe', 'bshare_1.0.4-42_amd64.deb',
+                 'bshare-1.0.4-42.x86_64.rpm', 'BShare-1.0.4-macos-arm64.pkg', 'BShare-1.0.4-macos-x64.pkg']
+        for name in names:
+            (root / name).write_bytes(name.encode())
+        (root / 'SHA256SUMS.txt').write_text(
+            ''.join(f'{hashlib.sha256(name.encode()).hexdigest()}  {name}\n' for name in names))
+        notes = root / 'notes.md'
+        notes.write_text('Correct LAN selection.')
+        return names, notes
+
     def test_drafts_are_found_after_the_published_tag_endpoint_returns_not_found(self):
         github = FakeGitHub()
         draft = release_for_tag(github, 'staging-v1.0.4-20-1')
@@ -116,15 +135,7 @@ class GitHubReleaseTest(unittest.TestCase):
         github = FakeGitHub()
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            names = ['BShare-1.0.4-android-armv7a.apk', 'BShare-1.0.4-android-arm64-v8a.apk',
-                     'BShare-1.0.4+42-windows-x64-setup.exe', 'bshare_1.0.4-42_amd64.deb',
-                     'bshare-1.0.4-42.x86_64.rpm', 'BShare-1.0.4-macos-arm64.pkg', 'BShare-1.0.4-macos-x64.pkg']
-            for name in names:
-                (root / name).write_bytes(name.encode())
-            checksums = root / 'SHA256SUMS.txt'
-            checksums.write_text(''.join(f'{hashlib.sha256(name.encode()).hexdigest()}  {name}\n' for name in names))
-            notes = root / 'notes.md'
-            notes.write_text('Correct LAN selection.')
+            names, notes = self.write_assets(root)
             values = publish(github, 'v1.0.4', 'staging-v1.0.4-20-1', NEW, OLD, root, notes)
         final = github.releases['v1.0.4']
         self.assertTrue(values['published'])
@@ -132,8 +143,103 @@ class GitHubReleaseTest(unittest.TestCase):
         self.assertFalse(final['draft'])
         self.assertEqual({a['name'] for a in final['assets']}, {*names, 'SHA256SUMS.txt'})
         self.assertNotIn('staging-v1.0.4-20-1', github.releases)
+        self.assertIn(('UPLOAD', 1, [*sorted(names), 'SHA256SUMS.txt']), github.events)
+        self.assertIn(('PATCH', 'releases/1', {
+            'tag_name': 'v1.0.4', 'target_commitish': NEW, 'draft': True,
+        }), github.events)
         self.assertLess(next(i for i, e in enumerate(github.events) if e[0] == 'UPLOAD'),
                         next(i for i, e in enumerate(github.events) if e[:2] == ('POST', 'git/tags')))
+
+    def test_existing_canonical_draft_without_a_tag_uses_its_id_and_keeps_explicit_metadata(self):
+        github = FakeGitHub()
+        github.reference = None
+        github.releases['v1.0.4'].update(draft=True, target_commitish=OLD)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _, notes = self.write_assets(root)
+            values = publish(github, 'v1.0.4', 'staging-v1.0.4-20-1', NEW, '', root, notes)
+        self.assertTrue(values['published'])
+        upload_index = next(i for i, event in enumerate(github.events) if event[0] == 'UPLOAD')
+        self.assertEqual(github.events[upload_index][1], 1)
+        self.assertIn(('PATCH', 'releases/1', {
+            'tag_name': 'v1.0.4', 'target_commitish': NEW, 'draft': True,
+        }), github.events[:upload_index])
+        self.assertFalse(github.releases['v1.0.4']['draft'])
+
+    def test_failed_upload_keeps_drafts_and_does_not_move_the_tag_or_publish(self):
+        github = FakeGitHub()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _, notes = self.write_assets(root)
+            with mock.patch.object(github, 'upload', side_effect=RuntimeError('HTTP 502')):
+                with self.assertRaisesRegex(RuntimeError, 'HTTP 502'):
+                    publish(github, 'v1.0.4', 'staging-v1.0.4-20-1', NEW, OLD, root, notes)
+        self.assertTrue(github.releases['v1.0.4']['draft'])
+        self.assertIn('staging-v1.0.4-20-1', github.releases)
+        self.assertEqual(github.reference['object']['sha'], OLD)
+        self.assertFalse(any(event[:2] == ('POST', 'git/tags') for event in github.events))
+        self.assertFalse(any(event[0] == 'PATCH' and event[2].get('draft') is False
+                             for event in github.events))
+
+    def test_first_release_keeps_the_seven_staged_installers_and_uploads_checksums_by_id(self):
+        github = FakeGitHub()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            names, notes = self.write_assets(root)
+            github.releases['v1.0.4'].update(
+                draft=True, target_commitish=NEW,
+                assets=[{'id': 100 + i, 'name': name} for i, name in enumerate(names)])
+            values = publish(github, 'v1.0.4', 'v1.0.4', NEW, OLD, root, notes)
+        self.assertTrue(values['published'])
+        self.assertIn(('UPLOAD', 1, ['SHA256SUMS.txt']), github.events)
+        self.assertEqual({asset['name'] for asset in github.releases['v1.0.4']['assets']},
+                         {*names, 'SHA256SUMS.txt'})
+
+    def test_binary_upload_uses_release_id_raw_file_and_encoded_name_and_clobbers_only_matches(self):
+        github = GitHub('owner/repo')
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'BShare-1.0.4+42-windows-x64-setup.exe'
+            path.write_bytes(b'\x00\xff\r\n\x80')
+            # The matching old/starter asset may appear after the first page.
+            page_one = [{'id': i, 'name': f'other-{i}.txt'} for i in range(100)]
+            page_two = [{'id': 201, 'name': path.name, 'state': 'starter'}]
+            uploaded = {'id': 202, 'name': path.name, 'state': 'uploaded', 'size': path.stat().st_size}
+            result = subprocess.CompletedProcess([], 0, json.dumps(uploaded), '')
+            with mock.patch.object(github, 'api', side_effect=[page_one, page_two, None]) as api:
+                with mock.patch('github_release.subprocess.run', return_value=result) as run:
+                    github.upload(123, [path])
+            self.assertEqual(api.call_args_list, [
+                mock.call('GET', 'releases/123/assets?per_page=100&page=1'),
+                mock.call('GET', 'releases/123/assets?per_page=100&page=2'),
+                mock.call('DELETE', 'releases/assets/201'),
+            ])
+            command = run.call_args.args[0]
+            self.assertEqual(command[:4], ['gh', 'api', '--method', 'POST'])
+            self.assertEqual(command[4], 'https://uploads.github.com/repos/owner/repo/releases/123/assets?'
+                             'name=BShare-1.0.4%2B42-windows-x64-setup.exe')
+            self.assertIn('Content-Length: 5', command)
+            self.assertIn('Content-Type: application/octet-stream', command)
+            self.assertEqual(command[-2:], ['--input', str(path)])
+            self.assertNotIn('input', run.call_args.kwargs)
+            self.assertEqual(path.read_bytes(), b'\x00\xff\r\n\x80')
+
+    def test_binary_upload_rejects_failed_or_incomplete_responses(self):
+        github = GitHub('owner/repo')
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'asset.pkg'
+            path.write_bytes(b'payload')
+            responses = [
+                (subprocess.CompletedProcess([], 1, '', 'HTTP 502'), RuntimeError),
+                (subprocess.CompletedProcess([], 0, json.dumps({
+                    'name': path.name, 'state': 'starter', 'size': 0,
+                }), ''), ValueError),
+            ]
+            for response, error in responses:
+                with self.subTest(response=response):
+                    with mock.patch.object(github, 'api', return_value=[]):
+                        with mock.patch('github_release.subprocess.run', return_value=response):
+                            with self.assertRaises(error):
+                                github.upload(123, [path])
 
     def test_checksums_reject_tampered_payload_before_publishing(self):
         with tempfile.TemporaryDirectory() as temporary:

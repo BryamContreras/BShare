@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+from urllib.parse import urlencode
 
 from prepare_release_assets import changelog_section, release_files
 
@@ -29,9 +30,46 @@ class GitHub:
             raise RuntimeError(result.stderr.strip())
         return json.loads(result.stdout) if result.stdout.strip() else None
 
-    def upload(self, tag, files):
-        subprocess.run(['gh', 'release', 'upload', tag, *map(str, files),
-                        '--repo', self.repository, '--clobber'], check=True, timeout=900)
+    def upload(self, release_id, files):
+        # Drafts can exist before their tag ref does. Use the resolved release
+        # ID throughout instead of asking `gh release upload` to find the tag.
+        if type(release_id) is not int or release_id <= 0:
+            raise ValueError('Expected a positive release ID')
+        files = [Path(path) for path in files]
+        if len({path.name for path in files}) != len(files):
+            raise ValueError('Duplicate release asset filenames')
+        for path in files:
+            if not path.is_file():
+                raise ValueError(f'Missing release asset: {path.name}')
+        existing = []
+        page = 1
+        while True:
+            assets = self.api('GET', f'releases/{release_id}/assets?per_page=100&page={page}')
+            existing.extend(assets)
+            if len(assets) < 100:
+                break
+            page += 1
+        for path in files:
+            # Preserve --clobber behavior, including empty `starter` assets
+            # left by an interrupted upload. Never delete unrelated assets.
+            for asset in existing:
+                if asset['name'] == path.name:
+                    self.api('DELETE', f"releases/assets/{asset['id']}")
+            query = urlencode({'name': path.name})
+            endpoint = (f'https://uploads.github.com/repos/{self.repository}'
+                        f'/releases/{release_id}/assets?{query}')
+            size = path.stat().st_size
+            result = subprocess.run(
+                ['gh', 'api', '--method', 'POST', endpoint,
+                 '--header', 'Content-Type: application/octet-stream',
+                 '--header', f'Content-Length: {size}', '--input', str(path)],
+                capture_output=True, text=True, timeout=900)
+            if result.returncode:
+                raise RuntimeError(f'Release asset upload failed ({path.name}): {result.stderr.strip()}')
+            uploaded = json.loads(result.stdout)
+            if (uploaded.get('name') != path.name or uploaded.get('size') != size
+                    or uploaded.get('state') != 'uploaded'):
+                raise ValueError(f'GitHub did not confirm the uploaded asset: {path.name}')
 
 
 def validate_tag(tag):
@@ -145,11 +183,15 @@ def publish(github, tag, upload_tag, commit, expected_tag_sha, assets, notes_pat
             'draft': True, 'prerelease': False,
         })
     # The old public release is untouched until all seven installers are ready.
-    github.api('PATCH', f"releases/{canonical['id']}", {'draft': True})
+    # Preserve explicit tag/source metadata when converting to a draft: a draft
+    # without an existing Git ref must not become an `untagged-*` release.
+    github.api('PATCH', f"releases/{canonical['id']}", {
+        'tag_name': tag, 'target_commitish': commit, 'draft': True,
+    })
     if upload_tag != tag:
-        github.upload(tag, files)
+        github.upload(canonical['id'], files)
     else:
-        github.upload(tag, [checksums])
+        github.upload(canonical['id'], [checksums])
     desired = {path.name for path in files}
     current = github.api('GET', f"releases/{canonical['id']}")
     for asset in current['assets']:
