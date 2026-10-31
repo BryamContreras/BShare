@@ -26,6 +26,7 @@ import queue
 import re
 import shutil
 import socket
+import stat
 import subprocess
 import tempfile
 import threading
@@ -37,6 +38,67 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 BROWSER_STARTUP_TIMEOUT = 45.0
+
+
+def video_codec_names(sdp: str) -> set[str]:
+    """Inspect offered video payloads without treating audio as video fallback."""
+    payloads: set[str] = set()
+    codecs: set[str] = set()
+    for line in sdp.splitlines():
+        if line.startswith('m='):
+            fields = line.split()
+            payloads = set(fields[3:]) if fields and fields[0] == 'm=video' else set()
+            continue
+        match = re.match(r'^a=rtpmap:(\d+) ([^/]+)/', line)
+        if match and match.group(1) in payloads:
+            codecs.add(match.group(2))
+    return codecs
+
+
+def native_crash_backtrace(binary: Path, pid: int, exit_code: int) -> dict | None:
+    """Read only this owned child's optional CI core, retain text, delete core."""
+    configured = os.environ.get('BSHARE_NATIVE_CORE_DIRECTORY')
+    if os.name == 'nt' or not configured or exit_code not in (-4, -6, -7, -8, -11):
+        return None
+    directory = Path(configured)
+    try:
+        details = directory.lstat()
+        if (not directory.is_absolute() or directory.is_symlink()
+                or not stat.S_ISDIR(details.st_mode) or details.st_uid != os.geteuid()
+                or details.st_mode & 0o077
+                or not directory.name.startswith('bshare-native-cores-')):
+            return {'captured': False, 'error': 'Core directory is not an owned private CI directory'}
+        core = directory / f'core.{int(pid)}'
+        details = core.lstat()
+        if not stat.S_ISREG(details.st_mode) or details.st_uid != os.geteuid():
+            return {'captured': False, 'error': 'Native core is not an owned regular file'}
+    except (OSError, ValueError) as error:
+        return {'captured': False, 'error': str(error)}
+    trace = {'captured': False}
+    try:
+        debugger = shutil.which('gdb')
+        if not debugger:
+            trace['error'] = 'gdb is not installed'
+            return trace
+        result = subprocess.run([
+            debugger, '--batch', '--quiet', '-ex', 'set pagination off',
+            '-ex', 'set debuginfod enabled off', '-ex', 'thread apply all bt',
+            str(binary), str(core),
+        ], capture_output=True, text=True, timeout=30, check=False)
+        trace.update(captured=result.returncode == 0,
+                     text=(result.stdout + result.stderr)[-100000:])
+    except (OSError, subprocess.SubprocessError) as error:
+        trace['error'] = str(error)
+    finally:
+        try:
+            core.unlink(missing_ok=True)
+            trace['coreRemoved'] = True
+        except OSError as error:
+            # Preserve ordinary peer/browser cleanup even if the CI filesystem
+            # fails. The job's final cleanup also removes its private dumps.
+            trace['coreRemoved'] = False
+            trace['coreCleanupError'] = str(error)
+    return trace
 
 
 def close_native_window(pid: int, display_name: str | None = None) -> bool:
@@ -332,7 +394,7 @@ class Fixture:
                         fixture.current_viewer_id = data.get('viewerId')
                     fixture.offers.append({'id': identifier,
                         'compatibilityMode': data.get('compatibilityMode', False),
-                        'codecs': sorted(set(re.findall(r'^a=rtpmap:\d+ ([^/]+)/', data['sdp'], re.MULTILINE))),
+                        'codecs': sorted(video_codec_names(data['sdp'])),
                         'videoLine': next((line for line in data['sdp'].splitlines() if line.startswith('m=video')), '')})
                     recovering = fixture.stall_first or fixture.stall_all
                     job_codec = 'H264' if recovering and identifier == 1 else fixture.codec
@@ -474,6 +536,10 @@ def run_case(binary, browser, codec, seconds, stall_first, stall_all, native_pro
                     graceful = native is not None and close_native_window(native.pid)
                 result['nativeCloseRequested'] = graceful
                 result['nativeExitCode'] = stop_process(native)
+                if native is not None:
+                    trace = native_crash_backtrace(binary, native.pid, result['nativeExitCode'])
+                    if trace is not None:
+                        result['nativeCrashBacktrace'] = trace
                 fixture.stop()
                 deadline = time.monotonic() + 3
                 while source is not None and time.monotonic() < deadline:

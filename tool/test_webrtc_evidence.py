@@ -3,12 +3,16 @@ from unittest.mock import Mock, patch
 import io
 import json
 import os
+from pathlib import Path
+import subprocess
+import shutil
+import tempfile
 import threading
 import time
 
 from webrtc_interop_probe import (
     Fixture, close_native_window, find_browser, native_video_has_multiple_frames,
-    wait_for_browser_ready,
+    native_crash_backtrace, video_codec_names, wait_for_browser_ready,
 )
 from webrtc_native_sender_probe import launch_xvfb
 from webrtc_receive_probe import video_evidence
@@ -18,6 +22,102 @@ def sample(time, frames, codec='video/VP8', state='connected'):
     return {'event': 'stats', 'timestampMs': time, 'framesDecoded': frames,
         'firstFrameRendered': frames > 0, 'connectionState': state,
         'codec': codec, 'frameWidth': 640, 'frameHeight': 360}
+
+
+class VideoCodecOfferTest(unittest.TestCase):
+    def test_audio_codecs_do_not_invalidate_vp8_only_video_fallback(self):
+        sdp = '\r\n'.join([
+            'v=0', 'm=audio 9 UDP/TLS/RTP/SAVPF 96 8',
+            'a=rtpmap:96 opus/48000/2', 'a=rtpmap:8 PCMA/8000',
+            'm=video 9 UDP/TLS/RTP/SAVPF 96 97',
+            'a=rtpmap:96 VP8/90000', 'a=rtpmap:97 rtx/90000',
+            'm=audio 9 UDP/TLS/RTP/SAVPF 0', 'a=rtpmap:0 PCMU/8000'])
+        self.assertEqual(video_codec_names(sdp), {'VP8', 'rtx'})
+
+    def test_additional_video_codec_remains_visible_to_strict_fallback_check(self):
+        sdp = '\n'.join([
+            'm=video 9 UDP/TLS/RTP/SAVPF 96 97 102',
+            'a=rtpmap:96 VP8/90000', 'a=rtpmap:97 rtx/90000',
+            'a=rtpmap:102 H264/90000'])
+        self.assertEqual(video_codec_names(sdp), {'VP8', 'rtx', 'H264'})
+
+    def test_unoffered_payload_and_audio_only_offer_are_not_video(self):
+        self.assertEqual(video_codec_names('\n'.join([
+            'm=video 9 UDP/TLS/RTP/SAVPF 96',
+            'a=rtpmap:96 VP8/90000', 'a=rtpmap:102 H264/90000'])), {'VP8'})
+        self.assertEqual(video_codec_names('\n'.join([
+            'm=audio 9 UDP/TLS/RTP/SAVPF 102', 'a=rtpmap:102 opus/48000/2'])), set())
+
+
+@unittest.skipUnless(os.name != 'nt', 'POSIX-owned core files')
+class NativeCrashBacktraceTest(unittest.TestCase):
+    def test_actual_debugger_reads_owned_synthetic_abort_and_removes_dump(self):
+        if not shutil.which('gdb') or not shutil.which('cc'):
+            self.skipTest('Native gdb and C compiler are not installed')
+        with tempfile.TemporaryDirectory(prefix='bshare-native-cores-') as temporary:
+            directory = Path(temporary)
+            source, binary = directory / 'fixture.c', directory / 'fixture'
+            core = directory / 'core.1234'
+            source.write_text('#include <stdlib.h>\nint main(void) { abort(); }\n')
+            subprocess.run(['cc', '-g', '-O0', str(source), '-o', str(binary)],
+                           capture_output=True, check=True, timeout=20)
+            # Generate only this debugger-owned child's core. The host kernel
+            # pattern, limits and other applications are never modified.
+            generated = subprocess.run([
+                'gdb', '--batch', '--quiet', '-ex', 'set debuginfod enabled off',
+                '-ex', 'run', '-ex', f'generate-core-file {core}', str(binary),
+            ], capture_output=True, text=True, timeout=30)
+            self.assertTrue(core.is_file(), generated.stdout + generated.stderr)
+            with patch.dict(os.environ, BSHARE_NATIVE_CORE_DIRECTORY=temporary):
+                trace = native_crash_backtrace(binary, 1234, -6)
+            self.assertTrue(trace['captured'], trace)
+            self.assertIn('SIGABRT', trace['text'])
+            self.assertIn('main', trace['text'])
+            self.assertTrue(trace['coreRemoved'])
+            self.assertFalse(core.exists())
+
+    def test_only_exact_child_core_is_read_and_removed_after_text_capture(self):
+        with tempfile.TemporaryDirectory(prefix='bshare-native-cores-') as temporary:
+            directory = Path(temporary)
+            core = directory / 'core.1234'
+            other = directory / 'core.9876'
+            core.write_bytes(b'synthetic core fixture')
+            other.write_bytes(b'other process')
+            result = subprocess.CompletedProcess([], 0, 'thread backtrace fixture', '')
+            with patch.dict(os.environ, BSHARE_NATIVE_CORE_DIRECTORY=temporary), \
+                    patch('webrtc_interop_probe.shutil.which', return_value='/usr/bin/gdb'), \
+                    patch('webrtc_interop_probe.subprocess.run', return_value=result) as command:
+                trace = native_crash_backtrace(Path('/owned/bshare'), 1234, -6)
+            self.assertTrue(trace['captured'])
+            self.assertIn('thread backtrace fixture', trace['text'])
+            self.assertEqual(command.call_args.args[0][-2:], ['/owned/bshare', str(core)])
+            self.assertFalse(core.exists())
+            self.assertTrue(other.exists())
+
+    def test_debugger_failure_still_removes_own_core(self):
+        with tempfile.TemporaryDirectory(prefix='bshare-native-cores-') as temporary:
+            core = Path(temporary) / 'core.1234'
+            core.write_bytes(b'synthetic core fixture')
+            with patch.dict(os.environ, BSHARE_NATIVE_CORE_DIRECTORY=temporary), \
+                    patch('webrtc_interop_probe.shutil.which', return_value='/usr/bin/gdb'), \
+                    patch('webrtc_interop_probe.subprocess.run', side_effect=subprocess.TimeoutExpired('gdb', 30)):
+                trace = native_crash_backtrace(Path('/owned/bshare'), 1234, -11)
+            self.assertFalse(trace['captured'])
+            self.assertFalse(core.exists())
+
+    def test_normal_exit_does_not_read_core_and_symlink_is_not_followed(self):
+        with tempfile.TemporaryDirectory(prefix='bshare-native-cores-') as temporary:
+            directory = Path(temporary)
+            target = directory / 'unrelated'
+            target.write_bytes(b'not a child core')
+            core = directory / 'core.1234'
+            core.symlink_to(target)
+            with patch.dict(os.environ, BSHARE_NATIVE_CORE_DIRECTORY=temporary), \
+                    patch('webrtc_interop_probe.subprocess.run') as command:
+                self.assertIsNone(native_crash_backtrace(Path('/owned/bshare'), 1234, 0))
+                self.assertFalse(native_crash_backtrace(Path('/owned/bshare'), 1234, -11)['captured'])
+            command.assert_not_called()
+            self.assertTrue(target.exists())
 
 
 class _FakeClock:

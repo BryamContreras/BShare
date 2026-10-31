@@ -2,6 +2,7 @@
 
 ## 1.0.5
 
+- Await application resource cleanup when closing a Linux window, including with the fullscreen/window-management plugin installed. Require native streaming verification as well as all installer checks before publishing a release.
 - Add direct Android USB debugging transport for camera, screen, audio and camera controls, without USB tethering or manual IP entry. Select an authorized physical USB device on the computer; session-owned ADB mappings and authenticated relay connections carry signaling/media without a Wi-Fi/LAN fallback. Desktop installers include a pinned ADB client.
 - Add a right-hand desktop camera menu with Switch camera first, public lens selection, native zoom, white balance, EV brightness compensation and supported manual shutter/ISO controls. Use the phone's ranges and confirmed settings, synchronize microphone/flash controls, and keep Close viewer separate from Stop sharing on the phone.
 - Apply native zoom and supported relative cool/warm white balance while dragging, retaining only the latest pending value and rejecting drafts from an old camera/session. Auto restores automatic white balance; unsupported devices retain their advertised presets. No receiver-side image filter or zoom simulates these controls.

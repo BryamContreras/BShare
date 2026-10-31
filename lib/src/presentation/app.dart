@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' show AppExitResponse;
+import 'dart:ui' show AppExitResponse, AppExitType;
 
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/application/virtual_camera_provider.dart';
@@ -28,10 +28,13 @@ import 'package:bshare/src/presentation/screens/send_files_screen.dart';
 import 'package:bshare/src/presentation/screens/settings_screen.dart';
 import 'package:bshare/src/presentation/screens/transfers_screen.dart';
 import 'package:bshare/src/presentation/widgets/camera_display_overlay.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:window_manager/window_manager.dart';
 
 GoRouter _createRouter(DeviceInfo? initialViewerDevice) => GoRouter(
   initialLocation: initialViewerDevice == null ? '/' : '/screen/viewer',
@@ -375,20 +378,69 @@ class _RuntimeCleanupObserver extends ConsumerStatefulWidget {
 
 class _RuntimeCleanupObserverState
     extends ConsumerState<_RuntimeCleanupObserver>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, WindowListener {
   Future<void>? _cleanupFuture;
+  Future<void>? _windowExitRequest;
+  bool _linuxWindowListenerAttached = false;
   bool _refreshNetworkOnResume = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux) {
+      unawaited(_installLinuxCloseHandler());
+    }
   }
 
   @override
   void dispose() {
+    if (_linuxWindowListenerAttached) windowManager.removeListener(this);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  Future<void> _installLinuxCloseHandler() async {
+    try {
+      await windowManager.ensureInitialized();
+      if (!mounted) return;
+      windowManager.addListener(this);
+      _linuxWindowListenerAttached = true;
+      // window_manager replaces FlView's delete-event handler on Linux. Hold
+      // the native window until Flutter has awaited didRequestAppExit again.
+      await windowManager.setPreventClose(true);
+    } catch (error) {
+      if (_linuxWindowListenerAttached) windowManager.removeListener(this);
+      _linuxWindowListenerAttached = false;
+      if (mounted) {
+        ref
+            .read(loggerProvider)
+            .warn('Could not prepare Linux window close: $error');
+      }
+    }
+  }
+
+  @override
+  void onWindowClose() {
+    if (!mounted || _windowExitRequest != null) return;
+    _windowExitRequest = _requestLinuxAppExit();
+  }
+
+  Future<void> _requestLinuxAppExit() async {
+    try {
+      // The standard cancelable exit notifies every binding observer, reuses
+      // the existing cleanup future and lets the engine finish its own exit.
+      await ServicesBinding.instance.exitApplication(AppExitType.cancelable);
+    } catch (error) {
+      if (mounted) {
+        ref
+            .read(loggerProvider)
+            .warn('Could not request Linux window exit: $error');
+      }
+    } finally {
+      // A canceled or failed request leaves the window available for a retry.
+      _windowExitRequest = null;
+    }
   }
 
   @override

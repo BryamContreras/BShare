@@ -33,3 +33,6 @@ CMakeLists.txt text eol=lf
 *.aab binary
 *.exe binary
 *.jks binary
+
+# Keep the pinned upstream ADB license byte-for-byte on every host.
+packaging/adb/LICENSE.adb.txt -text whitespace=-blank-at-eof

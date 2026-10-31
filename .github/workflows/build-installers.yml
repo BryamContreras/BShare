@@ -100,6 +100,16 @@ jobs:
           python3 third_party/flutter_webrtc/test/native/test_camera_capture_controls.py
           python3 third_party/flutter_webrtc/test/native/test_camera_torch.py
 
+  native_streaming:
+    name: Native streaming regressions
+    needs: quality
+    if: github.event_name != 'pull_request' && (github.ref_type == 'tag' || inputs.release_tag != '')
+    permissions:
+      contents: read
+    uses: ./.github/workflows/verify-streaming.yml
+    with:
+      concurrency-scope: installers-${{ github.run_id }}-${{ github.run_attempt }}
+
   windows:
     name: Windows installer
     needs: [quality, prepare_release]
@@ -190,7 +200,7 @@ jobs:
 
   result:
     name: Installer results
-    needs: [quality, prepare_release, windows, linux, android, macos]
+    needs: [quality, prepare_release, windows, linux, android, macos, native_streaming]
     if: always() && (github.ref_type == 'tag' || inputs.release_tag != '')
     runs-on: ubuntu-22.04
     timeout-minutes: 5
@@ -214,7 +224,7 @@ jobs:
 
   publish:
     name: Verify and publish release files
-    needs: [quality, prepare_release, windows, linux, android, macos, result]
+    needs: [quality, prepare_release, windows, linux, android, macos, native_streaming, result]
     if: github.ref_type == 'tag' || inputs.release_tag != ''
     runs-on: ubuntu-22.04
     timeout-minutes: 10

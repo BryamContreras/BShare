@@ -1,14 +1,16 @@
 import 'dart:async';
-import 'dart:ui' show AppExitResponse;
+import 'dart:ui' show AppExitResponse, AppExitType;
 
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/app_settings.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/network_service.dart';
 import 'package:bshare/src/presentation/app.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:window_manager/window_manager.dart';
 
 class _Settings extends SettingsController {
   @override
@@ -48,9 +50,38 @@ class _Cleanup extends RuntimeCleanup {
   }
 }
 
+class _ExitBinding extends AutomatedTestWidgetsFlutterBinding {
+  Future<AppExitResponse> Function(AppExitType, int)? exitHandler;
+
+  @override
+  Future<AppExitResponse> exitApplication(
+    AppExitType exitType, [
+    int exitCode = 0,
+  ]) =>
+      exitHandler?.call(exitType, exitCode) ??
+      super.exitApplication(exitType, exitCode);
+}
+
 void main() {
+  final binding = _ExitBinding();
   late _Cleanup cleanup;
   late _Logger logger;
+  const windowChannel = MethodChannel('window_manager');
+
+  Future<void> emitLinuxClose(WidgetTester tester) async {
+    // Simulate the plugin's close event at its public listener boundary. The
+    // widget-test binding deliberately prevents an actual OS application exit.
+    for (final listener in windowManager.listeners) {
+      listener.onWindowClose();
+    }
+    await tester.pump();
+  }
+
+  tearDown(() {
+    binding.exitHandler = null;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(windowChannel, null);
+  });
 
   Future<void> mount(WidgetTester tester) async {
     logger = _Logger();
@@ -90,6 +121,72 @@ void main() {
     expect(logger.warnings, isEmpty);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('Linux native close waits through standard Flutter exit once', (
+    tester,
+  ) async {
+    final windowCalls = <MethodCall>[];
+    final exitRequests = <({AppExitType type, int code})>[];
+    var nativeExitCompleted = false;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      windowChannel,
+      (call) async {
+        windowCalls.add(call);
+        return null;
+      },
+    );
+    binding.exitHandler = (type, code) async {
+      exitRequests.add((type: type, code: code));
+      final result = await tester.binding.handleRequestAppExit();
+      nativeExitCompleted = result == AppExitResponse.exit;
+      return result;
+    };
+    await mount(tester);
+    expect(windowCalls.map((call) => call.method), [
+      'ensureInitialized',
+      'setPreventClose',
+    ]);
+    expect(windowCalls.last.arguments, {'isPreventClose': true});
+    await emitLinuxClose(tester);
+    await emitLinuxClose(tester);
+    expect(exitRequests, hasLength(1));
+    expect(exitRequests.single, (type: AppExitType.cancelable, code: 0));
+    expect(cleanup.calls, 1);
+    expect(nativeExitCompleted, isFalse);
+    cleanup.gate.complete();
+    await tester.pump();
+    expect(nativeExitCompleted, isTrue);
+    expect(logger.warnings, isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await emitLinuxClose(tester);
+    expect(exitRequests, hasLength(1));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+  testWidgets('Linux canceled native close can be requested again', (
+    tester,
+  ) async {
+    var requests = 0;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      windowChannel,
+      (_) async => null,
+    );
+    binding.exitHandler = (type, code) async {
+      expect(type, AppExitType.cancelable);
+      requests++;
+      if (requests == 1) return AppExitResponse.cancel;
+      return tester.binding.handleRequestAppExit();
+    };
+    await mount(tester);
+    await emitLinuxClose(tester);
+    expect(requests, 1);
+    await emitLinuxClose(tester);
+    expect(requests, 2);
+    expect(cleanup.calls, 1);
+    cleanup.gate.complete();
+    await tester.pump();
+    expect(logger.warnings, isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
   testWidgets('repeated exit and detached notifications share one cleanup', (
     tester,

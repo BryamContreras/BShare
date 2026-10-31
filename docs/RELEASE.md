@@ -15,8 +15,12 @@ builds finish in sequence so a newer request cannot interrupt publication.
 The quality job runs analysis, the Flutter regression suite, verification-tool
 unit tests, native media/virtual-camera ownership checks and Linux window-decoration
 tests. It must pass before Windows,
-Linux, Android, and two native macOS architecture builds start in parallel. Linux
-compiles once and packages the same bundle into both formats.
+Linux, Android, and two native macOS architecture builds start in parallel. The
+Linux installer job compiles once and packages the same bundle into both formats.
+After quality passes, the installer workflow also calls **Verify native streaming**
+as a reusable workflow, in parallel with the installer jobs. Its Android, Windows
+and Linux jobs must all succeed before publication. Native streaming verification
+also retains its independent runs on pushes and pull requests to `main`.
 
 All builds use Flutter **3.47.2 stable** (Dart **3.13.2**), locked Dart dependencies
 and one shared version.
@@ -43,8 +47,10 @@ Download these individual files from the [latest GitHub Release](https://github.
 
 Each native build uploads its installer directly to a draft GitHub Release. A
 final job checks that all seven files are present, creates `SHA256SUMS.txt`, and
-publishes the Release only after every build and installer check passes. The
-workflow does not create ZIP-wrapped Actions artifacts.
+publishes the Release only after every build, installer check and native streaming
+job passes. Both the `result` and `publish` jobs require successful native streaming
+verification as well as the complete installer set. The workflow does not create
+ZIP-wrapped Actions artifacts.
 
 For v1.0.5, the canonical tag and release title are both **`v1.0.5`**. Release
 notes come from the `1.0.5` changelog section. The seven installers and their
@@ -246,4 +252,5 @@ seven installers and checksums are verified, publication replaces the canonical
 release assets, moves the version tag to the built commit and sets the release
 title to that tag. A tag changed independently during the build stops publication.
 The temporary draft and its temporary tag are removed after publication. A failed
-installer build leaves the existing published release available.
+installer build or native streaming check leaves the existing published release
+available.

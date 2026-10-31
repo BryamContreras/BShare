@@ -16,8 +16,9 @@ set(PLUGIN_NAME "flutter_webrtc_plugin")
 add_definitions(-DLIB_WEBRTC_API_DLL)
 add_definitions(-DRTC_DESKTOP_DEVICE)
 
-# Resolve Flutter's plugin symlink before locating the companion camera bridge.
-get_filename_component(BSHARE_WEBRTC_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." REALPATH)
+# The SDK include already resolved its physical third_party directory. Taking
+# its parent avoids normalizing /.. through Flutter's Windows plugin link.
+get_filename_component(BSHARE_WEBRTC_ROOT "${LIBWEBRTC_THIRD_PARTY_DIR}" DIRECTORY)
 
 add_library(${PLUGIN_NAME} SHARED
   "../common/cpp/src/flutter_common.cc"

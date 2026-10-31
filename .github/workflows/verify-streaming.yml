@@ -1,6 +1,12 @@
 name: Verify native streaming
 
 on:
+  workflow_call:
+    inputs:
+      concurrency-scope:
+        description: Unique caller run scope; keeps release checks independent of branch checks.
+        type: string
+        default: ''
   push:
     branches: [main]
   pull_request:
@@ -11,8 +17,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: bshare-streaming-${{ github.ref }}
-  cancel-in-progress: true
+  group: bshare-streaming-${{ inputs.concurrency-scope || format('{0}-{1}-{2}', github.workflow, github.event_name, github.ref) }}
+  cancel-in-progress: ${{ inputs.concurrency-scope == '' }}
 
 jobs:
   android:
@@ -121,7 +127,7 @@ jobs:
           sudo apt-get update
           # LLVM 14 unwind headers preinstalled on Jammy conflict with GStreamer.
           sudo apt-get install --no-install-recommends -y libunwind-dev libunwind-14-dev- \
-            clang cmake ninja-build pkg-config \
+            clang cmake ninja-build pkg-config gdb \
             libgtk-3-dev liblzma-dev libstdc++-12-dev libasound2-dev libpulse-dev \
             libgbm-dev libdrm-dev libgl1-mesa-dev libegl1-mesa-dev \
             libgl1-mesa-dri libglx-mesa0 xvfb xauth pulseaudio pulseaudio-utils \
@@ -142,18 +148,27 @@ jobs:
       - name: Build production Linux release
         id: production-build
         run: flutter build linux --release --no-pub
+      - name: Enable private native crash backtraces
+        run: |
+          diagnostics="$(mktemp -d "$RUNNER_TEMP/bshare-native-cores-XXXXXX")"
+          cat /proc/sys/kernel/core_pattern > "$diagnostics/original-pattern"
+          printf 'BSHARE_NATIVE_CORE_DIRECTORY=%s\n' "$diagnostics" >> "$GITHUB_ENV"
+          sudo sysctl -w "kernel.core_pattern=$diagnostics/core.%p"
       - name: Decode H264 and VP8 and exercise recovery on a synthetic display
-        run: xvfb-run -a -s '-screen 0 1280x720x24' python3 tool/webrtc_interop_probe.py --matrix --output streaming-linux.json
+        run: |
+          ulimit -c unlimited
+          xvfb-run -a -s '-screen 0 1280x720x24' python3 tool/webrtc_interop_probe.py --matrix --output streaming-linux.json
       - name: Build native media diagnostic entrypoint
         id: diagnostic-build
         if: ${{ !cancelled() && steps.production-build.outcome == 'success' }}
         run: flutter build linux --release --no-pub --target tool/webrtc_native_probe.dart
       - name: Verify native receiver using decoder and renderer telemetry
         if: ${{ !cancelled() && steps.diagnostic-build.outcome == 'success' }}
-        run: >-
-          xvfb-run -a -s '-screen 0 1280x720x24'
-          python3 tool/webrtc_interop_probe.py --native-probe --matrix
-          --output streaming-native-receiver-linux.json
+        run: |
+          ulimit -c unlimited
+          xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 tool/webrtc_interop_probe.py --native-probe --matrix \
+            --output streaming-native-receiver-linux.json
       - name: Verify native screen capture and H264 and VP8 encoders
         if: ${{ !cancelled() && steps.diagnostic-build.outcome == 'success' }}
         run: >-
@@ -169,3 +184,26 @@ jobs:
       - name: Stop isolated audio device
         if: always()
         run: pulseaudio --kill || true
+      - name: Restore runner crash settings and remove native dumps
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          configured = os.environ.get('BSHARE_NATIVE_CORE_DIRECTORY')
+          if configured:
+              directory = Path(configured)
+              assert not directory.is_symlink()
+              directory = directory.resolve(strict=True)
+              assert directory.parent == Path(os.environ['RUNNER_TEMP']).resolve()
+              assert directory.name.startswith('bshare-native-cores-')
+              previous = (directory / 'original-pattern').read_text().strip()
+              subprocess.run(['sudo', 'sysctl', '-w', 'kernel.core_pattern=' + previous], check=True)
+              for path in directory.iterdir():
+                  assert path.name == 'original-pattern' or re.fullmatch(r'core\.\d+', path.name)
+                  assert path.is_file() and not path.is_symlink()
+                  path.unlink()
+              directory.rmdir()
+          PY
