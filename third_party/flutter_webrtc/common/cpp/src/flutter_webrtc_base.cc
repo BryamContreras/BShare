@@ -4,6 +4,10 @@
 #include "flutter_peerconnection.h"
 
 #include "helper.h"
+#include "desktop_media_manager.h"
+#if defined(_WINDOWS)
+#include "windows_media_audio_router.h"
+#endif
 
 namespace flutter_webrtc_plugin {
 
@@ -21,10 +25,33 @@ FlutterWebRTCBase::FlutterWebRTCBase(BinaryMessenger* messenger,
   desktop_device_ = factory_->GetDesktopDevice();
   audio_processing_ = factory_->GetAudioProcessing();
   event_channel_ = EventChannelProxy::Create(messenger_, task_runner_, kEventChannelName);
+  desktop_media_ = std::make_unique<DesktopMediaManager>(this, task_runner_);
+#if defined(_WINDOWS)
+  windows_media_audio_router_ = std::make_unique<WindowsMediaAudioRouter>(audio_device_);
+#endif
 }
 
 FlutterWebRTCBase::~FlutterWebRTCBase() {
+  // Finalize recordings and detach their sinks while SDK tracks still exist.
+  desktop_media_.reset();
+#if defined(_WINDOWS)
+  windows_media_audio_router_.reset();
+#endif
   LibWebRTC::Terminate();
+}
+
+void FlutterWebRTCBase::RespectExplicitAudioOutputSelection(const std::string& device_id) {
+#if defined(_WINDOWS)
+  if (windows_media_audio_router_)
+    windows_media_audio_router_->RespectExplicitOutputSelection(device_id);
+#endif
+}
+
+void FlutterWebRTCBase::PrepareWindowsMediaAudioAfterFirstPeer() {
+#if defined(_WINDOWS)
+  if (windows_media_audio_router_)
+    windows_media_audio_router_->PrepareFirstPeerAfterMediaEngineInitialization();
+#endif
 }
 
 EventChannelProxy* FlutterWebRTCBase::event_channel() {

@@ -243,6 +243,13 @@ public class OrientationAwareScreenCapturer implements VideoCapturer, VideoSink 
         scheduleStaticFrame(surfaceTextureHelper);
     }
 
+    synchronized MediaProjection getMediaProjection() {
+        if (!captureStarted || mediaProjection == null) {
+            throw new IllegalStateException("Screen projection is not active");
+        }
+        return mediaProjection;
+    }
+
     @Override
     public void stopCapture() {
         stopCapture(false);

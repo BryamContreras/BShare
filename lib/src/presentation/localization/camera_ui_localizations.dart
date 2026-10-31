@@ -14,14 +14,10 @@ const _cameraUiValues = {
     'wifiHelp':
         'Connect the phone and computer to the same local network using Wi-Fi or Ethernet. Start the camera on the phone, then choose it here on the computer.',
     'usbHelp':
-        'Connect a data cable and enable USB tethering on the phone. On the computer, enter the USB address and port shown on the phone. Video uses the cable network.',
+        'Connect a USB data cable, enable USB debugging, authorize this computer, and start sharing on the Android phone.',
     'usbUnavailable':
-        'No USB network detected. Connect the cable and enable USB tethering.',
-    'usbAddress': 'USB address',
-    'openUsbSettings': 'Open USB tethering',
-    'host': 'Phone address',
+        'Could not start USB sharing. Connect a USB data cable and authorize USB debugging on the phone.',
     'port': 'Port',
-    'invalidAddress': 'Enter a valid IP address and port (1–65535).',
     'camera': 'Camera',
     'shareCamera': 'Share camera',
     'watchCamera': 'Watch camera',
@@ -60,14 +56,10 @@ const _cameraUiValues = {
     'wifiHelp':
         'Conecta el teléfono y la computadora a la misma red local mediante Wi-Fi o Ethernet. Inicia la cámara en el teléfono y luego selecciónalo aquí en la computadora.',
     'usbHelp':
-        'Conecta un cable de datos y activa el anclaje a red USB en el teléfono. En la computadora, ingresa la dirección USB y el puerto que muestra el teléfono. El video usa la red del cable.',
+        'Conecta un cable USB de datos, activa la depuración USB, autoriza esta computadora e inicia la transmisión en el teléfono Android.',
     'usbUnavailable':
-        'No se detectó una red USB. Conecta el cable y activa el anclaje a red USB.',
-    'usbAddress': 'Dirección USB',
-    'openUsbSettings': 'Abrir anclaje a red USB',
-    'host': 'Dirección del teléfono',
+        'No se pudo iniciar la transmisión USB. Conecta un cable USB de datos y autoriza la depuración USB en el teléfono.',
     'port': 'Puerto',
-    'invalidAddress': 'Ingresa una dirección IP y un puerto válido (1–65535).',
     'camera': 'Cámara',
     'shareCamera': 'Compartir cámara',
     'watchCamera': 'Ver cámara',

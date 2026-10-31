@@ -1,0 +1,132 @@
+{
+  "recordedAtUtc": "2026-10-30 23:59:02 UTC",
+  "scope": "Desktop camera local preview, JPEG/MP4 recording, virtual-camera packaging and obsolete OBS plugin removal",
+  "applicationVersion": "1.0.4+16",
+  "physicalWindowsAndroid": {
+    "physicalDevice": "Samsung S22 Ultra",
+    "transport": "USB debugging",
+    "emulatorUsed": false,
+    "phoneSaveCommands": false,
+    "filesRetained": false,
+    "defaultFolders": {
+      "pictures": true,
+      "videos": true
+    },
+    "previewOnPhoto": {
+      "codecs": [
+        "mjpeg"
+      ],
+      "dimensions": [
+        320,
+        480
+      ],
+      "frames": 0,
+      "duration": 0.04,
+      "bytes": 3279
+    },
+    "previewOffPhoto": {
+      "codecs": [
+        "mjpeg"
+      ],
+      "dimensions": [
+        480,
+        720
+      ],
+      "frames": 0,
+      "duration": 0.04,
+      "bytes": 7116
+    },
+    "previewOffVideo": {
+      "codecs": [
+        "h264",
+        "aac"
+      ],
+      "dimensions": [
+        320,
+        480
+      ],
+      "frames": 120,
+      "duration": 5.454533,
+      "bytes": 651813
+    },
+    "virtualCameraPreviewOff": {
+      "frames": 149,
+      "sampleMean": 53.7772,
+      "firstFrameMean": 53.77,
+      "lastFrameMean": 53.769,
+      "changedFramePairs": 110,
+      "firstFrameHash": "dee4349677633bcd",
+      "lastFrameHash": "81511c9a98d34699",
+      "sampleHash": "c0740172390a0f6b"
+    },
+    "disconnectFinalizes": {
+      "codecs": [
+        "h264",
+        "aac"
+      ],
+      "dimensions": [
+        480,
+        720
+      ],
+      "frames": 51,
+      "duration": 2.158333,
+      "bytes": 305045
+    },
+    "passed": true,
+    "exitCode": 0,
+    "receivedVideoProgressVerifiedBy": "120 encoded received frames and 149 native virtual-camera samples while Flutter preview was disabled",
+    "audioLimit": "Physical camera microphone remained off; nonzero remote audio and silent AAC were decoded in synthetic native contracts."
+  },
+  "flutter": {
+    "analyze": "No issues found",
+    "testsPassed": 616,
+    "platformSkips": 4,
+    "failures": 0
+  },
+  "native": {
+    "windows": [
+      "WIC JPEG orientation/colors",
+      "H264/AAC encode and decode with PCM energy",
+      "Preview-independent recording worker, stable canvas, stop and atomic publication",
+      "Actual StartRecording method omitted fps defaults to 30; explicit invalid fps rejected"
+    ],
+    "linux": [
+      "GStreamer JPEG and MP4 H264/AAC files decoded with ffprobe/ffmpeg",
+      "Single-frame silent recording, bounded queues, persistent encoder errors and monotonic timestamps",
+      "Real isolated voaacenc and avenc_aac plugins decoded successfully; missing AAC rejected clearly. Fedora fdkaacenc follows documented caps and was not exercised here.",
+      "Actual worker/API with libwebrtc.so and GStreamer",
+      "IPC waiting-image continuity, exclusive producer, active-user transitions, V4L2 ownership with simulated device",
+      "10 installer setup cases including v4l2loopback 0.12.5 and modern dynamic creation"
+    ],
+    "linuxLimits": [
+      "Full Flutter Linux build and real v4l2loopback capture were not executed on this Windows host",
+      "Kernel headers and module signature approval remain distribution requirements; Fedora needs an available loopback driver"
+    ]
+  },
+  "windows": {
+    "normalEntrypoint": "lib/main.dart",
+    "startupAndNormalClosePassed": true,
+    "virtualCameraIdle": {
+      "registered": true,
+      "captureFrames": 14,
+      "lastFrameHash": "6ce2807de0bb25ea"
+    },
+    "firewall": "Installer uses SW_HIDE and PowerShell -WindowStyle Hidden. UAC authorization remains normal. Installer compiled; elevated firewall UI was not re-run for this change.",
+    "virtualCameraInstall": "Automatic on supported Windows 11 x64; bundled component retains system registration and per-user persistent device",
+    "artifacts": {
+      "build/windows/x64/runner/Release/data/app.so": "b8812d9f6fb531e2e05e54c19cd56510ca45602de27658db169dd4e65cc7ffd8",
+      "build/windows/x64/runner/Release/flutter_webrtc_plugin.dll": "625cdf577fccd7b85178adbda695fbb00238ae943d15c94cf937bf2645988eb7",
+      "dist/windows/BShare-1.0.4+16-windows-x64-setup.exe": "573453cf3ec1955532f85188eff7c3cfeec6583a1bc9c766e50e4df2e224b1bb"
+    }
+  },
+  "cleanup": {
+    "oldObsPluginSourceRemoved": true,
+    "oldObsPluginInstallationRemovedUsingOwnedManifest": true,
+    "oldObsPluginPackagesRemoved": true,
+    "obsScenesModified": false,
+    "phoneCaptureStopped": true,
+    "ownedUsbMappingsRemaining": 0,
+    "emulatorCommandsIssued": false,
+    "testPhotosAndMoviesRetained": false
+  }
+}

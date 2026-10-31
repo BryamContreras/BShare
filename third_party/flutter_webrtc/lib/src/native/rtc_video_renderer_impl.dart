@@ -11,7 +11,12 @@ import 'utils.dart';
 
 class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
     implements VideoRenderer, AudioControl {
-  RTCVideoRenderer() : super(RTCVideoValue.empty);
+  RTCVideoRenderer({this.virtualCameraOutput = false})
+      : super(RTCVideoValue.empty);
+
+  /// Publish clean received video to the installed desktop virtual camera.
+  /// No frames are sent unless explicitly enabled by the application's receiver.
+  final bool virtualCameraOutput;
   Future<void>? _initializing;
   Future<void>? _disposing;
   int? _textureId;
@@ -31,6 +36,13 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
     try {
       final response = await WebRTC.invokeMethod('createVideoRenderer', {});
       _textureId = response['textureId'];
+      if (virtualCameraOutput &&
+          (WebRTC.platformIsWindows || WebRTC.platformIsLinux)) {
+        await WebRTC.invokeMethod('videoRendererSetVirtualCamera', {
+          'textureId': _textureId,
+          'enabled': true,
+        });
+      }
       _eventSubscription = EventChannel('FlutterWebRTC/Texture$textureId')
           .receiveBroadcastStream()
           .listen(eventListener, onError: errorListener);
@@ -48,6 +60,20 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
 
   @override
   int? get textureId => _textureId;
+
+  /// Keep native frame consumers and size/rotation events active while skipping
+  /// Flutter texture rendering for a hidden preview.
+  Future<void> setFrameOutputEnabled(bool enabled) async {
+    if (_disposed) throw StateError('The RTCVideoRenderer is disposed');
+    if (!WebRTC.platformIsAndroid && !WebRTC.platformIsWindows &&
+        !WebRTC.platformIsLinux) return;
+    final id = _textureId;
+    if (id == null) throw StateError('Call initialize before changing frame output');
+    await WebRTC.invokeMethod('videoRendererSetFrameOutputEnabled', {
+      'textureId': id,
+      'enabled': enabled,
+    });
+  }
 
   @override
   MediaStream? get srcObject => _srcObject;

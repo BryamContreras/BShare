@@ -51,6 +51,12 @@ jobs:
       - name: Resolve locked dependencies
         run: flutter pub get --enforce-lockfile
 
+      - name: Verify native virtual camera transport and source lifecycle
+        run: |
+          ./plugins/virtual-camera/scripts/build-windows.ps1 -BuildTests
+          python test/native/test_windows_virtual_camera_cli.py
+          if ($LASTEXITCODE -ne 0) { throw 'Windows virtual-camera CLI compatibility regression failed.' }
+
       - name: Build Windows release
         run: |
           $arguments = @('build', 'windows', '--release', '--no-pub')
@@ -58,6 +64,17 @@ jobs:
           if ($env:RELEASE_BUILD_NUMBER) { $arguments += "--build-number=$env:RELEASE_BUILD_NUMBER" }
           & flutter @arguments
           if ($LASTEXITCODE -ne 0) { throw "Flutter exited with code $LASTEXITCODE." }
+
+      - name: Verify Windows media routing and peer isolation
+        run: |
+          python test/native/test_windows_media_audio_routing.py
+          if ($LASTEXITCODE -ne 0) { throw 'Windows audio routing regression failed.' }
+          python third_party/flutter_webrtc/test/native/test_peer_configuration_isolation.py
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop peer configuration isolation regression failed.' }
+          python test/native/test_windows_camera_media_writer.py
+          if ($LASTEXITCODE -ne 0) { throw 'Windows JPEG and H264/AAC encoding regression failed.' }
+          python test/native/test_desktop_camera_media_controller.py
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop capture and recording lifecycle regression failed.' }
 
       - name: Package installer and bundled C++ runtime
         run: ./packaging/windows/build-installer.ps1 -Version $env:RELEASE_VERSION -BuildNumber $env:RELEASE_BUILD_NUMBER

@@ -3,17 +3,21 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:bshare/src/domain/entities/camera_device.dart';
+import 'package:bshare/src/domain/entities/camera_capture_controls.dart';
 import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/domain/entities/screen_capture_settings.dart';
 import 'package:bshare/src/infrastructure/services/android_screen_share_execution_service.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/file_server.dart';
+import 'package:bshare/src/infrastructure/services/permission_request_coordinator.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
+import 'package:bshare/src/infrastructure/services/usb_adb_transport_service.dart';
 import 'package:dio/dio.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 const _sdp =
     'v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\n'
@@ -26,6 +30,136 @@ const _cameraOfferSdp =
     'm=video 9 UDP/TLS/RTP/SAVPF 96\r\na=mid:video\r\n'
     'a=recvonly\r\na=rtpmap:96 H264/90000\r\n';
 
+const _usbRelaySdp =
+    'v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\n'
+    'a=rtpmap:96 H264/90000\r\nc=IN IP4 192.168.1.100\r\n'
+    'a=candidate:1 1 udp 123 192.168.1.100 50000 typ host\r\n'
+    'a=candidate:2 1 udp 123 127.0.0.1 50001 typ relay raddr 0.0.0.0 rport 0\r\n';
+
+const _usbDevice = UsbAdbDevice(
+  serial: 'test-usb-phone',
+  label: 'USB phone',
+  state: UsbAdbDeviceState.authorized,
+  transportId: 123,
+);
+
+Map<String, dynamic> _usbIce(String role, int port) => {
+  'iceTransportPolicy': 'relay',
+  'iceServers': [
+    {
+      'urls': ['turn:127.0.0.1:$port?transport=tcp'],
+      'username': '${role}_username_12345678',
+      'credential': '${role}_password_1234567890123456',
+    },
+  ],
+  'sdpSemantics': 'unified-plan',
+  'bundlePolicy': 'max-bundle',
+  'rtcpMuxPolicy': 'require',
+};
+
+class _UsbSession extends Fake implements UsbRelaySession {
+  _UsbSession(this.signalingUri);
+  @override
+  final Uri signalingUri;
+  @override
+  final UsbAdbDevice device = _usbDevice;
+  @override
+  String get serial => device.serial;
+  @override
+  int get transportId => device.transportId;
+  @override
+  Map<String, int> get diagnostics => const {};
+  @override
+  final Map<String, dynamic> desktopIceConfiguration = _usbIce(
+    'desktop',
+    45001,
+  );
+  @override
+  final Map<String, dynamic> androidIceConfiguration = _usbIce(
+    'android',
+    45002,
+  );
+  int closes = 0;
+  @override
+  bool get isClosed => closes > 0;
+  @override
+  Future<void> close() async {
+    if (closes == 0) closes++;
+  }
+}
+
+class _UsbTransport extends UsbAdbTransportService {
+  _UsbTransport(this.session);
+  final _UsbSession session;
+  final opened = Completer<void>();
+  Completer<UsbRelaySession>? opening;
+  int opens = 0;
+  @override
+  Future<UsbRelaySession> open(
+    UsbAdbDevice device, {
+    int remotePort = 53317,
+  }) async {
+    expect(device, same(_usbDevice));
+    opens++;
+    if (!opened.isCompleted) opened.complete();
+    return opening == null ? session : await opening!.future;
+  }
+}
+
+class _UsbSignaling {
+  _UsbSignaling._(this.server);
+  final HttpServer server;
+  final List<Map<String, dynamic>> offers = [];
+  final List<String> offerPaths = [];
+  final List<String> sourceIps = [];
+  final secondOffer = Completer<void>();
+  int generation = 1;
+  int metadataReads = 0;
+  static Future<_UsbSignaling> start() async {
+    final signaling = _UsbSignaling._(
+      await HttpServer.bind(InternetAddress.loopbackIPv4, 0),
+    );
+    signaling.server.listen(signaling._handle);
+    return signaling;
+  }
+
+  Uri get uri => Uri(scheme: 'http', host: '127.0.0.1', port: server.port);
+  Future<void> close() async {
+    await server.close(force: true);
+  }
+
+  Future<void> _handle(HttpRequest request) async {
+    sourceIps.add(request.connectionInfo!.remoteAddress.address);
+    request.response.headers.contentType = ContentType.json;
+    if (request.uri.path.endsWith('/metadata')) {
+      metadataReads++;
+      request.response.write(
+        jsonEncode({
+          'metadata': {'generation': generation, 'aspectRatio': 16 / 9},
+        }),
+      );
+    } else if (request.uri.path.endsWith('/offer')) {
+      offers.add(
+        Map<String, dynamic>.from(
+          jsonDecode(await utf8.decoder.bind(request).join()) as Map,
+        ),
+      );
+      offerPaths.add(request.uri.path);
+      request.response.write(
+        jsonEncode({
+          'answer': {'type': 'answer', 'sdp': _usbRelaySdp},
+        }),
+      );
+      if (offers.length == 2 && !secondOffer.isCompleted) {
+        secondOffer.complete();
+      }
+    } else {
+      request.response.write('{}');
+    }
+    await request.response.close();
+  }
+}
+
 class _RealHttpOverrides extends HttpOverrides {}
 
 class _Renderer extends RTCVideoRenderer {
@@ -34,6 +168,12 @@ class _Renderer extends RTCVideoRenderer {
   Completer<void>? initialization;
   MediaStream? _stream;
   String? lastBoundTrackId;
+  final frameOutputChanges = <bool>[];
+
+  @override
+  Future<void> setFrameOutputEnabled(bool enabled) async {
+    frameOutputChanges.add(enabled);
+  }
 
   @override
   Future<void> initialize() async {
@@ -279,6 +419,11 @@ class _Signaling {
   int stopCalls = 0;
   String answerSdp = _sdp;
   DioException? offerError;
+  Map<String, dynamic>? cameraControls;
+  String? controlFailure;
+  final controlsSent = <Map<String, dynamic>>[];
+  Completer<void>? controlResponse;
+  final Completer<void> controlStarted = Completer<void>();
 
   _Signaling() {
     dio.interceptors.add(
@@ -290,7 +435,44 @@ class _Signaling {
             handler.resolve(Response(requestOptions: options));
             return;
           }
+          if (options.path.endsWith('/control')) {
+            final command = Map<String, dynamic>.from(options.data as Map);
+            controlsSent.add(command);
+            if (!controlStarted.isCompleted) controlStarted.complete();
+            await controlResponse?.future;
+            if (controlFailure != null) {
+              handler.reject(
+                DioException(
+                  requestOptions: options,
+                  response: Response(
+                    requestOptions: options,
+                    statusCode: 409,
+                    data: {'ok': false, 'error': controlFailure},
+                  ),
+                  type: DioExceptionType.badResponse,
+                ),
+              );
+              return;
+            }
+            if (command['action'] == 'microphone') {
+              cameraControls = {
+                ...cameraControls!,
+                'revision': (cameraControls!['revision'] as int) + 1,
+                'microphoneEnabled': command['enabled'],
+              };
+            }
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                data: {'ok': true, 'controls': cameraControls},
+              ),
+            );
+            return;
+          }
           if (options.path.endsWith('/metadata')) {
+            final controlsSnapshot = cameraControls == null
+                ? null
+                : Map<String, dynamic>.from(cameraControls!);
             metadataCalls++;
             activeMetadata++;
             if (activeMetadata > maxActiveMetadata) {
@@ -323,6 +505,7 @@ class _Signaling {
                   'metadata': {
                     'aspectRatio': 1080 / 2640,
                     'generation': generation,
+                    'cameraControls': ?controlsSnapshot,
                   },
                 },
               ),
@@ -343,7 +526,15 @@ class _Signaling {
               data: invalidAnswer
                   ? <String, dynamic>{}
                   : {
-                      'answer': {'sdp': answerSdp, 'type': 'answer'},
+                      'answer': {
+                        'sdp': answerSdp,
+                        'type': 'answer',
+                        if (cameraControls != null)
+                          'cameraControls': {
+                            ...cameraControls!,
+                            'token': 'capability-12345678901234',
+                          },
+                      },
                     },
             ),
           );
@@ -360,8 +551,22 @@ void main() {
     _Renderer? local,
     _Renderer? remote,
     Future<RTCPeerConnection> Function()? peerFactory,
+    Future<RTCPeerConnection> Function(Map<String, dynamic>)?
+    configuredPeerFactory,
+    UsbAdbTransportService? usbTransport,
     Future<void> Function()? onSharingStopped,
     Future<void> Function(bool)? audioRecordingGate,
+    Future<void> Function(bool)? systemAudioRecordingGate,
+    Future<bool> Function()? systemAudioSupport,
+    Future<bool> Function()? remoteMicrophonePermissionGranted,
+    Future<Map<String, dynamic>> Function(MediaStreamTrack)?
+    cameraControlsReader,
+    Future<Map<String, dynamic>> Function(
+      MediaStreamTrack,
+      Map<String, dynamic>,
+    )?
+    cameraControlsWriter,
+    PermissionRequestCoordinator? permissionCoordinator,
     Duration videoStartupTimeout = const Duration(seconds: 25),
     bool autoDispose = true,
   }) {
@@ -372,8 +577,16 @@ void main() {
       localRenderer: local ?? _Renderer(),
       remoteRenderer: remote ?? _Renderer(),
       peerConnectionFactory: peerFactory ?? () async => _Peer(),
+      configuredPeerConnectionFactory: configuredPeerFactory,
+      usbTransport: usbTransport,
       onSharingStopped: onSharingStopped,
       audioRecordingGate: audioRecordingGate,
+      systemAudioRecordingGate: systemAudioRecordingGate,
+      systemAudioSupport: systemAudioSupport,
+      remoteMicrophonePermissionGranted: remoteMicrophonePermissionGranted,
+      cameraControlsReader: cameraControlsReader,
+      cameraControlsWriter: cameraControlsWriter,
+      permissionCoordinator: permissionCoordinator,
       videoStartupTimeout: videoStartupTimeout,
     );
     if (autoDispose) addTearDown(service.dispose);
@@ -388,6 +601,239 @@ void main() {
     service.setFocusedViewerActive(false);
     expect(service.focusedViewerActive.value, isFalse);
   });
+
+  Map<String, dynamic> remoteControls({int revision = 1}) => {
+    'version': 1,
+    'revision': revision,
+    'busy': false,
+    'microphoneEnabled': false,
+    'torchEnabled': false,
+    'torchAvailable': true,
+    'canSwitchCamera': true,
+  };
+
+  Map<String, dynamic> hardware({
+    String cameraId = '0',
+    double zoom = 1,
+    double zoomMin = .6,
+    String mode = 'auto',
+    String wbMode = 'auto',
+    double warmth = 0,
+    double timeMs = 10,
+    int iso = 400,
+  }) => {
+    'ready': true,
+    'cameraId': cameraId,
+    'zoom': {
+      'supported': true,
+      'native': true,
+      'min': zoomMin,
+      'max': 10.0,
+      'step': 0.0,
+      'value': zoom,
+    },
+    'whiteBalance': {
+      'supported': true,
+      'modes': ['auto', 'daylight'],
+      'value': wbMode == 'manual' ? 'off' : 'auto',
+    },
+    'whiteBalanceWarmth': {
+      'supported': true,
+      'min': -1.0,
+      'max': 1.0,
+      'step': 0.0,
+      'value': warmth,
+      'mode': wbMode,
+      'unit': 'relative',
+    },
+    'exposure': {
+      'supported': true,
+      'min': -2.0,
+      'max': 2.0,
+      'step': .5,
+      'value': 0.0,
+    },
+    'brightness': {'supported': false},
+    'manualExposure': {
+      'supported': true,
+      'mode': mode,
+      'timeMinMs': .1,
+      'timeMaxMs': 100.0,
+      'timeMs': timeMs,
+      'isoMin': 50,
+      'isoMax': 3200,
+      'iso': iso,
+    },
+    'lenses': [
+      {'id': '0', 'label': 'Rear', 'frontFacing': false},
+      {'id': '1', 'label': 'Front', 'frontFacing': true},
+      {'id': '2', 'label': 'Tele', 'frontFacing': false},
+    ],
+  };
+
+  test(
+    'remote native settings publish confirmed state instead of requested zoom',
+    () async {
+      final signaling = _Signaling()
+        ..cameraControls = {...remoteControls(), 'capture': hardware()};
+      final service = makeService(signaling: signaling);
+      await service.watchCamera(_device);
+      expect(service.remoteCameraControls.value.capture.zoom.value, 1);
+      signaling.cameraControls = {
+        ...remoteControls(revision: 2),
+        'capture': hardware(zoom: 2.2),
+      };
+      await service.setRemoteCameraZoom(2.25);
+      expect(signaling.controlsSent.single['action'], 'capture-settings');
+      expect(signaling.controlsSent.single['settings'], {'zoom': 2.25});
+      expect(service.remoteCameraControls.value.capture.zoom.value, 2.2);
+      expect(
+        service.remoteCameraControls.value.capture.brightness.supported,
+        isFalse,
+      );
+      expect(
+        service.remoteCameraControls.value.capture.manualExposure.supported,
+        isTrue,
+      );
+      await service.stopWatching();
+      expect(service.remoteCameraControls.value.capture.available, isFalse);
+    },
+  );
+
+  test(
+    'old metadata cannot restore another lens range after confirmed lens selection',
+    () async {
+      final signaling = _Signaling()
+        ..cameraControls = {...remoteControls(), 'capture': hardware()}
+        ..metadataResponse = Completer<void>();
+      final service = makeService(signaling: signaling);
+      await service.watchCamera(_device);
+      await signaling.metadataStarted.future;
+      signaling.cameraControls = {
+        ...remoteControls(revision: 5),
+        'capture': hardware(cameraId: '2', zoom: 3, zoomMin: 3),
+      };
+      await service.selectRemoteCamera('2');
+      signaling.metadataResponse!.complete();
+      await Future<void>.delayed(Duration.zero);
+      expect(service.remoteCameraControls.value.capture.cameraId, '2');
+      expect(service.remoteCameraControls.value.capture.zoom.min, 3);
+      expect(signaling.controlsSent.single['cameraId'], '2');
+    },
+  );
+
+  test(
+    'remote microphone uses the viewer capability and confirmed phone state',
+    () async {
+      final signaling = _Signaling()..cameraControls = remoteControls();
+      final service = makeService(signaling: signaling);
+      await service.watchCamera(_device);
+      expect(service.remoteCameraControls.value.available, isTrue);
+      expect(service.remoteCameraControls.value.microphoneEnabled, isFalse);
+      await service.setRemoteCameraMicrophoneEnabled(true);
+      expect(signaling.controlsSent.single, {
+        'viewerId': signaling.offers.single['viewerId'],
+        'token': 'capability-12345678901234',
+        'action': 'microphone',
+        'enabled': true,
+      });
+      expect(service.remoteCameraControls.value.microphoneEnabled, isTrue);
+      expect(service.remoteCameraControls.value.busy, isFalse);
+      await service.stopWatching();
+      expect(service.remoteCameraControls.value.available, isFalse);
+      expect(signaling.controlsSent, hasLength(1));
+    },
+  );
+
+  test(
+    'remote permission denial keeps microphone off and releases the action',
+    () async {
+      final signaling = _Signaling()
+        ..cameraControls = remoteControls()
+        ..controlFailure = 'camera-microphone-permission-denied';
+      final service = makeService(signaling: signaling);
+      await service.watchCamera(_device);
+      await expectLater(
+        service.setRemoteCameraMicrophoneEnabled(true),
+        throwsA(
+          isA<CameraControlException>().having(
+            (error) => error.code,
+            'code',
+            'camera-microphone-permission-denied',
+          ),
+        ),
+      );
+      expect(service.remoteCameraControls.value.microphoneEnabled, isFalse);
+      expect(service.remoteCameraControls.value.busy, isFalse);
+      expect(service.state.value.mode, ScreenShareMode.watching);
+    },
+  );
+
+  test(
+    'remote controls serialize commands and stop ends the broadcast',
+    () async {
+      final signaling = _Signaling()
+        ..cameraControls = remoteControls()
+        ..controlResponse = Completer<void>();
+      final service = makeService(signaling: signaling);
+      await service.watchCamera(_device);
+      final microphone = service.setRemoteCameraMicrophoneEnabled(true);
+      await signaling.controlStarted.future;
+      expect(service.remoteCameraControls.value.busy, isTrue);
+      expect(service.remoteCameraControls.value.microphoneEnabled, isFalse);
+      await expectLater(
+        service.switchRemoteCamera(),
+        throwsA(isA<CameraControlException>()),
+      );
+      expect(signaling.controlsSent, hasLength(1));
+      signaling.controlResponse!.complete();
+      await microphone;
+      await service.stopRemoteCameraSharing();
+      expect(signaling.controlsSent.last['action'], 'stop');
+      expect(service.state.value.mode, ScreenShareMode.idle);
+      expect(service.remoteCameraControls.value.available, isFalse);
+    },
+  );
+
+  test(
+    'old senders and screen broadcasts do not expose camera commands',
+    () async {
+      final signaling = _Signaling();
+      final service = makeService(signaling: signaling);
+      await service.watchCamera(_device);
+      expect(service.remoteCameraControls.value.available, isFalse);
+      await expectLater(
+        service.switchRemoteCamera(),
+        throwsA(isA<CameraControlException>()),
+      );
+      await service.stopWatching();
+      signaling.cameraControls = remoteControls();
+      await service.watch(_device);
+      expect(service.remoteCameraControls.value.available, isFalse);
+      await expectLater(
+        service.stopRemoteCameraSharing(),
+        throwsA(isA<CameraControlException>()),
+      );
+      expect(signaling.controlsSent, isEmpty);
+    },
+  );
+
+  test(
+    'late metadata cannot roll back a confirmed remote microphone change',
+    () async {
+      final signaling = _Signaling()
+        ..cameraControls = remoteControls()
+        ..metadataResponse = Completer<void>();
+      final service = makeService(signaling: signaling);
+      await service.watchCamera(_device);
+      await signaling.metadataStarted.future;
+      await service.setRemoteCameraMicrophoneEnabled(true);
+      expect(service.remoteCameraControls.value.microphoneEnabled, isTrue);
+      signaling.metadataResponse!.complete();
+      await Future<void>.delayed(Duration.zero);
+      expect(service.remoteCameraControls.value.microphoneEnabled, isTrue);
+    },
+  );
 
   test('concurrent initialization creates each renderer once', () async {
     final local = _Renderer()..initialization = Completer<void>();
@@ -995,6 +1441,189 @@ void main() {
     },
   );
 
+  group('USB cable viewer integration', () {
+    test(
+      'camera and screen use relay peer configuration and Android config only in their offer',
+      () async {
+        for (final source in [
+          VideoShareSource.camera,
+          VideoShareSource.screen,
+        ]) {
+          final signaling = await _UsbSignaling.start();
+          addTearDown(signaling.close);
+          final relay = _UsbSession(signaling.uri);
+          final transport = _UsbTransport(relay);
+          final configurations = <Map<String, dynamic>>[];
+          var lanPeers = 0;
+          final service = makeService(
+            usbTransport: transport,
+            peerFactory: () async {
+              lanPeers++;
+              return _Peer();
+            },
+            configuredPeerFactory: (configuration) async {
+              configurations.add(configuration);
+              return _Peer()..localSdp = _usbRelaySdp;
+            },
+          );
+          await HttpOverrides.runWithHttpOverrides(
+            () => service.watchUsb(_usbDevice, source: source),
+            _RealHttpOverrides(),
+          );
+          expect(service.watchingUsb, isTrue);
+          expect(lanPeers, 0);
+          expect(configurations.single, relay.desktopIceConfiguration);
+          expect(signaling.offerPaths.single, '/api/${source.name}/offer');
+          final offer = signaling.offers.single;
+          expect(offer['usbRelay'], relay.androidIceConfiguration);
+          expect(offer['sdp'], contains('typ relay'));
+          expect(offer['sdp'], isNot(contains('typ host')));
+          expect(offer['sdp'], isNot(contains('192.168.1.100')));
+          expect(signaling.sourceIps.toSet(), {'127.0.0.1'});
+          await service.stopWatching();
+          expect(relay.closes, 1);
+        }
+      },
+    );
+
+    test(
+      'metadata reconnect preserves the relay, credentials and viewer identity',
+      () async {
+        final signaling = await _UsbSignaling.start();
+        addTearDown(signaling.close);
+        final relay = _UsbSession(signaling.uri);
+        final transport = _UsbTransport(relay);
+        final configurations = <Map<String, dynamic>>[];
+        final peers = <_Peer>[];
+        final service = makeService(
+          usbTransport: transport,
+          configuredPeerFactory: (configuration) async {
+            configurations.add(configuration);
+            final peer = _Peer()..localSdp = _usbRelaySdp;
+            peers.add(peer);
+            return peer;
+          },
+        );
+        await HttpOverrides.runWithHttpOverrides(
+          () => service.watchUsb(_usbDevice),
+          _RealHttpOverrides(),
+        );
+        signaling.generation = 2;
+        await signaling.secondOffer.future.timeout(const Duration(seconds: 3));
+        expect(transport.opens, 1);
+        expect(relay.closes, 0);
+        expect(service.watchingUsb, isTrue);
+        expect(configurations, [
+          relay.desktopIceConfiguration,
+          relay.desktopIceConfiguration,
+        ]);
+        expect(
+          signaling.offers[0]['viewerId'],
+          signaling.offers[1]['viewerId'],
+        );
+        expect(signaling.offers[1]['usbRelay'], relay.androidIceConfiguration);
+        expect(peers.first.disposes, 1);
+        await service.stopWatching();
+        expect(relay.closes, 1);
+      },
+    );
+
+    test(
+      'stop and dispose each release the owned relay and peer idempotently',
+      () async {
+        for (final disposing in [false, true]) {
+          final signaling = await _UsbSignaling.start();
+          addTearDown(signaling.close);
+          final relay = _UsbSession(signaling.uri);
+          final peer = _Peer()..localSdp = _usbRelaySdp;
+          final service = makeService(
+            usbTransport: _UsbTransport(relay),
+            configuredPeerFactory: (_) async => peer,
+          );
+          await HttpOverrides.runWithHttpOverrides(
+            () => service.watchUsb(_usbDevice),
+            _RealHttpOverrides(),
+          );
+          if (disposing) {
+            await service.dispose();
+            await service.dispose();
+          } else {
+            await service.stopWatching();
+            await service.stopWatching();
+          }
+          expect(service.watchingUsb, isFalse);
+          expect(relay.closes, 1);
+          expect(peer.closes, 1);
+          expect(peer.disposes, 1);
+        }
+      },
+    );
+
+    test(
+      'stop while ADB is opening closes its late session before creating a peer',
+      () async {
+        final relay = _UsbSession(Uri.parse('http://127.0.0.1:1'));
+        final transport = _UsbTransport(relay)
+          ..opening = Completer<UsbRelaySession>();
+        var createdPeers = 0;
+        final service = makeService(
+          usbTransport: transport,
+          configuredPeerFactory: (_) async {
+            createdPeers++;
+            return _Peer();
+          },
+        );
+        final watching = service.watchUsb(_usbDevice);
+        final rejected = expectLater(watching, throwsStateError);
+        await transport.opened.future;
+        await service.stopWatching();
+        transport.opening!.complete(relay);
+        await rejected;
+        expect(relay.closes, 1);
+        expect(createdPeers, 0);
+        expect(service.watchingUsb, isFalse);
+        expect(service.state.value.mode, ScreenShareMode.idle);
+      },
+    );
+
+    test(
+      'dispose while ADB is opening also releases the eventual relay',
+      () async {
+        final relay = _UsbSession(Uri.parse('http://127.0.0.1:1'));
+        final transport = _UsbTransport(relay)
+          ..opening = Completer<UsbRelaySession>();
+        final service = makeService(
+          usbTransport: transport,
+          configuredPeerFactory: (_) async => _Peer(),
+        );
+        final watching = service.watchUsb(_usbDevice);
+        final rejected = expectLater(watching, throwsStateError);
+        await transport.opened.future;
+        await service.dispose();
+        transport.opening!.complete(relay);
+        await rejected;
+        expect(relay.closes, 1);
+        expect(service.watchingUsb, isFalse);
+      },
+    );
+
+    test('immediate stop cancels before an ADB open can begin', () async {
+      final relay = _UsbSession(Uri.parse('http://127.0.0.1:1'));
+      final transport = _UsbTransport(relay);
+      final service = makeService(
+        usbTransport: transport,
+        configuredPeerFactory: (_) async => _Peer(),
+      );
+      final watching = service.watchUsb(_usbDevice);
+      final rejected = expectLater(watching, throwsStateError);
+      await service.stopWatching();
+      await rejected;
+      expect(transport.opens, 0);
+      expect(service.watchingUsb, isFalse);
+      expect(service.state.value.mode, ScreenShareMode.idle);
+    });
+  });
+
   group('native capture cleanup', () {
     const methodChannel = MethodChannel('FlutterWebRTC.Method');
     const eventChannel = MethodChannel('FlutterWebRTC.Event');
@@ -1139,6 +1768,588 @@ void main() {
         },
       ],
     };
+
+    test(
+      'hardware settings change the native track without reopening camera capture',
+      () async {
+        var captures = 0;
+        handle = (call) async =>
+            call.method == 'getUserMedia' ? cameraStream(++captures) : null;
+        final writes = <Map<String, dynamic>>[];
+        final service = makeService(
+          cameraControlsReader: (_) async => hardware(),
+          cameraControlsWriter: (_, values) async {
+            writes.add(Map.of(values));
+            return hardware(zoom: 2.2);
+          },
+        );
+        final server = FileServer(const AppLogger());
+        await service.startCameraSharing(server, camera: back);
+        await service.setCameraCaptureSettings({'zoom': 2.25});
+        final capture = CameraCaptureControls.fromMap(
+          (server.cameraMetadataHandler!()['cameraControls'] as Map)['capture'],
+        );
+        expect(capture.zoom.value, 2.2);
+        expect(writes, [
+          {'zoom': 2.25},
+        ]);
+        expect(captures, 1);
+      },
+    );
+
+    test(
+      'capture settings reject unsupported, malformed and wrong-mode values before native calls',
+      () async {
+        handle = (call) async =>
+            call.method == 'getUserMedia' ? cameraStream(1) : null;
+        var writes = 0;
+        final service = makeService(
+          cameraControlsReader: (_) async => hardware(),
+          cameraControlsWriter: (_, settings) async {
+            writes++;
+            return hardware();
+          },
+        );
+        final server = FileServer(const AppLogger());
+        await service.startCameraSharing(server, camera: back);
+        for (final value in <Map<String, dynamic>>[
+          {'zoom': 50},
+          {'zoom': double.nan},
+          {'zoom': '2'},
+          {'brightness': .5},
+          {'exposure': .2},
+          {'whiteBalance': 'nonexistent'},
+          {'iso': 100},
+          {'exposureMode': 'manual', 'iso': 4000},
+          {'exposureMode': 'manual', 'exposureTimeMs': -1},
+          {'receiverBrightnessFilter': .5},
+          {},
+        ]) {
+          await expectLater(
+            service.setCameraCaptureSettings(value),
+            throwsA(isA<CameraControlException>()),
+          );
+        }
+        expect(writes, 0);
+      },
+    );
+
+    test(
+      'native manual exposure keeps real units and forbids EV in manual mode',
+      () async {
+        handle = (call) async =>
+            call.method == 'getUserMedia' ? cameraStream(1) : null;
+        final writes = <Map<String, dynamic>>[];
+        final service = makeService(
+          cameraControlsReader: (_) async => hardware(),
+          cameraControlsWriter: (_, values) async {
+            writes.add(Map.of(values));
+            return hardware(mode: 'manual', timeMs: 12.5, iso: 800);
+          },
+        );
+        final server = FileServer(const AppLogger());
+        await service.startCameraSharing(server, camera: back);
+        await service.setCameraCaptureSettings({
+          'exposureMode': 'manual',
+          'exposureTimeMs': 12.5,
+          'iso': 800,
+        });
+        final controls = CameraCaptureControls.fromMap(
+          (server.cameraMetadataHandler!()['cameraControls'] as Map)['capture'],
+        );
+        expect(controls.manualExposure.mode, 'manual');
+        expect(controls.manualExposure.timeMs, 12.5);
+        expect(controls.manualExposure.iso, 800);
+        await expectLater(
+          service.setCameraCaptureSettings({'exposure': 1.0}),
+          throwsA(isA<CameraControlException>()),
+        );
+        expect(writes, hasLength(1));
+      },
+    );
+
+    test(
+      'warm/cool native controls preserve AWB off and can restore automatic balance',
+      () async {
+        handle = (call) async =>
+            call.method == 'getUserMedia' ? cameraStream(1) : null;
+        final writes = <Map<String, dynamic>>[];
+        final service = makeService(
+          cameraControlsReader: (_) async => hardware(),
+          cameraControlsWriter: (_, settings) async {
+            writes.add(Map.of(settings));
+            return settings['whiteBalance'] == 'auto'
+                ? hardware()
+                : hardware(wbMode: 'manual', warmth: .58);
+          },
+        );
+        final server = FileServer(const AppLogger());
+        await service.startCameraSharing(server, camera: back);
+        await service.setCameraCaptureSettings({'whiteBalanceWarmth': .6});
+        var controls = CameraCaptureControls.fromMap(
+          (server.cameraMetadataHandler!()['cameraControls'] as Map)['capture'],
+        );
+        expect(controls.whiteBalanceWarmth.value, .58);
+        expect(controls.whiteBalanceWarmth.mode, 'manual');
+        expect(controls.whiteBalance.value, 'off');
+        await expectLater(
+          service.setCameraCaptureSettings({'whiteBalanceWarmth': 1.1}),
+          throwsA(isA<CameraControlException>()),
+        );
+        await service.setCameraCaptureSettings({'whiteBalance': 'auto'});
+        controls = CameraCaptureControls.fromMap(
+          (server.cameraMetadataHandler!()['cameraControls'] as Map)['capture'],
+        );
+        expect(controls.whiteBalanceWarmth.mode, 'auto');
+        expect(writes, hasLength(2));
+      },
+    );
+
+    test(
+      'stop invalidates a pending native settings reply before it can update state',
+      () async {
+        handle = (call) async =>
+            call.method == 'getUserMedia' ? cameraStream(1) : null;
+        final started = Completer<void>();
+        final response = Completer<Map<String, dynamic>>();
+        final service = makeService(
+          cameraControlsReader: (_) async => hardware(),
+          cameraControlsWriter: (_, values) {
+            started.complete();
+            return response.future;
+          },
+        );
+        final server = FileServer(const AppLogger());
+        await service.startCameraSharing(server, camera: back);
+        final update = service.setCameraCaptureSettings({'zoom': 2.0});
+        final rejected = expectLater(update, throwsStateError);
+        await started.future;
+        final stopped = service.stop(server);
+        response.complete(hardware(zoom: 2));
+        await rejected;
+        await stopped;
+        expect(service.state.value.mode, ScreenShareMode.idle);
+        expect(server.cameraMetadataHandler, isNull);
+        expect(service.currentCamera, isNull);
+      },
+    );
+
+    test(
+      'capture opening is retried and a selected public lens refreshes its capabilities',
+      () async {
+        var captures = 0;
+        var queries = 0;
+        handle = (call) async =>
+            call.method == 'getUserMedia' ? cameraStream(++captures) : null;
+        final service = makeService(
+          peerFactory: () async => _SharingPeer(),
+          cameraControlsReader: (_) async {
+            queries++;
+            if (queries == 1) return {'ready': false, 'cameraId': '0'};
+            return hardware(
+              cameraId: captures == 1 ? '0' : '2',
+              zoom: captures == 1 ? 1 : 3,
+              zoomMin: captures == 1 ? .6 : 3,
+            );
+          },
+        );
+        final server = FileServer(const AppLogger());
+        await service.startCameraSharing(server, camera: back);
+        expect(queries, 2);
+        final answer = await server.cameraOfferHandler!({
+          'type': 'offer',
+          'sdp': _cameraOfferSdp,
+          'viewerId': 'viewer-12345678901234',
+        });
+        final reply = await server.cameraControlHandler!({
+          'viewerId': 'viewer-12345678901234',
+          'token': (answer['cameraControls'] as Map)['token'],
+          'action': 'select-camera',
+          'cameraId': '2',
+        });
+        final controls = CameraCaptureControls.fromMap(
+          reply.controls['capture'],
+        );
+        expect(controls.cameraId, '2');
+        expect(controls.zoom.min, 3);
+        expect(controls.zoom.value, 3);
+        expect(service.currentCamera?.id, '2');
+        expect(captures, 2);
+      },
+    );
+
+    test(
+      'camera commands require a live viewer capability and reject stale sessions',
+      () async {
+        handle = (call) async =>
+            call.method == 'getUserMedia' ? cameraStream(1) : null;
+        final service = makeService(peerFactory: () async => _SharingPeer());
+        final server = FileServer(const AppLogger());
+        await service.startCameraSharing(server, camera: back);
+        const id = 'viewer-12345678901234';
+        final answer = await server.cameraOfferHandler!({
+          'type': 'offer',
+          'sdp': _cameraOfferSdp,
+          'viewerId': id,
+        });
+        final token = (answer['cameraControls'] as Map)['token'];
+        final control = server.cameraControlHandler!;
+        await expectLater(
+          control({'viewerId': id, 'token': 'wrong', 'action': 'stop'}),
+          throwsA(
+            isA<CameraControlException>().having(
+              (error) => error.status,
+              'status',
+              HttpStatus.forbidden,
+            ),
+          ),
+        );
+        expect(service.state.value.mode, ScreenShareMode.sharing);
+        await server.cameraViewerStopHandler!(id);
+        await expectLater(
+          control({'viewerId': id, 'token': token, 'action': 'stop'}),
+          throwsA(isA<CameraControlException>()),
+        );
+        await service.stop(server);
+        await service.startCameraSharing(server, camera: back);
+        await expectLater(
+          control({'viewerId': id, 'token': token, 'action': 'stop'}),
+          throwsA(isA<CameraControlException>()),
+        );
+        expect(service.state.value.mode, ScreenShareMode.sharing);
+      },
+    );
+
+    test(
+      'remote microphone denial never requests permission or captures audio',
+      () async {
+        handle = (call) async =>
+            call.method == 'getUserMedia' ? cameraStream(1) : null;
+        var requests = 0;
+        final service = makeService(
+          peerFactory: () async => _SharingPeer(),
+          remoteMicrophonePermissionGranted: () async => false,
+          permissionCoordinator: PermissionRequestCoordinator(
+            readStatus: (_) async => PermissionStatus.denied,
+            requestPermission: (_) async {
+              requests++;
+              return PermissionStatus.granted;
+            },
+          ),
+        );
+        final server = FileServer(const AppLogger());
+        await service.startCameraSharing(server, camera: back);
+        final answer = await server.cameraOfferHandler!({
+          'type': 'offer',
+          'sdp': _cameraOfferSdp,
+          'viewerId': 'viewer-12345678901234',
+        });
+        final before = calls.where((name) => name == 'getUserMedia').length;
+        await expectLater(
+          server.cameraControlHandler!({
+            'viewerId': 'viewer-12345678901234',
+            'token': (answer['cameraControls'] as Map)['token'],
+            'action': 'microphone',
+            'enabled': true,
+          }),
+          throwsA(
+            isA<CameraControlException>().having(
+              (error) => error.code,
+              'code',
+              'camera-microphone-permission-denied',
+            ),
+          ),
+        );
+        expect(requests, 0);
+        expect(
+          calls.where((name) => name == 'getUserMedia'),
+          hasLength(before),
+        );
+        expect(service.cameraMicrophoneEnabled, isFalse);
+        expect(server.cameraMetadataHandler!()['audio'], isFalse);
+      },
+    );
+
+    test(
+      'remote switch replaces the real camera and stop acknowledges before cleanup',
+      () async {
+        var captures = 0;
+        handle = (call) async {
+          if (call.method == 'getSources') {
+            return {
+              'sources': [
+                {
+                  'kind': 'videoinput',
+                  'deviceId': '0',
+                  'label': 'Back',
+                  'facing': 'back',
+                },
+                {
+                  'kind': 'videoinput',
+                  'deviceId': '1',
+                  'label': 'Front',
+                  'facing': 'front',
+                },
+              ],
+            };
+          }
+          if (call.method == 'getUserMedia') {
+            return cameraStream(++captures);
+          }
+          return null;
+        };
+        final service = makeService(peerFactory: () async => _SharingPeer());
+        final server = FileServer(const AppLogger());
+        await service.enumerateCameras();
+        await service.startCameraSharing(server, camera: back);
+        final answer = await server.cameraOfferHandler!({
+          'type': 'offer',
+          'sdp': _cameraOfferSdp,
+          'viewerId': 'viewer-12345678901234',
+        });
+        final control = server.cameraControlHandler!;
+        final command = {
+          'viewerId': 'viewer-12345678901234',
+          'token': (answer['cameraControls'] as Map)['token'],
+        };
+        final switched = await control({...command, 'action': 'switch-camera'});
+        expect(service.currentCamera?.id, front.id);
+        expect(captures, 2);
+        expect(switched.controls['canSwitchCamera'], isTrue);
+        final stopped = await control({...command, 'action': 'stop'});
+        expect(stopped.controls['stopping'], isTrue);
+        expect(service.state.value.mode, ScreenShareMode.sharing);
+        // Closing the viewer after acknowledgment must not revoke this stop.
+        await server.cameraViewerStopHandler!('viewer-12345678901234');
+        await stopped.afterResponse!();
+        expect(service.state.value.mode, ScreenShareMode.idle);
+        expect(server.cameraControlHandler, isNull);
+      },
+    );
+
+    test('an acknowledged stop cannot stop a newer camera capture', () async {
+      handle = (call) async =>
+          call.method == 'getUserMedia' ? cameraStream(1) : null;
+      final service = makeService(peerFactory: () async => _SharingPeer());
+      final server = FileServer(const AppLogger());
+      await service.startCameraSharing(server, camera: back);
+      final answer = await server.cameraOfferHandler!({
+        'type': 'offer',
+        'sdp': _cameraOfferSdp,
+        'viewerId': 'viewer-12345678901234',
+      });
+      final pendingStop = await server.cameraControlHandler!({
+        'viewerId': 'viewer-12345678901234',
+        'token': (answer['cameraControls'] as Map)['token'],
+        'action': 'stop',
+      });
+      await service.stop(server);
+      await service.startCameraSharing(server, camera: front);
+      await expectLater(pendingStop.afterResponse!(), throwsStateError);
+      expect(service.state.value.mode, ScreenShareMode.sharing);
+      expect(service.currentCamera?.id, front.id);
+    });
+
+    PermissionRequestCoordinator playbackPermission(PermissionStatus status) =>
+        PermissionRequestCoordinator(
+          readStatus: (_) async => status,
+          requestPermission: (_) async => status,
+        );
+
+    test('screen playback opt-out does not request audio permission', () async {
+      final original = handle;
+      bool? requestedAudio;
+      handle = (call) async {
+        if (call.method == 'getDisplayMedia') {
+          requestedAudio =
+              ((call.arguments as Map)['constraints'] as Map)['audio'] as bool;
+        }
+        return original(call);
+      };
+      final service = makeService(
+        systemAudioSupport: () =>
+            throw StateError('Audio support must not be queried'),
+        permissionCoordinator: PermissionRequestCoordinator(
+          readStatus: (_) => throw StateError('Permission must not be queried'),
+        ),
+      );
+      final server = FileServer(const AppLogger());
+      await service.startSharing(server, includeSystemAudio: false);
+      expect(requestedAudio, isFalse);
+      expect(service.screenSystemAudioStatus, ScreenSystemAudioStatus.off);
+      expect(server.screenMetadataHandler!()['audio'], isFalse);
+      await service.stop(server);
+    });
+
+    test(
+      'unsupported playback capture keeps video and reports its limit',
+      () async {
+        final service = makeService(
+          systemAudioSupport: () async => false,
+          permissionCoordinator: PermissionRequestCoordinator(
+            readStatus: (_) => throw StateError(
+              'Unsupported capture must not request permission',
+            ),
+          ),
+        );
+        final server = FileServer(const AppLogger());
+        await service.startSharing(server);
+        expect(
+          service.screenSystemAudioStatus,
+          ScreenSystemAudioStatus.unsupported,
+        );
+        expect(service.state.value.mode, ScreenShareMode.sharing);
+        expect(server.screenOfferHandler, isNotNull);
+        await service.stop(server);
+      },
+    );
+
+    test(
+      'denied playback permission keeps video without enabling recording',
+      () async {
+        final gates = <bool>[];
+        final service = makeService(
+          systemAudioSupport: () async => true,
+          permissionCoordinator: playbackPermission(PermissionStatus.denied),
+          systemAudioRecordingGate: (enabled) async => gates.add(enabled),
+        );
+        final server = FileServer(const AppLogger());
+        await service.startSharing(server);
+        expect(
+          service.screenSystemAudioStatus,
+          ScreenSystemAudioStatus.permissionDenied,
+        );
+        expect(service.state.value.mode, ScreenShareMode.sharing);
+        expect(gates, isEmpty);
+        expect(server.screenMetadataHandler!()['audio'], isFalse);
+        await service.stop(server);
+      },
+    );
+
+    test(
+      'playback sends only internal audio and an ended audio track preserves video',
+      () async {
+        final original = handle;
+        handle = (call) async {
+          if (call.method == 'getDisplayMedia') {
+            expect(
+              ((call.arguments as Map)['constraints'] as Map)['audio'],
+              isTrue,
+            );
+            return {
+              ...streamData,
+              'audioTracks': microphoneStream(10)['audioTracks'],
+            };
+          }
+          return original(call);
+        };
+        final microphoneGates = <bool>[];
+        final playbackGates = <bool>[];
+        final renderer = _Renderer();
+        final service = makeService(
+          local: renderer,
+          systemAudioSupport: () async => true,
+          permissionCoordinator: playbackPermission(PermissionStatus.granted),
+          audioRecordingGate: (enabled) async => microphoneGates.add(enabled),
+          systemAudioRecordingGate: (enabled) async =>
+              playbackGates.add(enabled),
+        );
+        final server = FileServer(const AppLogger());
+        await service.startSharing(server);
+        expect(service.screenSystemAudioStatus, ScreenSystemAudioStatus.active);
+        expect(microphoneGates, isNot(contains(true)));
+        expect(playbackGates, [true]);
+        expect(renderer.lastBoundTrackId, 'video');
+        expect(server.screenMetadataHandler!()['audio'], isTrue);
+        renderer.srcObject!.getAudioTracks().single.onEnded!();
+        await Future<void>.delayed(Duration.zero);
+        expect(playbackGates, [true, false]);
+        expect(
+          service.screenSystemAudioStatus,
+          ScreenSystemAudioStatus.unavailable,
+        );
+        expect(service.state.value.mode, ScreenShareMode.sharing);
+        expect(renderer.srcObject!.getVideoTracks(), hasLength(1));
+        expect(server.screenOfferHandler, isNotNull);
+        expect(server.screenMetadataHandler!()['audio'], isFalse);
+        await service.stop(server);
+        expect(service.screenSystemAudioStatus, ScreenSystemAudioStatus.off);
+      },
+    );
+
+    test(
+      'stop during playback permission never acquires a late capture',
+      () async {
+        final requested = Completer<void>();
+        final permission = Completer<PermissionStatus>();
+        final gates = <bool>[];
+        final service = makeService(
+          systemAudioSupport: () async => true,
+          permissionCoordinator: PermissionRequestCoordinator(
+            readStatus: (_) async => PermissionStatus.denied,
+            requestPermission: (_) {
+              requested.complete();
+              return permission.future;
+            },
+          ),
+          systemAudioRecordingGate: (enabled) async => gates.add(enabled),
+        );
+        final server = FileServer(const AppLogger());
+        final starting = service.startSharing(server);
+        await requested.future;
+        await service.stop(server);
+        permission.complete(PermissionStatus.granted);
+        await starting;
+        expect(calls, isNot(contains('getDisplayMedia')));
+        expect(gates, isEmpty);
+        expect(service.state.value.mode, ScreenShareMode.idle);
+        expect(service.screenSystemAudioStatus, ScreenSystemAudioStatus.off);
+      },
+    );
+
+    test(
+      'playback cleanup allows a later explicitly enabled camera microphone',
+      () async {
+        final original = handle;
+        handle = (call) async {
+          if (call.method == 'getDisplayMedia') {
+            return {
+              ...streamData,
+              'audioTracks': microphoneStream(10)['audioTracks'],
+            };
+          }
+          if (call.method == 'getUserMedia') {
+            final microphone =
+                ((call.arguments as Map)['constraints'] as Map)['audio'] ==
+                true;
+            return microphone ? microphoneStream(11) : cameraStream(1);
+          }
+          return original(call);
+        };
+        final gates = <String>[];
+        final service = makeService(
+          systemAudioSupport: () async => true,
+          permissionCoordinator: playbackPermission(PermissionStatus.granted),
+          audioRecordingGate: (enabled) async =>
+              gates.add('microphone-$enabled'),
+          systemAudioRecordingGate: (enabled) async =>
+              gates.add('playback-$enabled'),
+        );
+        final server = FileServer(const AppLogger());
+        await service.startSharing(server);
+        await service.stop(server);
+        await service.startCameraSharing(server, camera: back);
+        expect(service.screenSystemAudioStatus, ScreenSystemAudioStatus.off);
+        expect(service.cameraMicrophoneEnabled, isFalse);
+        await service.setCameraMicrophoneEnabled(true);
+        expect(service.cameraMicrophoneEnabled, isTrue);
+        expect(
+          gates.indexOf('playback-false'),
+          lessThan(gates.indexOf('microphone-true')),
+        );
+        await service.stop(server);
+      },
+    );
 
     test(
       'recording gate is off before negotiation and brackets microphone capture',
@@ -1523,6 +2734,70 @@ void main() {
         expect(stopped, contains('camera-audio-1'));
         expect(service.state.value.mode, ScreenShareMode.sharing);
         await service.stop(server);
+      },
+    );
+
+    test(
+      'torch changes refresh real sensor readback without resetting manual exposure',
+      () async {
+        handle = (call) async {
+          if (call.method == 'getUserMedia') return cameraStream(1);
+          if (call.method == 'mediaStreamTrackHasTorch') return true;
+          return null;
+        };
+        var readbacks = 0;
+        final service = makeService(
+          cameraControlsReader: (_) async => {
+            ...hardware(mode: 'manual', timeMs: 12.5, iso: 800, zoom: 2),
+            'observed': {
+              'frameNumber': ++readbacks,
+              'iso': 800,
+              'exposureTimeMs': 12.5,
+            },
+          },
+        );
+        final server = FileServer(const AppLogger());
+        await service.startCameraSharing(server, camera: back);
+        await service.setCameraTorchEnabled(true);
+        final controls = CameraCaptureControls.fromMap(
+          (server.cameraMetadataHandler!()['cameraControls'] as Map)['capture'],
+        );
+        expect(readbacks, 2);
+        expect(controls.observed['frameNumber'], 2);
+        expect(controls.manualExposure.mode, 'manual');
+        expect(controls.manualExposure.iso, 800);
+        expect(controls.zoom.value, 2);
+        expect(service.cameraTorchEnabled, isTrue);
+      },
+    );
+
+    test(
+      'a missing post-torch readback never reuses old sensor observations',
+      () async {
+        handle = (call) async {
+          if (call.method == 'getUserMedia') return cameraStream(1);
+          if (call.method == 'mediaStreamTrackHasTorch') return true;
+          return null;
+        };
+        var readbacks = 0;
+        final service = makeService(
+          cameraControlsReader: (_) async {
+            if (++readbacks > 1) throw StateError('sensor unavailable');
+            return {
+              ...hardware(zoom: 2),
+              'observed': {'frameNumber': 1},
+            };
+          },
+        );
+        final server = FileServer(const AppLogger());
+        await service.startCameraSharing(server, camera: back);
+        await service.setCameraTorchEnabled(true);
+        final controls = CameraCaptureControls.fromMap(
+          (server.cameraMetadataHandler!()['cameraControls'] as Map)['capture'],
+        );
+        expect(controls.zoom.value, 2);
+        expect(controls.observed, isEmpty);
+        expect(service.cameraTorchEnabled, isTrue);
       },
     );
 

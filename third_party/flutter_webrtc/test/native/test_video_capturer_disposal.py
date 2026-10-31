@@ -102,12 +102,14 @@ public class VideoCapturerDisposalTest {
   static class CameraEventsHandler { void waitForCameraClosed() {} }
   static class VideoCapturerInfoEx {
     int width, height, fps;
+    boolean isScreenCapture;
     String primaryTrackId;
     Capturer capturer;
     CameraEventsHandler cameraEventsHandler;
     VideoSource videoSource;
   }
   // PRODUCTION_METHOD
+  void stopScreenAudioCapture() {}
   // STARTUP_METHOD
   void checkTrackCreation(PeerConnectionFactory pcFactory, String trackId,
       VideoSource videoSource, Result result) {

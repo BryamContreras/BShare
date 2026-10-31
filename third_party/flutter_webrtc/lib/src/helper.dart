@@ -83,6 +83,15 @@ class Helper {
   static Future<void> setZoom(MediaStreamTrack videoTrack, double zoomLevel) =>
       CameraUtils.setZoom(videoTrack, zoomLevel);
 
+  /// Per-camera native capabilities and current state, with no image filtering.
+  static Future<Map<String, dynamic>> getCameraCaptureControls(
+          MediaStreamTrack track) =>
+      CameraUtils.getCameraCaptureControls(track);
+
+  static Future<Map<String, dynamic>> setCameraCaptureControls(
+          MediaStreamTrack track, Map<String, dynamic> settings) =>
+      CameraUtils.setCameraCaptureControls(track, settings);
+
   static Future<void> setFocusMode(
           MediaStreamTrack videoTrack, CameraFocusMode focusMode) =>
       CameraUtils.setFocusMode(videoTrack, focusMode);
@@ -170,6 +179,13 @@ class Helper {
       'setAudioRecordingEnabled',
       <String, dynamic>{'enabled': enabled},
     );
+  }
+
+  /// Sends device playback through Android's virtual ADM, without its microphone.
+  static Future<void> setAndroidScreenAudioRecording(bool enabled) async {
+    if (kIsWeb || !WebRTC.platformIsAndroid) return;
+    await WebRTC.invokeMethod('setScreenAudioRecordingEnabled',
+        <String, dynamic>{'enabled': enabled});
   }
 
   /// Set the audio configuration to for Android.

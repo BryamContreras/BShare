@@ -45,7 +45,9 @@ jobs:
           sudo apt-get install --no-install-recommends -y \
             clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
             libstdc++-12-dev libasound2-dev libpulse-dev libgbm-dev libdrm-dev \
-            libgl1-mesa-dev libegl1-mesa-dev dpkg-dev rpm patchelf desktop-file-utils
+            libgl1-mesa-dev libegl1-mesa-dev dpkg-dev rpm patchelf desktop-file-utils \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgdk-pixbuf-2.0-dev \
+            gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav ffmpeg
 
       - name: Set up Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
@@ -65,6 +67,13 @@ jobs:
           if [[ -n "$BUILD_NUMBER" ]]; then options+=(--build-number "$BUILD_NUMBER"); fi
           flutter build linux --release --no-pub "${options[@]}"
 
+      - name: Verify native Linux camera and media backends
+        run: |
+          python3 test/native/test_linux_virtual_camera.py
+          python3 test/native/test_linux_camera_media_writer.py
+          python3 test/native/test_linux_camera_media_controller.py
+          python3 -m unittest discover -s tool -p 'test_linux_virtual_camera_setup.py'
+
       - name: Package DEB and RPM from the same bundle
         shell: bash
         run: |
@@ -75,14 +84,24 @@ jobs:
 
       - name: Install and check DEB in an isolated Ubuntu container
         run: |
-          docker run --rm --volume "$PWD/dist/linux:/packages:ro" ubuntu:22.04 bash -euc '
+          docker run --rm --volume "$PWD/dist/linux:/packages:ro" \
+            --volume "$PWD/packaging/linux/verify-media-runtime.sh:/verify-media-runtime.sh:ro" \
+            ubuntu:22.04 bash -euc '
             export DEBIAN_FRONTEND=noninteractive
             apt-get update
-            apt-get install --no-install-recommends -y /packages/*.deb desktop-file-utils
+            apt-get install --no-install-recommends -y /packages/*.deb desktop-file-utils gstreamer1.0-tools
             test -x /usr/bin/bshare
             test -x /opt/bshare/bshare
+            test -x /opt/bshare/tools/platform-tools/adb
+            test -x /opt/bshare/bshare-camera
+            test -s /opt/bshare/tools/platform-tools/NOTICE.txt
+            test -f /usr/lib/udev/rules.d/70-bshare-adb.rules
+            test -f /usr/lib/systemd/user/bshare-virtual-camera.service
+            /opt/bshare/bshare-camera --status
+            /opt/bshare/tools/platform-tools/adb version
+            timeout 30s sh /verify-media-runtime.sh
             desktop-file-validate /usr/share/applications/com.bshare.bshare.desktop
-            for binary in /opt/bshare/bshare /opt/bshare/lib/*.so; do
+            for binary in /opt/bshare/bshare /opt/bshare/bshare-camera /opt/bshare/lib/*.so; do
               dependencies="$(ldd "$binary")"
               printf "%s\n" "$dependencies"
               if printf "%s\n" "$dependencies" | grep -q "not found"; then exit 1; fi
@@ -94,12 +113,22 @@ jobs:
 
       - name: Install and check RPM in an isolated Fedora container
         run: |
-          docker run --rm --volume "$PWD/dist/linux:/packages:ro" fedora:44 bash -euc '
+          docker run --rm --volume "$PWD/dist/linux:/packages:ro" \
+            --volume "$PWD/packaging/linux/verify-media-runtime.sh:/verify-media-runtime.sh:ro" \
+            fedora:44 bash -euc '
             dnf install -y /packages/*.rpm desktop-file-utils
             test -x /usr/bin/bshare
             test -x /opt/bshare/bshare
+            test -x /opt/bshare/tools/platform-tools/adb
+            test -x /opt/bshare/bshare-camera
+            test -s /opt/bshare/tools/platform-tools/NOTICE.txt
+            test -f /usr/lib/udev/rules.d/70-bshare-adb.rules
+            test -f /usr/lib/systemd/user/bshare-virtual-camera.service
+            /opt/bshare/bshare-camera --status
+            /opt/bshare/tools/platform-tools/adb version
+            timeout 30s sh /verify-media-runtime.sh
             desktop-file-validate /usr/share/applications/com.bshare.bshare.desktop
-            for binary in /opt/bshare/bshare /opt/bshare/lib/*.so; do
+            for binary in /opt/bshare/bshare /opt/bshare/bshare-camera /opt/bshare/lib/*.so; do
               dependencies="$(ldd "$binary")"
               printf "%s\n" "$dependencies"
               if printf "%s\n" "$dependencies" | grep -q "not found"; then exit 1; fi

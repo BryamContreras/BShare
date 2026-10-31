@@ -25,6 +25,7 @@ import 'package:bshare/src/infrastructure/services/android_screen_share_executio
 import 'package:bshare/src/infrastructure/services/android_camera_execution_service.dart';
 import 'package:bshare/src/infrastructure/services/camera_display_service.dart';
 import 'package:bshare/src/infrastructure/services/usb_camera_network_service.dart';
+import 'package:bshare/src/infrastructure/services/usb_adb_transport_service.dart';
 import 'package:bshare/src/infrastructure/services/android_share_service.dart';
 import 'package:bshare/src/infrastructure/services/direct_network_service.dart';
 import 'package:bshare/src/infrastructure/services/file_server.dart';
@@ -722,6 +723,13 @@ final cameraDevicesProvider = FutureProvider<List<CameraDevice>>(
 
 final usbCameraNetworkServiceProvider = Provider(
   (ref) => UsbCameraNetworkService(),
+);
+final usbAdbTransportServiceProvider = Provider(
+  (ref) => UsbAdbTransportService(),
+);
+final usbAdbDevicesProvider = FutureProvider<List<UsbAdbDevice>>(
+  (ref) => ref.read(usbAdbTransportServiceProvider).listDevices(),
+  retry: (retryCount, error) => null,
 );
 final usbCameraNetworkProvider = FutureProvider<UsbCameraNetworkSnapshot>(
   (ref) => ref.read(usbCameraNetworkServiceProvider).snapshot(),

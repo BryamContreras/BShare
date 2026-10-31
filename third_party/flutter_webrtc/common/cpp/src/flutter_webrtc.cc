@@ -1,5 +1,6 @@
 #include "flutter_webrtc.h"
 #include "flutter_data_channel.h"
+#include "desktop_media_manager.h"
 
 #include "flutter_webrtc/flutter_web_r_t_c_plugin.h"
 
@@ -496,6 +497,36 @@ void FlutterWebRTC::HandleMethodCall(
         GetValue<EncodableMap>(*method_call.arguments());
     int64_t texture_id = findLongInt(params, "textureId");
     VideoRendererDispose(texture_id, std::move(result));
+  } else if (method_call.method_name().compare("videoRendererSetVirtualCamera") == 0) {
+    if (!method_call.arguments()) {
+      result->Error("Bad Arguments", "Null renderer arguments received");
+      return;
+    }
+    const EncodableMap params = GetValue<EncodableMap>(*method_call.arguments());
+    VideoRendererSetVirtualCamera(findLongInt(params, "textureId"),
+                                  findBoolean(params, "enabled"),
+                                  std::move(result));
+  } else if (method_call.method_name().compare("videoRendererSetFrameOutputEnabled") == 0) {
+    if (!method_call.arguments()) {
+      result->Error("Bad Arguments", "Null renderer arguments received");
+      return;
+    }
+    const EncodableMap params = GetValue<EncodableMap>(*method_call.arguments());
+    VideoRendererSetFrameOutputEnabled(findLongInt(params, "textureId"),
+                                       findBoolean(params, "enabled"), std::move(result));
+  } else if (method_call.method_name().compare("desktopMediaGetDirectories") == 0) {
+    desktop_media_->GetDirectories(std::move(result));
+  } else if (method_call.method_name().compare("desktopMediaTakePhoto") == 0 ||
+             method_call.method_name().compare("desktopMediaStartRecording") == 0 ||
+             method_call.method_name().compare("desktopMediaStopRecording") == 0) {
+    if (!method_call.arguments()) {
+      result->Error("Bad Arguments", "Null desktop media arguments received");
+      return;
+    }
+    const EncodableMap params = GetValue<EncodableMap>(*method_call.arguments());
+    if (method_call.method_name() == "desktopMediaTakePhoto") desktop_media_->TakePhoto(params, std::move(result));
+    else if (method_call.method_name() == "desktopMediaStartRecording") desktop_media_->StartRecording(params, std::move(result));
+    else desktop_media_->StopRecording(params, std::move(result));
   } else if (method_call.method_name().compare("videoRendererSetSrcObject") ==
              0) {
     if (!method_call.arguments()) {

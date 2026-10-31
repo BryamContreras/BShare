@@ -105,6 +105,7 @@ class _Screen extends ScreenShareService {
   final profiles = <ScreenCaptureSettings>[];
   List<String>? localIps;
   List<String>? remoteSubnets;
+  bool directUsb = false;
 
   @override
   VideoShareSource get source => testSource;
@@ -124,6 +125,7 @@ class _Screen extends ScreenShareService {
     ScreenCaptureSettings settings = const ScreenCaptureSettings(),
     List<String>? allowedLocalIps,
     List<String>? allowedRemoteSubnets,
+    bool usbOnly = false,
   }) async {
     starts++;
     testSource = VideoShareSource.camera;
@@ -131,6 +133,7 @@ class _Screen extends ScreenShareService {
     profiles.add(settings);
     localIps = allowedLocalIps;
     remoteSubnets = allowedRemoteSubnets;
+    directUsb = usbOnly;
     if (!entered.isCompleted) entered.complete();
     await gate?.future;
     state.value = const ScreenShareState(mode: ScreenShareMode.sharing);
@@ -438,23 +441,26 @@ void main() {
   );
 
   test(
-    'USB with no wired link fails before receiver or Wi-Fi fallback starts',
+    'USB starts on loopback without a tethering interface or network lookup',
     () async {
       final controller = container.read(cameraSessionProvider.notifier);
-      await expectLater(
-        controller.start(connection: CameraConnectionMode.usb, camera: _rear),
-        throwsStateError,
+      await controller.start(
+        connection: CameraConnectionMode.usb,
+        camera: _rear,
       );
-      expect(container.read(cameraSessionProvider).error, 'usbUnavailable');
-      expect(server.starts, 0);
-      expect(screen.starts, 0);
+      expect(container.read(cameraSessionProvider).error, isNull);
+      expect(server.starts, 1);
+      expect(screen.starts, 1);
+      expect(screen.directUsb, isTrue);
+      expect(container.read(receiveControllerProvider).value!.visible, isTrue);
       expect(networkReads, 0);
-      expect(display.active, isFalse);
+      expect(display.active, isTrue);
+      expect(discovery.advertisements, isEmpty);
     },
   );
 
   test(
-    'USB passes exact interface IP and prefix without advertising over Wi-Fi',
+    'USB ignores a tethering interface and still requires the direct relay',
     () async {
       usbAddresses = [
         {'ip': '192.168.42.129', 'prefixLength': 25, 'interfaceName': 'rndis0'},
@@ -464,8 +470,9 @@ void main() {
         connection: CameraConnectionMode.usb,
         camera: _rear,
       );
-      expect(screen.localIps, ['192.168.42.129']);
-      expect(screen.remoteSubnets, ['192.168.42.129/25']);
+      expect(screen.localIps, isNull);
+      expect(screen.remoteSubnets, isNull);
+      expect(screen.directUsb, isTrue);
       expect(networkReads, 0);
       expect(discovery.advertisements, isEmpty);
     },

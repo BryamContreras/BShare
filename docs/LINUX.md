@@ -16,6 +16,8 @@ sudo apt update
 sudo apt install -y \
   git curl unzip xz-utils zip \
   clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev \
+  libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgdk-pixbuf-2.0-dev \
+  gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
   network-manager wpasupplicant dnsmasq-base polkitd iw
 ```
 
@@ -155,3 +157,73 @@ See [RELEASE.md](RELEASE.md) for required packaging tools and direct release dow
 
 WSL2 is not enough for hotspot testing because it usually exposes only a
 virtual Ethernet interface, not the physical Wi-Fi adapter.
+
+## Camera, screen and USB viewing
+
+Wi-Fi and Ethernet share the normal LAN flow. For an Android data cable, enable
+USB debugging, authorize the computer, select USB on the phone and start its
+camera/screen stream. Select the physical phone in the desktop USB list, using
+its BShare port (normally `53317`). USB tethering and an IP field are unnecessary.
+Installers include ADB; source builds can use an installed Android Platform Tools
+client or `BSHARE_ADB`. Linux may need the distribution/vendor's normal udev
+rules for non-root USB access. BShare does not change debugging authorization or
+take over wireless/emulator transports. See [USB_TRANSPORT.md](USB_TRANSPORT.md).
+
+The native screen fullscreen control expands the window and restores it with
+Esc while the stream stays connected. Controls/cursor hide after three seconds
+and return on movement. Camera adjustments remain in the separate right-hand
+menu and use the phone's supported capabilities, including native zoom, white
+balance, EV and manual shutter/ISO when advertised.
+
+## Photos and recordings on this computer
+
+The camera viewer's left panel starts with Preview. Take photo sits above the
+photo folder, and Record/Stop video above the video folder. JPEG photos and
+H.264/AAC MP4 files save locally in the selected destinations, initially the OS
+Pictures/BShare and Videos/BShare directories. Localized/redirected XDG folders
+are respected, choices persist, and directories are created when saving.
+
+Turning preview off skips local drawing while recording and virtual-camera
+publishing continue. The preview mirror and brief photo-success flash are absent
+from saved media. A compact Saved footer remains outside the menu scroll and
+dismisses ten seconds after each new file; its animation and the flash respect
+reduced-motion settings. Files contain the received stream at its negotiated
+quality, not a separate full-resolution phone photo. MP4 audio comes from the
+received phone audio, otherwise silence; BShare never opens the PC microphone.
+Disconnecting or replacing the source finalizes an active recording.
+
+The Linux writer uses GStreamer/GdkPixbuf. H.264 needs `openh264enc`; AAC uses the
+first available `voaacenc`, `fdkaacenc`, or `avenc_aac`. Debian/Ubuntu runtime
+plugins come from `gstreamer1.0-plugins-good` and `gstreamer1.0-plugins-bad`;
+`gstreamer1.0-libav` provides the libav AAC alternative. Fedora packages require
+the real `openh264` codec, its GStreamer plugin and the appropriate good/bad-free
+runtime plugins; the `noopenh264` ABI stub cannot encode recordings. Dependencies
+must resolve from the distribution's configured repositories; BShare does not
+add a codec repository automatically.
+Missing encoders are reported instead of silently publishing an invalid MP4.
+FFmpeg/ffprobe are used to verify test outputs; the app's recording backend uses
+GStreamer rather than launching FFmpeg.
+
+## System virtual camera
+
+OBS uses **Video Capture Device (V4L2)** and the named **BShare Virtual Camera**.
+No separate BShare OBS plugin is required. The virtual device carries video only;
+configure OBS audio capture separately for the computer output playing phone
+audio. Its user daemon supplies a waiting image even while BShare is closed, as
+long as the configured graphical user session is active.
+
+DEB packages install v4l2loopback driver/tools; Fedora setup uses an available
+driver and does not enable additional repositories. Matching kernel headers and
+the distribution's module-signature approval remain required. Secure Boot is
+not bypassed. Setup keeps existing OBS/other virtual cameras intact, and older
+loopback versions cannot always add a BShare device beside an already-loaded
+unrelated camera. See [the Linux backend guide](../plugins/virtual-camera/linux/README.md)
+for driver versions, status and cleanup behavior.
+
+Native Linux media files were encoded and decoded under WSL, and IPC/ownership
+tests exercised a simulated V4L2 device. These checks do not prove a full Flutter
+Linux desktop session, a real v4l2loopback kernel device, or compatibility with
+every destination app. Physical USB streaming and preview-independent local
+saving were checked on Windows with an S22. The exact artifacts and remaining
+limits are in [the desktop media review](performance/desktop-camera-media-review.json)
+and [the USB review](performance/windows-android-usb-review.json).

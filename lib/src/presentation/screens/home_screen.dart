@@ -226,8 +226,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         onTap: () => context.go('/screen'),
                       ),
                       ActionCard(
-                        title: l10n.cameraText('deviceCamera'),
-                        subtitle: l10n.cameraText('deviceCameraHelp'),
+                        title: l10n.cameraText(
+                          mobile ? 'deviceCamera' : 'viewDeviceCamera',
+                        ),
+                        subtitle: l10n.cameraText(
+                          mobile ? 'deviceCameraHelp' : 'viewDeviceCameraHelp',
+                        ),
                         icon: Icons.videocam_rounded,
                         compactTypography: mobile,
                         onTap: () => context.go('/camera'),

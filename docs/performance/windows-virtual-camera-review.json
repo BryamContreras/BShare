@@ -1,0 +1,198 @@
+{
+  "recordedAtUtc": "2026-10-30T19:51:17.227840+00:00",
+  "scope": "Windows 11 x64 system camera, desktop receiver and physical S22 over Wi-Fi to PC Ethernet",
+  "virtualCameraVersion": "0.1.0",
+  "device": {
+    "supported": true,
+    "registered": true,
+    "sourceRegistered": true,
+    "deviceName": "BShare (Windows Virtual Camera)"
+  },
+  "sameConsumerPhoneTransition": {
+    "baseline": {
+      "frames": 14,
+      "sampleMean": 69.349,
+      "firstFrameMean": 69.349,
+      "lastFrameMean": 69.349,
+      "changedFramePairs": 0,
+      "firstFrameHash": "6ce2807de0bb25ea",
+      "lastFrameHash": "6ce2807de0bb25ea",
+      "sampleHash": "488bd3d76ee82e19"
+    },
+    "mediaSaved": false,
+    "emulatorUsed": false,
+    "receiverReady": {
+      "ready": true,
+      "mode": "watching",
+      "awaitingVideo": false,
+      "frameWidth": 320.0,
+      "frameHeight": 180.0,
+      "rotation": 270,
+      "firstFrameRendered": true,
+      "decodedFrames": 0,
+      "negotiatedCodec": "H264",
+      "viewerClosed": false,
+      "controls": {
+        "available": true,
+        "busy": false,
+        "microphoneEnabled": false,
+        "torchEnabled": false,
+        "torchAvailable": false,
+        "canSwitchCamera": true
+      },
+      "stopping": false,
+      "cleanupComplete": false
+    },
+    "sameConsumerTransition": {
+      "frames": 299,
+      "sampleMean": 70.1477,
+      "firstFrameMean": 71.2778,
+      "lastFrameMean": 69.349,
+      "changedFramePairs": 40,
+      "firstFrameHash": "a0de133f85e5273d",
+      "lastFrameHash": "6ce2807de0bb25ea",
+      "sampleHash": "bdc194eb3f0214bc"
+    },
+    "phoneStopAcknowledged": true,
+    "receiverExitCode": 0,
+    "afterReceiverExit": {
+      "frames": 14,
+      "sampleMean": 69.349,
+      "firstFrameMean": 69.349,
+      "lastFrameMean": 69.349,
+      "changedFramePairs": 0,
+      "firstFrameHash": "6ce2807de0bb25ea",
+      "lastFrameHash": "6ce2807de0bb25ea",
+      "sampleHash": "488bd3d76ee82e19"
+    },
+    "persistentDevice": {
+      "supported": true,
+      "registered": true,
+      "sourceRegistered": true,
+      "deviceName": "BShare (Windows Virtual Camera)"
+    },
+    "passed": true
+  },
+  "normalMainEntrypointSmoke": {
+    "entrypoint": "lib/main.dart",
+    "windowCreated": true,
+    "normalExitCode": 0,
+    "passed": true
+  },
+  "finalInstalledDeviceIdleCapture": {
+    "frames": 14,
+    "sampleMean": 69.349,
+    "firstFrameMean": 69.349,
+    "lastFrameMean": 69.349,
+    "changedFramePairs": 0,
+    "firstFrameHash": "6ce2807de0bb25ea",
+    "lastFrameHash": "6ce2807de0bb25ea",
+    "sampleHash": "488bd3d76ee82e19"
+  },
+  "directShowCompatibility": {
+    "scope": "Standalone DirectShow compatibility with the backend used by OBS Windows Video Capture Device",
+    "obsVersion": "32.2.2 x64",
+    "originalObsProcessPreserved": true,
+    "obsScenesOrConfigurationChanged": false,
+    "sourceDllSha256": "f2417a58c174983d3b48e860d926287f969726730e6ef93d0b779e28249aa958",
+    "enumeration": {
+      "api": "DirectShow ICreateDevEnum CLSID_VideoInputDeviceCategory",
+      "enumeratorCreated": true,
+      "enumerationHr": "0x00000000",
+      "bshareFound": true,
+      "bshareMatches": 1,
+      "otherDeviceNamesRetained": false,
+      "captureStarted": false
+    },
+    "capture": {
+      "api": "DirectShow",
+      "bshareFound": true,
+      "stage": "completed",
+      "hr": "0x00000000",
+      "captureStarted": true,
+      "durationSeconds": 5,
+      "sampleCount": 151,
+      "observedSamplesPerSecond": 30.2,
+      "declaredFps": 30.0,
+      "bytesDiscarded": 278323200,
+      "width": 1280,
+      "height": 720,
+      "pixelFormat": "YUY2",
+      "subtypeGuid": "{32595559-0000-0010-8000-00AA00389B71}",
+      "videoInfoFormat": true,
+      "passed": true,
+      "mediaFilesWritten": false
+    },
+    "probeProcessesRemaining": 0,
+    "phoneOrEmulatorUsed": false,
+    "actualObsSourceTested": false,
+    "passed": true
+  },
+  "checks": {
+    "flutterPassed": 517,
+    "platformSpecificSkipped": 4,
+    "dartAnalyze": "No issues found",
+    "nativeCtestPassed": 2,
+    "installerCompiled": true,
+    "installedNativeFilesMatchAppBundle": true
+  },
+  "artifacts": [
+    {
+      "path": "dist/windows/BShare-1.0.4+16-windows-x64-setup.exe",
+      "sha256": "5deaa8b0842dad5a6e785c4a2a2bf8cd877888c153d8985c828ab7962e6f02ee",
+      "bytes": 20033854
+    },
+    {
+      "path": "dist/virtual-camera/packages/bshare-virtual-camera-0.1.0-windows-x64-setup.exe",
+      "sha256": "a36083a124957895c21e3f90e82e8be5eddf84a6240e89351db3540a3ba5983c",
+      "bytes": 2156468
+    },
+    {
+      "path": "build/windows/x64/runner/Release/bshare-virtual-camera.dll",
+      "sha256": "f2417a58c174983d3b48e860d926287f969726730e6ef93d0b779e28249aa958",
+      "bytes": 104960
+    },
+    {
+      "path": "build/windows/x64/runner/Release/bshare-camera.exe",
+      "sha256": "19c6a39b76017602739e80aa87be95a14c2eba727da2b79351aa1f4e6e506135",
+      "bytes": 66048
+    },
+    {
+      "path": "build/windows/x64/runner/Release/flutter_webrtc_plugin.dll",
+      "sha256": "5660bd491a5816b47718e83726835f8de24baa17a7bdda2bde41e5b1f1ce460b",
+      "bytes": 530432
+    }
+  ],
+  "cleanup": {
+    "bshareForegroundServices": 0,
+    "bshareRecordingConfigurations": 0,
+    "mediaProjectionNull": true,
+    "cameraBroadcastInactive": true,
+    "ownedUiDumpsRemoved": true,
+    "bshareInstalledAndDataPreserved": true,
+    "passed": true,
+    "checkedAtUtc": "2026-10-30T19:41:16.491229+00:00",
+    "afterFinalSystemVirtualCameraTest": true,
+    "activeCameraClients": 0,
+    "cameraSignalingListenerClosed": true,
+    "listenerConnectionRefused": true,
+    "cameraStoppedFromDesktop": true
+  },
+  "mediaFilesSaved": false,
+  "emulatorUsed": false,
+  "limitations": [
+    "Device backend targets Windows 11 x64. No Windows 10, ARM64, Linux or macOS virtual camera backend is claimed.",
+    "Video output is 1280x720 at nominal30fps. This component does not create a virtual microphone.",
+    "Persistent registration was tested after receiver exit; no OS reboot or second-user session was performed.",
+    "OBS32.2.2 was kept open and unchanged. Its DirectShow backend was validated independently; no real OBS Video Capture Device source was added.",
+    "The live-phone MF transition used source DLL3038ef3f03f9d9d26a3e180e3c185218e5b511c80dc3aa1341f99d978bfd63b5 before the final rebuild of unchanged media-source implementation. The final exact installed DLL was validated through MF idle capture and DirectShow sample delivery.",
+    "Earlier diagnostic assertions incorrectly assumed a large brightness change and a live first sample. Their failures were excluded; final validation permits initial waiting frames, requires live frame changes and checks the exact final idle-frame hash.",
+    "An earlier diagnostic receiver used its safety exit because the owner had not closed its native window. The final driver closes the owned window and requires exit0."
+  ],
+  "resolvedDuringValidation": [
+    "Releasing the source activator must not shut down a media source retained by FrameServer; explicit ShutdownObject remains supported and tested.",
+    "Device detection uses the registered symbolic link, independent of display-name parentheses or localization.",
+    "A producer retries when its user device registration or previous receiver ownership was not ready at the first decoded frame."
+  ],
+  "passed": true
+}

@@ -14,6 +14,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -24,11 +25,19 @@ MAINTAINER = "BShare maintainers <maintainers@bshare.invalid>"
 DEB_DYNAMIC_DEPENDENCIES = [
     "libasound2", "libpulse0", "libgl1", "libegl1", "xdg-utils",
     "network-manager", "wpasupplicant", "dnsmasq-base", "polkitd | policykit-1",
+    "udev",
+    "v4l2loopback-dkms", "v4l2loopback-utils", "python3",
+    "gstreamer1.0-plugins-good", "gstreamer1.0-plugins-bad",
 ]
 RPM_DYNAMIC_DEPENDENCIES = [
     "libasound.so.2()(64bit)", "libpulse.so.0()(64bit)",
     "libGL.so.1()(64bit)", "libEGL.so.1()(64bit)", "/usr/bin/xdg-open",
     "NetworkManager", "wpa_supplicant", "dnsmasq", "polkit",
+    "systemd-udev",
+    "python3", "gstreamer1-plugins-good", "gstreamer1-plugins-bad-free",
+    # Fedora's noopenh264 satisfies the shared-library ABI with a stub. Require
+    # the real implementation from the distribution's normal codec repository.
+    "gstreamer1-plugin-openh264", "openh264",
 ]
 
 
@@ -73,7 +82,7 @@ def stage_bundle(bundle: Path, stage: Path) -> list[Path]:
     required = [
         "bshare", "data/icudtl.dat", "data/flutter_assets/AssetManifest.bin",
         "lib/libapp.so", "lib/libflutter_linux_gtk.so",
-        "lib/libflutter_webrtc_plugin.so", "lib/libwebrtc.so",
+        "lib/libflutter_webrtc_plugin.so", "lib/libwebrtc.so", "bshare-camera",
     ]
     for relative in required:
         if not (bundle / relative).is_file():
@@ -86,6 +95,9 @@ def stage_bundle(bundle: Path, stage: Path) -> list[Path]:
 
     app = stage / "opt/bshare"
     shutil.copytree(bundle, app, symlinks=False)
+    run([sys.executable, str(ROOT / "packaging/prepare_adb.py"),
+         "--platform", "linux", "--architecture", "x64",
+         "--destination", str(app / "tools/platform-tools"), "--verify-executable"])
     # The bundle's launcher metadata belongs in /usr/share in native packages.
     shutil.rmtree(app / "share", ignore_errors=True)
     assets = {
@@ -99,6 +111,18 @@ def stage_bundle(bundle: Path, stage: Path) -> list[Path]:
             stage / "usr/share/licenses/bshare/flutter_webrtc.LICENSE",
         ROOT / "third_party/flutter_webrtc/NOTICE":
             stage / "usr/share/licenses/bshare/flutter_webrtc.NOTICE",
+        ROOT / "packaging/linux/70-bshare-adb.rules":
+            stage / "usr/lib/udev/rules.d/70-bshare-adb.rules",
+        ROOT / "plugins/virtual-camera/linux/70-bshare-virtual-camera.rules":
+            stage / "usr/lib/udev/rules.d/70-bshare-virtual-camera.rules",
+        ROOT / "plugins/virtual-camera/linux/bshare-virtual-camera.service":
+            stage / "usr/lib/systemd/user/bshare-virtual-camera.service",
+        ROOT / "plugins/virtual-camera/linux/bshare-virtual-camera-setup.service":
+            stage / "usr/lib/systemd/system/bshare-virtual-camera-setup.service",
+        ROOT / "plugins/virtual-camera/linux/setup.py":
+            app / "virtual-camera/linux/setup.py",
+        ROOT / "plugins/virtual-camera/linux/README.md":
+            app / "virtual-camera/linux/README.md",
     }
     for source, destination in assets.items():
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -107,6 +131,7 @@ def stage_bundle(bundle: Path, stage: Path) -> list[Path]:
     for path in stage.rglob("*"):
         path.chmod(0o755 if path.is_dir() else 0o644)
     (app / "bshare").chmod(0o755)
+    (app / "bshare-camera").chmod(0o755)
     (stage / "usr/bin/bshare").chmod(0o755)
     files = elf_files(app)
     for path in files:
@@ -116,8 +141,9 @@ def stage_bundle(bundle: Path, stage: Path) -> list[Path]:
         if "Advanced Micro Devices X86-64" not in header:
             raise RuntimeError(f"Expected an x86_64 ELF: {path}")
         # Plugins copied by CMake can retain absolute build-machine RUNPATHs.
-        origin = "$ORIGIN/lib" if path == app / "bshare" else "$ORIGIN"
-        run(["patchelf", "--set-rpath", origin, str(path)])
+        if path != app / "tools/platform-tools/adb":
+            origin = "$ORIGIN/lib" if path == app / "bshare" else "$ORIGIN"
+            run(["patchelf", "--set-rpath", origin, str(path)])
         dependencies = run(["ldd", str(path)])
         if "not found" in dependencies:
             raise RuntimeError(f"Unresolved runtime library in {path}")
@@ -167,7 +193,7 @@ def make_deb(stage: Path, files: list[Path], work: Path, output: Path,
     }.items():
         template = template.replace(f"@{key}@", value)
     (control / "control").write_text(template)
-    for name in ["postinst", "postrm"]:
+    for name in ["postinst", "postrm", "prerm"]:
         shutil.copy2(ROOT / f"packaging/debian/{name}", control / name)
         (control / name).chmod(0o755)
     package = output / f"bshare_{app_version}-{build}_amd64.deb"
@@ -198,6 +224,7 @@ def make_rpm(stage: Path, work: Path, output: Path,
         "Summary: Share files, screens and device cameras on your local network\n"
         "License: MIT\nBuildArch: x86_64\n"
         f"Requires: {', '.join(RPM_DYNAMIC_DEPENDENCIES)}\n\n"
+        "Suggests: akmod-v4l2loopback, v4l2loopback\n\n"
         "%description\nBShare connects nearby devices directly over your local network.\n\n"
         "%prep\n%build\n%install\n"
         f"mkdir -p %{{buildroot}}\ncp -a '{stage}/.' %{{buildroot}}/\n\n"
@@ -205,6 +232,15 @@ def make_rpm(stage: Path, work: Path, output: Path,
         f"/usr/share/applications/{APP_ID}.desktop\n"
         f"/usr/share/icons/hicolor/512x512/apps/{APP_ID}.png\n"
         "%license /usr/share/licenses/bshare\n"
+        "/usr/lib/udev/rules.d/70-bshare-adb.rules\n"
+        "/usr/lib/udev/rules.d/70-bshare-virtual-camera.rules\n"
+        "/usr/lib/systemd/user/bshare-virtual-camera.service\n"
+        "/usr/lib/systemd/system/bshare-virtual-camera-setup.service\n"
+        "%post\nif command -v udevadm >/dev/null 2>&1; then udevadm control --reload-rules || :; fi\n"
+        "/usr/bin/python3 /opt/bshare/virtual-camera/linux/setup.py ensure || :\n"
+        "%preun\nif [ \"$1\" = 0 ]; then /usr/bin/python3 /opt/bshare/virtual-camera/linux/setup.py remove || :; fi\n"
+        "%postun\nif command -v udevadm >/dev/null 2>&1; then udevadm control --reload-rules || :; fi\n"
+        "if command -v systemctl >/dev/null 2>&1; then systemctl daemon-reload || :; fi\n"
     )
     run(["rpmbuild", "-bb", "--define", f"_topdir {top}", str(spec)])
     packages = list((top / "RPMS/x86_64").glob("*.rpm"))

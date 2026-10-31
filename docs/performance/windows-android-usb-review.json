@@ -1,0 +1,1350 @@
+{
+  "recordedAtUtc": "2026-10-30T23:25:12.838404+00:00",
+  "scope": "Physical Android 14 S22 Ultra USB debugging connection to Windows PC; app viewers, source capture and camera controls",
+  "emulatorUsed": false,
+  "mediaRecorded": false,
+  "credentialsRetained": false,
+  "phoneWifiDuringMedia": "disabled",
+  "tetheringUsed": false,
+  "deviceSelection": "ADB server explicit USB connection type, fixed transport ID; wireless and emulator entries excluded",
+  "checks": {
+    "flutterPassed": 599,
+    "flutterPlatformSkipped": 4,
+    "analyze": "No issues",
+    "nativeWindowsMediaRouting": "passed",
+    "nativePeerConfigurationIsolation": "passed",
+    "usbCoreDartTests": 13,
+    "usbViewerIntegrationTests": 6,
+    "fullscreenWidgetTests": 12,
+    "packagingPythonChecks": 14
+  },
+  "camera": {
+    "source": "camera",
+    "emulatorUsed": false,
+    "mediaSaved": false,
+    "dimensions": [
+      480.0,
+      320.0
+    ],
+    "summary": {
+      "video": {
+        "codec": "video/H264",
+        "width": 720,
+        "height": 480,
+        "receivedPackets": 1676.0,
+        "lostPackets": 0.0,
+        "framesDecoded": 213.0,
+        "framesDropped": 0.0,
+        "lastFramesPerSecond": 24.0,
+        "jitterMs": 7.0,
+        "jitterBufferDelayMs": 16.723,
+        "jitterBufferTargetDelayMs": 12.448,
+        "jitterBufferMinimumDelayMs": 12.448,
+        "totalDecodeTimeMsPerFrame": 0.141,
+        "totalProcessingDelayMsPerFrame": 16.864,
+        "totalAssemblyTimeMsPerFrame": 2.845
+      }
+    },
+    "selectedPath": {
+      "localCandidateType": "relay",
+      "remoteCandidateType": "relay",
+      "localAddress": "127.0.0.1",
+      "remoteAddress": "127.0.0.1",
+      "relayProtocol": "tcp",
+      "state": "succeeded"
+    },
+    "passed": true,
+    "exitCode": 0
+  },
+  "cameraControls": {
+    "emulatorUsed": false,
+    "mediaSaved": false,
+    "steps": [
+      {
+        "path": "/zoom",
+        "requested": {
+          "value": 1.5
+        },
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "trackId": "657f3fce-68db-48ce-afad-186accc69225",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.5,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "auto"
+          },
+          "whiteBalanceWarmth": {
+            "supported": true,
+            "min": -1.0,
+            "max": 1.0,
+            "step": 0.0,
+            "value": 0.0,
+            "native": true,
+            "mode": "auto",
+            "unit": "relative"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 41.62186,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 3200
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 21347,
+            "zoom": 1.5,
+            "zoomRatio": 1.5,
+            "exposure": 0.0,
+            "exposureTimeMs": 41.62186,
+            "iso": 11671,
+            "whiteBalance": "auto",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 1,
+            "colorCorrectionMode": 1,
+            "whiteBalanceGains": [
+              1.453125,
+              1.0,
+              1.0,
+              1.8662109375
+            ],
+            "colorCorrectionTransform": [
+              1.4609375,
+              -0.4140625,
+              -0.046875,
+              -0.1875,
+              1.3203125,
+              -0.1328125,
+              0.0703125,
+              -0.625,
+              1.5546875
+            ]
+          }
+        }
+      },
+      {
+        "path": "/white-balance-warmth",
+        "requested": {
+          "value": -0.4
+        },
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "trackId": "657f3fce-68db-48ce-afad-186accc69225",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.5,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "off"
+          },
+          "whiteBalanceWarmth": {
+            "supported": true,
+            "min": -1.0,
+            "max": 1.0,
+            "step": 0.0,
+            "value": -0.4000735411064249,
+            "native": true,
+            "mode": "manual",
+            "unit": "relative"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 41.62186,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 3200
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 21357,
+            "zoom": 1.5,
+            "zoomRatio": 1.5,
+            "exposure": 0.0,
+            "exposureTimeMs": 41.62186,
+            "iso": 11671,
+            "whiteBalance": "off",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 0,
+            "whiteBalanceWarmth": -0.4000735411064249,
+            "colorCorrectionMode": 0,
+            "whiteBalanceGains": [
+              1.265625,
+              1.0,
+              1.0,
+              2.14453125
+            ],
+            "colorCorrectionTransform": [
+              1.4609375,
+              -0.4140625,
+              -0.046875,
+              -0.1875,
+              1.3203125,
+              -0.1328125,
+              0.0703125,
+              -0.625,
+              1.5546875
+            ]
+          }
+        }
+      },
+      {
+        "path": "/white-balance-warmth",
+        "requested": {
+          "value": 0.4
+        },
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "trackId": "657f3fce-68db-48ce-afad-186accc69225",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.5,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "off"
+          },
+          "whiteBalanceWarmth": {
+            "supported": true,
+            "min": -1.0,
+            "max": 1.0,
+            "step": 0.0,
+            "value": 0.4000796846098909,
+            "native": true,
+            "mode": "manual",
+            "unit": "relative"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 41.62186,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 3200
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 21366,
+            "zoom": 1.5,
+            "zoomRatio": 1.5,
+            "exposure": 0.0,
+            "exposureTimeMs": 41.62186,
+            "iso": 11671,
+            "whiteBalance": "off",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 0,
+            "whiteBalanceWarmth": 0.4000796846098909,
+            "colorCorrectionMode": 0,
+            "whiteBalanceGains": [
+              1.669921875,
+              1.0,
+              1.0,
+              1.625
+            ],
+            "colorCorrectionTransform": [
+              1.4609375,
+              -0.4140625,
+              -0.046875,
+              -0.1875,
+              1.3203125,
+              -0.1328125,
+              0.0703125,
+              -0.625,
+              1.5546875
+            ]
+          }
+        }
+      },
+      {
+        "path": "/white-balance",
+        "requested": {
+          "value": "auto"
+        },
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "trackId": "657f3fce-68db-48ce-afad-186accc69225",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.5,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "auto"
+          },
+          "whiteBalanceWarmth": {
+            "supported": true,
+            "min": -1.0,
+            "max": 1.0,
+            "step": 0.0,
+            "value": 0.0,
+            "native": true,
+            "mode": "auto",
+            "unit": "relative"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 41.62186,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 3200
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 21375,
+            "zoom": 1.5,
+            "zoomRatio": 1.5,
+            "exposure": 0.0,
+            "exposureTimeMs": 41.62186,
+            "iso": 11671,
+            "whiteBalance": "auto",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 1,
+            "colorCorrectionMode": 1,
+            "whiteBalanceGains": [
+              1.47265625,
+              1.0,
+              1.0,
+              1.921875
+            ],
+            "colorCorrectionTransform": [
+              1.40625,
+              -0.3671875,
+              -0.0390625,
+              -0.15625,
+              1.28125,
+              -0.125,
+              0.0859375,
+              -0.5625,
+              1.4765625
+            ]
+          }
+        }
+      },
+      {
+        "path": "/microphone",
+        "requested": {
+          "enabled": true
+        },
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "trackId": "657f3fce-68db-48ce-afad-186accc69225",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.5,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "auto"
+          },
+          "whiteBalanceWarmth": {
+            "supported": true,
+            "min": -1.0,
+            "max": 1.0,
+            "step": 0.0,
+            "value": 0.0,
+            "native": true,
+            "mode": "auto",
+            "unit": "relative"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 41.62186,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 3200
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 21375,
+            "zoom": 1.5,
+            "zoomRatio": 1.5,
+            "exposure": 0.0,
+            "exposureTimeMs": 41.62186,
+            "iso": 11671,
+            "whiteBalance": "auto",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 1,
+            "colorCorrectionMode": 1,
+            "whiteBalanceGains": [
+              1.47265625,
+              1.0,
+              1.0,
+              1.921875
+            ],
+            "colorCorrectionTransform": [
+              1.40625,
+              -0.3671875,
+              -0.0390625,
+              -0.15625,
+              1.28125,
+              -0.125,
+              0.0859375,
+              -0.5625,
+              1.4765625
+            ]
+          }
+        }
+      }
+    ],
+    "passed": true,
+    "receivedAudio": [
+      {
+        "codec": "audio/opus",
+        "totalSamplesReceived": 48480,
+        "totalAudioEnergy": 0.0022432385577251025
+      }
+    ],
+    "cameraSwitchedTo": "1",
+    "finalDiagnostics": {
+      "tcpAccepted": 4,
+      "tcpRejected": 0,
+      "localInterfaceClients": 3,
+      "allocateRequests": 8,
+      "allocateSuccess": 2,
+      "authChallenges": 4,
+      "authFailures": 0,
+      "quotaFailures": 2,
+      "forbiddenPeers": 0,
+      "protocolErrors": 0,
+      "relayPackets": 971,
+      "relayBytes": 810274,
+      "activeClients": 2,
+      "activeAllocations": 2,
+      "desktopSelfListeners": 3
+    },
+    "restored": {
+      "cameraId": "0",
+      "zoom": 1,
+      "whiteBalance": "auto",
+      "microphone": false
+    },
+    "exitCode": 0,
+    "duckObserver": {
+      "completed": true,
+      "duckNotifications": 0,
+      "unduckNotifications": 0,
+      "maxCommunicationSessions": 0,
+      "selfTest": false,
+      "communicationSessionOptOut": false,
+      "calibration": "",
+      "mediaSaved": false,
+      "globalSettingsChanged": false,
+      "exitCode": 0
+    }
+  },
+  "screenNormalWindow": {
+    "source": "screen",
+    "emulatorUsed": false,
+    "mediaSaved": false,
+    "dimensions": [
+      1080.0,
+      2316.0
+    ],
+    "fullscreen": {
+      "passed": true,
+      "appLaunched": false,
+      "appClosed": false,
+      "phoneOperated": false,
+      "mediaSaved": false,
+      "pixelCapture": "in-memory top-right toolbar only",
+      "samples": [
+        {
+          "phase": "before-fullscreen",
+          "ready": true,
+          "mode": "watching",
+          "source": "screen",
+          "usb": true,
+          "framesDecoded": 19.0,
+          "frameWidth": 1080.0,
+          "frameHeight": 2316.0,
+          "viewerClosed": false
+        },
+        {
+          "phase": "fullscreen-visible",
+          "ready": true,
+          "mode": "watching",
+          "source": "screen",
+          "usb": true,
+          "framesDecoded": 19.0,
+          "frameWidth": 1080.0,
+          "frameHeight": 2316.0,
+          "viewerClosed": false
+        },
+        {
+          "phase": "fullscreen-after-idle",
+          "ready": true,
+          "mode": "watching",
+          "source": "screen",
+          "usb": true,
+          "framesDecoded": 259.0,
+          "frameWidth": 1080.0,
+          "frameHeight": 2316.0,
+          "viewerClosed": false
+        },
+        {
+          "phase": "after-escape",
+          "ready": true,
+          "mode": "watching",
+          "source": "screen",
+          "usb": true,
+          "framesDecoded": 259.0,
+          "frameWidth": 1080.0,
+          "frameHeight": 2316.0,
+          "viewerClosed": false
+        },
+        {
+          "phase": "after-escape",
+          "ready": true,
+          "mode": "watching",
+          "source": "screen",
+          "usb": true,
+          "framesDecoded": 259.0,
+          "frameWidth": 1080.0,
+          "frameHeight": 2316.0,
+          "viewerClosed": false
+        },
+        {
+          "phase": "after-escape",
+          "ready": true,
+          "mode": "watching",
+          "source": "screen",
+          "usb": true,
+          "framesDecoded": 319.0,
+          "frameWidth": 1080.0,
+          "frameHeight": 2316.0,
+          "viewerClosed": false
+        }
+      ],
+      "limitations": [],
+      "initialWindow": {
+        "bounds": [
+          10,
+          10,
+          1290,
+          730
+        ],
+        "clientBounds": [
+          18,
+          41,
+          1282,
+          722
+        ],
+        "nonClientInsets": [
+          8,
+          31,
+          8,
+          8
+        ],
+        "monitorBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "style": 349110272,
+        "caption": true,
+        "resizableBorder": true
+      },
+      "fullscreenButtonPoint": [
+        1202,
+        73
+      ],
+      "lastFullscreenWindow": {
+        "bounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "clientBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "nonClientInsets": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "monitorBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "style": 348782592,
+        "caption": true,
+        "resizableBorder": false
+      },
+      "fullscreenWindow": {
+        "bounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "clientBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "nonClientInsets": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "monitorBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "style": 348782592,
+        "caption": true,
+        "resizableBorder": false
+      },
+      "nativeFullscreenPassed": true,
+      "toolbarIdleSeconds": 3.654,
+      "toolbarPixels": {
+        "visible": 2560,
+        "afterIdle": 0,
+        "afterMouseMove": 2560
+      },
+      "cursorAfterIdle": {
+        "known": true,
+        "visible": false,
+        "hasCursor": false
+      },
+      "controlsHidePassed": true,
+      "controlsRestorePassed": true,
+      "cursorAfterMouseMove": {
+        "known": true,
+        "visible": true,
+        "hasCursor": true
+      },
+      "afterEscapeWindow": {
+        "bounds": [
+          10,
+          10,
+          1290,
+          730
+        ],
+        "clientBounds": [
+          18,
+          41,
+          1282,
+          722
+        ],
+        "nonClientInsets": [
+          8,
+          31,
+          8,
+          8
+        ],
+        "monitorBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "style": 349110272,
+        "caption": true,
+        "resizableBorder": true
+      },
+      "escapePassed": true,
+      "framesDuringFullscreen": 240.0,
+      "framesAfterEscape": 60.0,
+      "videoContinuityPassed": true,
+      "nativeFullscreenAndEscapePassed": true,
+      "cleanup": {
+        "windowRestored": true,
+        "topmostRestored": true,
+        "cursorRestored": true,
+        "foregroundRestored": false
+      }
+    },
+    "summary": {
+      "video": {
+        "codec": "video/H264",
+        "width": 1080,
+        "height": 2316,
+        "receivedPackets": 1283.0,
+        "lostPackets": 0.0,
+        "framesDecoded": 239.0,
+        "framesDropped": 0.0,
+        "lastFramesPerSecond": 60.0,
+        "jitterMs": 3.0,
+        "jitterBufferDelayMs": 13.113,
+        "jitterBufferTargetDelayMs": 12.934,
+        "jitterBufferMinimumDelayMs": 12.934,
+        "totalDecodeTimeMsPerFrame": 0.799,
+        "totalProcessingDelayMsPerFrame": 13.925,
+        "totalAssemblyTimeMsPerFrame": 2.0
+      },
+      "audio": {
+        "codec": "audio/opus",
+        "width": null,
+        "height": null,
+        "receivedPackets": 199.0,
+        "lostPackets": 0.0,
+        "framesDecoded": 0.0,
+        "framesDropped": 0.0,
+        "lastFramesPerSecond": null,
+        "jitterMs": 3.0,
+        "jitterBufferDelayMs": 37.9,
+        "jitterBufferTargetDelayMs": 40.0,
+        "jitterBufferMinimumDelayMs": 40.0
+      }
+    },
+    "selectedPath": {
+      "localCandidateType": "relay",
+      "remoteCandidateType": "relay",
+      "localAddress": "127.0.0.1",
+      "remoteAddress": "127.0.0.1",
+      "relayProtocol": "tcp",
+      "state": "succeeded"
+    },
+    "passed": true,
+    "exitCode": 0
+  },
+  "screenFromMaximizedWindow": {
+    "source": "screen",
+    "emulatorUsed": false,
+    "mediaSaved": false,
+    "dimensions": [
+      1080.0,
+      2316.0
+    ],
+    "fullscreen": {
+      "passed": true,
+      "appLaunched": false,
+      "appClosed": false,
+      "phoneOperated": false,
+      "mediaSaved": false,
+      "initialMaximizedRequested": true,
+      "pixelCapture": "in-memory top-right toolbar only",
+      "samples": [
+        {
+          "phase": "before-fullscreen",
+          "ready": true,
+          "mode": "watching",
+          "source": "screen",
+          "usb": true,
+          "framesDecoded": 21.0,
+          "frameWidth": 1080.0,
+          "frameHeight": 2316.0,
+          "viewerClosed": false
+        },
+        {
+          "phase": "fullscreen-visible",
+          "ready": true,
+          "mode": "watching",
+          "source": "screen",
+          "usb": true,
+          "framesDecoded": 21.0,
+          "frameWidth": 1080.0,
+          "frameHeight": 2316.0,
+          "viewerClosed": false
+        },
+        {
+          "phase": "fullscreen-after-idle",
+          "ready": true,
+          "mode": "watching",
+          "source": "screen",
+          "usb": true,
+          "framesDecoded": 260.0,
+          "frameWidth": 1080.0,
+          "frameHeight": 2316.0,
+          "viewerClosed": false
+        },
+        {
+          "phase": "after-escape",
+          "ready": true,
+          "mode": "watching",
+          "source": "screen",
+          "usb": true,
+          "framesDecoded": 320.0,
+          "frameWidth": 1080.0,
+          "frameHeight": 2316.0,
+          "viewerClosed": false
+        }
+      ],
+      "limitations": [],
+      "initialWindow": {
+        "bounds": [
+          10,
+          10,
+          1290,
+          730
+        ],
+        "clientBounds": [
+          18,
+          41,
+          1282,
+          722
+        ],
+        "nonClientInsets": [
+          8,
+          31,
+          8,
+          8
+        ],
+        "monitorBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "style": 349110272,
+        "caption": true,
+        "resizableBorder": true
+      },
+      "entryWindow": {
+        "bounds": [
+          -8,
+          -8,
+          1928,
+          1040
+        ],
+        "clientBounds": [
+          0,
+          23,
+          1920,
+          1032
+        ],
+        "nonClientInsets": [
+          8,
+          31,
+          8,
+          8
+        ],
+        "monitorBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "style": 365887488,
+        "caption": true,
+        "resizableBorder": true
+      },
+      "entryMaximized": true,
+      "fullscreenButtonPoint": [
+        1840,
+        55
+      ],
+      "lastFullscreenWindow": {
+        "bounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "clientBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "nonClientInsets": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "monitorBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "style": 365559808,
+        "caption": true,
+        "resizableBorder": false
+      },
+      "fullscreenWindow": {
+        "bounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "clientBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "nonClientInsets": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "monitorBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "style": 365559808,
+        "caption": true,
+        "resizableBorder": false
+      },
+      "nativeFullscreenPassed": true,
+      "toolbarIdleSeconds": 3.663,
+      "toolbarPixels": {
+        "visible": 2560,
+        "afterIdle": 0,
+        "afterMouseMove": 2560
+      },
+      "cursorAfterIdle": {
+        "known": true,
+        "visible": false,
+        "hasCursor": false
+      },
+      "controlsHidePassed": true,
+      "controlsRestorePassed": true,
+      "cursorAfterMouseMove": {
+        "known": true,
+        "visible": true,
+        "hasCursor": true
+      },
+      "afterEscapeWindow": {
+        "bounds": [
+          -8,
+          -8,
+          1928,
+          1040
+        ],
+        "clientBounds": [
+          0,
+          23,
+          1920,
+          1032
+        ],
+        "nonClientInsets": [
+          8,
+          31,
+          8,
+          8
+        ],
+        "monitorBounds": [
+          0,
+          0,
+          1920,
+          1080
+        ],
+        "style": 365887488,
+        "caption": true,
+        "resizableBorder": true
+      },
+      "escapePassed": true,
+      "framesDuringFullscreen": 239.0,
+      "framesAfterEscape": 60.0,
+      "videoContinuityPassed": true,
+      "nativeFullscreenAndEscapePassed": true,
+      "cleanup": {
+        "windowRestored": true,
+        "topmostRestored": true,
+        "cursorRestored": true,
+        "foregroundRestored": false
+      }
+    },
+    "summary": {
+      "video": {
+        "codec": "video/H264",
+        "width": 1080,
+        "height": 2316,
+        "receivedPackets": 619.0,
+        "lostPackets": 0.0,
+        "framesDecoded": 120.0,
+        "framesDropped": 0.0,
+        "lastFramesPerSecond": 60.0,
+        "jitterMs": 3.0,
+        "jitterBufferDelayMs": 17.6,
+        "jitterBufferTargetDelayMs": 16.164,
+        "jitterBufferMinimumDelayMs": 16.164,
+        "totalDecodeTimeMsPerFrame": 0.792,
+        "totalProcessingDelayMsPerFrame": 18.408,
+        "totalAssemblyTimeMsPerFrame": 1.633
+      },
+      "audio": {
+        "codec": "audio/opus",
+        "width": null,
+        "height": null,
+        "receivedPackets": 101.0,
+        "lostPackets": 0.0,
+        "framesDecoded": 0.0,
+        "framesDropped": 0.0,
+        "lastFramesPerSecond": null,
+        "jitterMs": 4.0,
+        "jitterBufferDelayMs": 63.5,
+        "jitterBufferTargetDelayMs": 40.0,
+        "jitterBufferMinimumDelayMs": 40.0
+      }
+    },
+    "selectedPath": {
+      "localCandidateType": "relay",
+      "remoteCandidateType": "relay",
+      "localAddress": "127.0.0.1",
+      "remoteAddress": "127.0.0.1",
+      "relayProtocol": "tcp",
+      "state": "succeeded"
+    },
+    "passed": true,
+    "exitCode": 0
+  },
+  "screenAudio": {
+    "codec": "audio/opus",
+    "samplesReceived": 352320,
+    "energy": 0.4398514011051196,
+    "rawPcmRetained": false,
+    "source": "Owned synthetic 440Hz/880Hz/silence player with no microphone permission"
+  },
+  "earlierIssuesResolved": [
+    "ADB CLI rejected localhost source syntax; fixed-transport smart socket requests now create explicitly local listeners.",
+    "Windows cannot bind an Ethernet-sourced TCP socket to loopback; owned self-address listeners feed the same authenticated local relay.",
+    "New peer configurations now start fresh so switching from USB to LAN cannot retain TURN credentials or relay-only policy.",
+    "The fullscreen plugin retained non-client pixels from maximized entry; Windows title-bar style is now owned and restored by the viewer."
+  ],
+  "artifacts": {
+    "build/windows/x64/runner/Release/BShare.exe": {
+      "bytes": 210944,
+      "sha256": "98acc9f7b6a6ec5b160c95dd9aafb657720e2d8e4fd414d5f2b934cabd57a329"
+    },
+    "build/windows/x64/runner/Release/data/app.so": {
+      "bytes": 9175944,
+      "sha256": "78b48ff300aa73dd10155257f30ba2263f7ed9500d00ffbb8a479f5da0f10d4a"
+    },
+    "build/windows/x64/runner/Release/flutter_webrtc_plugin.dll": {
+      "bytes": 542720,
+      "sha256": "28c58a73333889bde7271644538e28074bee0aa03fb12ff06ce5bcc47d014ff1"
+    },
+    "build/windows/x64/runner/Release/window_manager_plugin.dll": {
+      "bytes": 130560,
+      "sha256": "de1255699dbbb5e2632f6869dc00462f8e98fe4027e8aaee86418120a4f564de"
+    },
+    "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk": {
+      "bytes": 41152335,
+      "sha256": "031a7a3b8b87909ce360d1244ea020764ee35f8acfe49a4f71cde721fcf41c48"
+    },
+    "dist/windows/BShare-1.0.4+16-windows-x64-setup.exe": {
+      "bytes": 23344910,
+      "sha256": "754ccbea96ea180874c2744f97200dbc2d5f5b7039fa96fc0912e4da3e6c7899"
+    }
+  },
+  "cleanup": {
+    "captureStopped": true,
+    "wifiBeforeTests": "enabled",
+    "wifiAfterTests": "Wifi is enabled",
+    "wifiRestored": true,
+    "usbConfiguration": "mtp,conn_gadget,adb",
+    "tetheringDisabled": true,
+    "physicalDeviceForwardsRemaining": 0,
+    "physicalDeviceReverseMappingsRemaining": 0,
+    "preexistingEmulatorForwardsPreserved": true,
+    "emulatorCommandsIssued": false,
+    "syntheticPlayerRemoved": true,
+    "phoneVersionCode": 2016,
+    "phoneVersionName": "1.0.4",
+    "phoneDataPreserved": "Updated with install -r; no BShare data clear or uninstall",
+    "obsOriginalPid": 5900,
+    "obsScenesOrSettingsChanged": false,
+    "normalEntrypoint": "lib/main.dart",
+    "normalPcAppReopened": true
+  },
+  "limits": [
+    "Physical hardware validation covers this Windows PC and S22; Linux/macOS packaging and generic transport paths are implemented but their native USB/signing behavior was not executed on this host.",
+    "Receiver timing counters describe only receiving/processing buffers; no end-to-end latency measurement or universal FPS guarantee is claimed.",
+    "Camera mirror changes only the PC view; the registered virtual-camera output is unchanged.",
+    "The toolbar check captures only the owned synthetic portrait stream letterbox in memory; no images are saved."
+  ],
+  "passed": true
+}

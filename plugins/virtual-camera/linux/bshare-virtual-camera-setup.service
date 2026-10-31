@@ -1,0 +1,12 @@
+[Unit]
+Description=Prepare the BShare virtual camera device
+After=systemd-modules-load.service systemd-udevd.service
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/bshare/virtual-camera/linux/setup.py ensure --no-user-start
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

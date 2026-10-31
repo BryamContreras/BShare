@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "reviewDate": "2026-10-30",
+  "scope": "Physical Samsung Galaxy S22 Ultra Android sender to Windows PC receivers over Wi-Fi and Ethernet. Production media services, synthetic playback, no retained media.",
+  "passed": true,
+  "devices": {
+    "sender": {
+      "model": "Samsung Galaxy S22 Ultra SM-S908U",
+      "os": "Android 14",
+      "apiLevel": 34,
+      "network": "Wi-Fi"
+    },
+    "receiver": {
+      "os": "Windows",
+      "osBuild": "10.0.26200.0",
+      "network": "Ethernet"
+    }
+  },
+  "artifacts": {
+    "android": {
+      "versionName": "1.0.4",
+      "versionCode": 16,
+      "abi": "arm64-v8a",
+      "sha256": "e2cd3f6f1d8840355cac0d3cd375bf9e2467644282b822c1d959c4c3489f34bd",
+      "installedByInPlaceUpdate": true,
+      "existingSigningCertificateMatched": true,
+      "userDataPreserved": true
+    },
+    "windowsDiagnosticReceiver": {
+      "buildMode": "debug",
+      "entrypoint": "Temporary receiver using production ScreenShareService and native WebRTC",
+      "executableSha256": "749c163ba39de07ee839f328320cc0406854b49152fef463ccddcc8eab108b96",
+      "kernelSha256": "18856c5cb2b5df760bd99617f06f7a39a7c144b473a169faa25808baa6012a1a",
+      "normalEntrypointRestoredAfterProbe": true
+    }
+  },
+  "connection": {
+    "signaling": "HTTP directly across the physical LAN",
+    "senderAddress": "<phone-lan-address-redacted>:53317",
+    "receiverIp": "<windows-lan-address-redacted>",
+    "selectedIceProtocol": "udp",
+    "selectedIceCandidateType": "host",
+    "adbForwardUsedForPhysicalMediaTests": false,
+    "relayUsed": false
+  },
+  "systemAudioCapture": {
+    "kind": "Android AudioPlaybackCapture",
+    "androidInputSource": 8,
+    "androidInputSourceName": "AUDIO_SOURCE_REMOTE_SUBMIX",
+    "recordingNotSilenced": true,
+    "physicalMicrophoneInputUsed": false,
+    "source": "Own temporary AudioTrack app, USAGE_MEDIA / ALLOW_CAPTURE_BY_ALL",
+    "sourceSignal": "48 kHz PCM16 mono; repeating 2 s 440 Hz, 2 s 880 Hz, 2 s silence",
+    "sourceAppRequestedMicrophonePermission": false,
+    "screenProjectionConsentGranted": true,
+    "androidRecordAudioPermissionGrantedThroughSystemDialog": true
+  },
+  "browserDecodedSignal": {
+    "passed": true,
+    "configuredMeasurementSeconds": 35,
+    "connectedStatsSamples": 136,
+    "connectedStatsSpanSeconds": 34.45,
+    "decodedVideoFrames": 462,
+    "videoBytesReceived": 1832317,
+    "width": 1080,
+    "height": 2316,
+    "audioPacketsReceived": 1719,
+    "decodedAudioSamples": 1657440,
+    "audioEnergy": 2.177947880918549,
+    "maximumDecodedPcmRms": 0.20985324318650356,
+    "tone440Observed": true,
+    "tone880Observed": true,
+    "silenceObserved": true,
+    "observedFftPeakHz": [
+      445.31,
+      878.91
+    ],
+    "acceptanceRejectsSilenceOnlyStreams": true,
+    "remoteViewerStopHttpStatus": 200,
+    "browserMediaClosed": true,
+    "temporaryProfileRemoved": true,
+    "browserOwnedProcessClosed": true,
+    "rawAudioRetained": false,
+    "framesRetained": false,
+    "foregroundGuard": "Receiver requires the owned synthetic source Activity to remain foreground; aborts when it changes."
+  },
+  "nativeWindowsScreenAndAudio": {
+    "passed": true,
+    "durationSeconds": 22.54,
+    "advancingVideo": true,
+    "continuousVideo": true,
+    "renderedVideo": true,
+    "maximumFrameCount": 263,
+    "maximumMediaBytes": 1417931,
+    "observedFramesPerSecond": 13.16,
+    "selectedLanRoutePassed": true,
+    "selectedRoutes": [
+      {
+        "localIp": "<windows-lan-address-redacted>",
+        "remoteIp": "<phone-lan-address-redacted>",
+        "protocol": "udp",
+        "candidateType": "host"
+      }
+    ],
+    "audioRtpAdvancing": true,
+    "audioDecodedSamplesAdvancing": true,
+    "audioEnergyAdvancing": true,
+    "audioMaximumPackets": 999,
+    "audioMaximumBytes": 62140,
+    "audioMaximumDecodedSamples": 959040,
+    "audioMaximumEnergy": 1.1407285209406386,
+    "audioCodecs": [
+      "audio/opus"
+    ],
+    "mediaCleanupComplete": true,
+    "nativeCloseRequested": true,
+    "targetCleanupComplete": true,
+    "exitCode": 0,
+    "cleanupPassed": true,
+    "receivedVideo": {
+      "codec": "H264",
+      "width": 1080.0,
+      "height": 2316.0
+    }
+  },
+  "nativeWindowsCameraAfterScreenAudio": {
+    "passed": true,
+    "durationSeconds": 16.96,
+    "advancingVideo": true,
+    "continuousVideo": true,
+    "renderedVideo": true,
+    "maximumFrameCount": 245,
+    "maximumMediaBytes": 4531012,
+    "observedFramesPerSecond": 17.77,
+    "selectedLanRoutePassed": true,
+    "selectedRoutes": [
+      {
+        "localIp": "<windows-lan-address-redacted>",
+        "remoteIp": "<phone-lan-address-redacted>",
+        "protocol": "udp",
+        "candidateType": "host"
+      }
+    ],
+    "audioRtpAdvancing": false,
+    "audioDecodedSamplesAdvancing": false,
+    "audioEnergyAdvancing": false,
+    "audioMaximumPackets": 0,
+    "audioMaximumBytes": 0,
+    "audioMaximumDecodedSamples": 0,
+    "audioMaximumEnergy": 0,
+    "audioCodecs": [],
+    "mediaCleanupComplete": true,
+    "nativeCloseRequested": true,
+    "targetCleanupComplete": true,
+    "exitCode": 0,
+    "cleanupPassed": true,
+    "receivedVideo": {
+      "codec": "H264",
+      "width": 960.0,
+      "height": 540.0
+    }
+  },
+  "cameraUi": {
+    "previewHiddenOnInitialEntry": true,
+    "showAndHideControlsWorked": true,
+    "previewTogglePreservedSourceGenerationAndTrack": true,
+    "displayedAddressWhileHidden": "<phone-lan-address-redacted>:53317",
+    "rearToFrontSwitchWorked": true,
+    "previewRemainedHiddenAfterSwitch": true,
+    "cameraMicrophoneOffAfterSystemAudioSession": true,
+    "cameraMetadataAudio": false,
+    "nativeReceiverAudioPacketsWhileCameraMicrophoneOff": 0
+  },
+  "cleanup": {
+    "screenStopProjectionSettledToNullBeforeStartingCamera": true,
+    "immediateScreenStopDumpStillShowedProjectionWhileAsyncCleanupRan": true,
+    "finalMediaProjectionNull": true,
+    "finalActiveCameraClients": 0,
+    "finalActiveRecorders": 0,
+    "finalActiveRemoteSubmixRecorders": 0,
+    "finalBShareForegroundServices": 0,
+    "videoOnlySignalingListenerClosedAfterStop": true,
+    "ownedNativeWindowsProbeProcessesClosed": true,
+    "ownedBrowserReceiverClosed": true,
+    "temporarySourceAppStoppedAndUninstalledFromPhone": true,
+    "temporaryUiDumpRemovedFromPhone": true,
+    "bshareUpdatedAppAndUserDataRetained": true,
+    "earlierEmulatorTrialStopped": true,
+    "temporaryEmulatorAppsRemovedToRestorePriorState": true,
+    "ownedEmulatorForwardRemoved": true,
+    "unrelatedAdbForwardsPreserved": true
+  },
+  "earlierAttempts": [
+    {
+      "scope": "Virtual-device transport preflight before the physical phone became available",
+      "result": "inconclusive",
+      "finding": "ICE did not connect; no video or audio RTP arrived. It is not used as acceptance evidence. The trial was stopped and its temporary apps removed."
+    },
+    {
+      "scope": "Measurement safety guard",
+      "result": "aborted before receiving",
+      "finding": "The first guard check found the synthetic Activity not yet resumed; measurement did not proceed. Subsequent physical acceptance kept the synthetic source foreground throughout."
+    }
+  ],
+  "limitations": [
+    "This review validates this physical S22 Ultra and Windows Ethernet/Wi-Fi setup, not universal device support.",
+    "Windows native decoded audio counters and energy advanced; PCM spectral validation was performed in the browser receiver. No manual loudspeaker listening or audio/video synchronization-offset measurement is claimed.",
+    "The camera rear stream was received and rendered natively on Windows; the later front-camera switch was checked through phone UI and metadata only.",
+    "No raw audio, camera frames, screen images, SDP credentials, ADB identifiers, private keys or user filesystem paths are embedded in this report.",
+    "No iOS execution, desktop system-audio capture, DRM-protected playback, app capture-policy bypass or physical USB validation is claimed.",
+    "The temporary native receiver entrypoint was restored to the normal app after testing; release builds and automated test results are tracked separately."
+  ],
+  "evidenceDigests": {
+    "s22-internal-audio.json": "1a978680c3ee63dafcc14ed017836b095174ee6f79492a368d273fe8f8a75b09",
+    "s22-native-windows-screen-audio.json": "32ac7e52fd0cc3fd038275192c463aecf67878a8ebe5b2d968dc56fcd2c76adf",
+    "s22-native-windows-camera-after-audio.json": "e69b0b332ce20b17b82bd15e3cf750fecc76de1a400708c99cf45a4bb9ace361",
+    "s22-projection-final.txt": "2320fa603b46b041ea3a242c3701b9ba31aa9670af7fb8881d58ae736b3f4708",
+    "s22-services-final.txt": "d465953c823774b76a31a9042f9f4e0357bac76c6f488c1c0bf8e798a13cd407"
+  },
+  "privacyRedactions": {
+    "fields": [
+      "privateLanAddresses"
+    ],
+    "method": "Unnecessary physical device and local network identifiers were replaced by descriptive placeholders before publication. Measurements, ports, hardware models, dates, artifact hashes and protocol loopback addresses are unchanged."
+  }
+}

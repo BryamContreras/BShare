@@ -120,6 +120,7 @@ public class CameraTorchTest {
   private static final String TAG="camera-test";
   private final GetUserMediaImpl getUserMediaImpl;
   boolean isTorchOn;
+  final CaptureControlsDouble captureControls=new CaptureControlsDouble();
   CameraUtils(GetUserMediaImpl media){getUserMediaImpl=media;}
   // PRODUCTION_HAS_TORCH
   // PRODUCTION_SET_TORCH
@@ -127,6 +128,10 @@ public class CameraTorchTest {
   // PRODUCTION_REFLECT_EXCEPTION
   // PRODUCTION_ERROR
   // PRODUCTION_REFLECT
+ }
+ static class CaptureControlsDouble {
+  boolean hasState(VideoCapturerInfo info){return false;}
+  void setTorchOnCameraThread(String trackId,VideoCapturerInfo info,boolean torch,MethodChannel.Result result){throw new AssertionError("unexpected merged-control path in legacy torch fixture");}
  }
  static int scenarios;
  static void check(boolean condition,String message){if(!condition)throw new AssertionError(message);}

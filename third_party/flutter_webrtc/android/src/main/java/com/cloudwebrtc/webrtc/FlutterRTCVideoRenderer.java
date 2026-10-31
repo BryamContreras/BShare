@@ -28,6 +28,8 @@ public class FlutterRTCVideoRenderer implements EventChannel.StreamHandler {
     private String ownerTag;
 
     public void Dispose() {
+        if (disposed) return;
+        disposed = true;
         //destroy
         if (surfaceTextureRenderer != null) {
             surfaceTextureRenderer.release();
@@ -96,6 +98,12 @@ public class FlutterRTCVideoRenderer implements EventChannel.StreamHandler {
      * The {@code VideoTrack}, if any, rendered by this {@code FlutterRTCVideoRenderer}.
      */
     private VideoTrack videoTrack;
+    private boolean disposed;
+
+    public void setFrameOutputEnabled(boolean enabled) {
+        if (disposed) throw new IllegalStateException("Video renderer has been disposed");
+        surfaceTextureRenderer.setFrameOutputEnabled(enabled);
+    }
 
     EventChannel eventChannel;
     EventChannel.EventSink eventSink;

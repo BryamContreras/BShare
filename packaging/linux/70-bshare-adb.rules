@@ -1,0 +1,3 @@
+# Grant the active local desktop user access only to the Android ADB interface.
+# Android still requires USB debugging and approval of the computer's key.
+ACTION!="remove", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ENV{ID_USB_INTERFACES}=="*:ff4201:*", TAG+="uaccess"

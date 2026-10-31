@@ -200,6 +200,85 @@ The original Honor/Windows screenshots identify earlier HTTP signaling failures;
 this subsequently reproduced first-frame issue is separate evidence and does not
 establish the cause of those photographed errors.
 
+## Android playback audio and broadcast addresses — 2026-10-30
+
+Screen sharing can include the Android device's playback audio on Android 10 or
+newer. The option starts enabled and can be disabled before capture. Android
+requires `RECORD_AUDIO` permission and screen-capture consent for this API.
+BShare captures playback with `AudioPlaybackCaptureConfiguration` using the same
+`MediaProjection` as the screen. Its WebRTC recording device stays virtual, so
+this mode does not open the hardware microphone. Camera microphone sharing
+remains a separate, explicit control.
+
+Only audio that the producing app permits Android to capture is available.
+Games, music and video can use supported playback usages; protected content,
+calls or an app's restrictive capture policy can remain silent. A successfully
+started audio track cannot prove that every currently playing app is capturable.
+See [Android's playback capture documentation](https://developer.android.com/media/platform/av-capture).
+Unsupported versions, denied audio permission or a capture startup failure keep
+screen video available and show the corresponding audio status. An audio-only
+failure does not stop the screen session; stopping or replacing that session
+releases playback capture and its audio track.
+
+Screen broadcasts display a copyable IP and the actual bound HTTP listener
+port. Camera broadcasts show plain address text below the message that the
+camera is still being shared, without a copy action; showing the preview hides
+that address. Multiple eligible LAN addresses can appear. USB mode instead shows
+the phone's BShare port and connects by selecting the physical phone on the PC;
+no phone IP or tethering network is needed. The LAN address is the viewer's
+signaling endpoint, not a fixed media port. Camera broadcasts start with the local preview hidden, while
+camera capture, transmission and its controls remain active.
+
+Physical validation used an Android 14 Samsung S22 Ultra over Wi-Fi and the
+Windows PC over Ethernet on the same LAN. The source was a test app generating
+440 Hz, 880 Hz and silence in successive two-second segments, without microphone
+permission. No audio recordings or video frames were retained.
+
+| Receiver | Observed result |
+| --- | --- |
+| PC browser/WebAudio | Advancing video and 1,657,440 received audio samples; both tones and silence detected, with maximum PCM RMS 0.20985. |
+| Native Windows production media service | Continuous rendered H.264 video at 1080×2316; 263 decoded frames, 999 Opus packets and 959,040 decoded audio samples with increasing audio energy. |
+| Camera after stopping screen audio | Camera started with the preview hidden and the real IP/port visible; the native Windows receiver rendered 245 H.264 frames. With the camera microphone off, no audio RTP remained from screen playback capture. |
+
+Both receivers used the direct Ethernet/Wi-Fi LAN route, not an ADB media tunnel.
+Android reported the playback recording source as `REMOTE_SUBMIX`, rather than
+the hardware microphone. These brief checks establish real playback PCM and
+native media reception on this hardware; they are not audio quality, latency,
+A/V synchronization or universal application-compatibility benchmarks.
+The sanitized report is [s22-screen-audio-review.json](performance/s22-screen-audio-review.json).
+
+## Android to Windows over a USB data cable — 2026-10-30
+
+Camera and screen sharing support an authorized Android USB debugging connection
+without USB tethering. Select USB on the phone and computer, start sharing on
+the phone, and select it from the computer's physical USB device list. Android
+must authorize the computer; wireless ADB and emulators are excluded. Keep the
+default BShare port unless the phone uses a different listener port.
+
+Signaling and the phone's media cross the cable. Both peers require relay-only
+WebRTC and advertise only loopback relay candidates. The PC's internal TURN
+backend is reached through an ADB reverse on Android loopback. Desktop SDK
+sockets also use bounded self-address listeners owned by the same PC; those
+listeners reject nonlocal sources. They do not create a phone-to-PC LAN media
+fallback. USB-only broadcasts reject LAN access to their camera/screen metadata,
+negotiation and control routes; file transfers retain their own permissions.
+
+Physical checks used a Samsung S22 Ultra with Wi-Fi disabled and a native
+Windows receiver. Camera video, remote capture controls, camera switching,
+microphone audio and cleanup passed. Screen reception decoded H.264 at
+1080 by 2316 with 540 advancing frames over nine seconds, an observed final
+60 FPS and no dropped frames; Opus audio also arrived. The selected camera and
+screen paths used relay-to-relay candidates at `127.0.0.1` over TCP. These are
+observations on the tested hardware, rather than universal frame-rate or
+latency guarantees. No raw media was retained.
+
+See [windows-android-usb-review.json](performance/windows-android-usb-review.json)
+for the physical evidence and [USB transport details](USB_TRANSPORT.md) for
+protocol and ownership checks. Linux/macOS transport and packaging code do not
+establish physical USB coverage on those systems. In OBS on Windows, USB video
+can be supplied through BShare's video-only virtual camera. OBS requires no
+separate BShare plugin; the desktop receiver opens the USB phone.
+
 ## Physical Honor, S22 and Linux checks — 2026-10-24
 
 Both phones ran Android 14: an Honor WDY-LX3 with MagicOS 8 and a Samsung S22 Ultra

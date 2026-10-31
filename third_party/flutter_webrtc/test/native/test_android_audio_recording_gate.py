@@ -143,6 +143,7 @@ public class AndroidAudioRecordingGateTest {
   final Factory mFactory=new Factory(audioDeviceModule);
   final Object messenger=new Object();int sequence;
   // PRODUCTION_RECORDING_STATE
+  // PRODUCTION_RECORDING_SCREEN
   // PRODUCTION_RECORDING_LOCK
   // PRODUCTION_RECORDING_MANAGED
   // PRODUCTION_RECORDING_THREAD
@@ -188,6 +189,14 @@ public class AndroidAudioRecordingGateTest {
   PeerConnection rejoined=create(noPeers);rejoined.negotiate();check(noPeerAdm.hardwareActive&&noPeerAdm.readerRunning&&noPeers.audioRecordingEnabled,"new viewer restarts virtual reader and real ADC while ON intent persists");checks++;
   set(noPeers,false);close(noPeers,rejoined);set(noPeers,false);check(!noPeerAdm.readerRunning&&!noPeerAdm.hardwareActive&&noPeerAdm.stopRequests>=3,"full stop and no-peer disable release remaining device owners");checks++;
   check(adm.prewarmCalls==0&&adm.manualStartRequests==0&&noPeerAdm.prewarmCalls==0,"no prewarm buffer allocation or manual client-start ownership");checks++;
+  Gate playback=new Gate();JavaAudioDeviceModule playbackAdm=playback.audioDeviceModule;
+  playbackAdm.permission=false;set(playback,false);playback.screenAudioRecordingMode=true;
+  set(playback,true);PeerConnection playbackPeer=create(playback);playbackPeer.negotiate();
+  check(playbackAdm.readerRunning&&!playbackAdm.hardwareActive&&!playbackAdm.useAudioRecord&&playbackAdm.illegalInitAttempts==0,"playback sends through virtual reader without ever opening microphone");checks++;
+  set(playback,true);check(!playbackAdm.useAudioRecord&&!playbackAdm.hardwareActive,"repeated playback enable does not acquire microphone");checks++;
+  set(playback,false);playback.screenAudioRecordingMode=false;playbackAdm.permission=true;set(playback,true);
+  check(playbackAdm.hardwareActive&&playbackAdm.readerRunning,"camera microphone works after playback capture cleanup");checks++;
+  set(playback,false);close(playback,playbackPeer);
   System.out.println("Android audio recording gate: "+checks+" SDK144 virtual-device/callback/permission/buffer/rollback/cleanup scenarios passed.");
  }
 }
@@ -201,6 +210,7 @@ def main():
     java = HARNESS
     for marker, expression in [
         ('STATE', r'private boolean audioRecordingEnabled = [^;]+;'),
+        ('SCREEN', r'private boolean screenAudioRecordingMode = [^;]+;'),
         ('LOCK', r'private final Object audioRecordingStateLock = [^;]+;'),
         ('MANAGED', r'private boolean audioRecordingManaged = [^;]+;'),
         ('THREAD', r'private boolean audioRecordingThreadRunning = [^;]+;'),

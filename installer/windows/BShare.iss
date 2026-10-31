@@ -58,6 +58,8 @@ Name: "networkaccess"; Description: "{cm:PrivateNetworkAccess}"; GroupDescriptio
 [CustomMessages]
 english.NetworkOptions=Local network:
 spanish.NetworkOptions=Red local:
+english.VirtualCameraInstall=Install BShare Virtual Camera (Windows 11 x64, requires administrator approval)
+spanish.VirtualCameraInstall=Instalar BShare Virtual Camera (Windows 11 x64, requiere autorización de administrador)
 english.PrivateNetworkAccess=Allow connections on private networks (requires administrator approval)
 spanish.PrivateNetworkAccess=Permitir conexiones en redes privadas (requiere autorización de administrador)
 english.FirewallFailed=Windows did not confirm the firewall configuration. BShare was installed, but receiving files or video may remain blocked. Review Windows Defender Firewall and the network-setup.log file in the installation folder. Existing Block rules are preserved.
@@ -73,6 +75,7 @@ Name: "{autoprograms}\BShare"; Filename: "{app}\BShare.exe"; WorkingDir: "{app}"
 Name: "{autodesktop}\BShare"; Filename: "{app}\BShare.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
+Filename: "{app}\data\virtual-camera\bshare-virtual-camera-0.1.0-windows-x64-setup.exe"; Parameters: "/VERYSILENT /NORESTART"; Flags: shellexec waituntilterminated; Check: SupportsVirtualCamera
 Filename: "{app}\BShare.exe"; Description: "{cm:LaunchProgram,BShare}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
@@ -80,6 +83,13 @@ Type: files; Name: "{app}\network-setup.log"
 Type: files; Name: "{app}\bshare-firewall.json"
 
 [Code]
+function SupportsVirtualCamera: Boolean;
+var Version: TWindowsVersion;
+begin
+  GetWindowsVersionEx(Version);
+  Result := IsX64OS and (Version.Major >= 10) and (Version.Build >= 22000);
+end;
+
 function PowerShellLiteral(const Value: String): String;
 var
   Escaped: String;
@@ -115,11 +125,11 @@ begin
     '[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(''' +
     '{#FirewallScriptBase64}' + ''')))) -Mode ' + PowerShellLiteral(Mode) +
     ' -ProgramPath ' + PowerShellLiteral(ExpandConstant('{app}\BShare.exe'));
-  Parameters := '-NoProfile -ExecutionPolicy Bypass -Command "' + Command + '"';
+  Parameters := '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command "' + Command + '"';
   { Elevate only the explicit network setup operation, never the application. }
   Result := ShellExec('runas',
     ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
-    Parameters, '', SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode);
+    Parameters, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Result := Result and (ResultCode = 0);
   { Files are written by the installer with its own user permissions. The
     elevated helper only changes this executable's firewall rules. }

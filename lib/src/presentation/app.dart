@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' show AppExitResponse;
 
 import 'package:bshare/src/application/providers.dart';
+import 'package:bshare/src/application/virtual_camera_provider.dart';
 import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/domain/entities/receive_progress.dart';
 import 'package:bshare/src/domain/entities/selected_transfer_file.dart';
@@ -128,6 +130,7 @@ class _BShareAppState extends ConsumerState<BShareApp> {
   @override
   void initState() {
     super.initState();
+    if (Platform.isWindows) ref.read(virtualCameraServiceProvider);
     _router = _createRouter(widget.initialViewerDevice);
     _navigation = AppNavigation(_router);
     WidgetsBinding.instance.addPostFrameCallback((_) {

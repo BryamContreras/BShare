@@ -1,0 +1,3 @@
+# Access only to BShare's named camera. The native writer also verifies the
+# actual v4l2loopback driver and character-device major before configuring it.
+ACTION!="remove", SUBSYSTEM=="video4linux", ATTR{name}=="BShare Virtual Camera", SYMLINK+="bshare-video", TAG+="uaccess"

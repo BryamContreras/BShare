@@ -1,0 +1,404 @@
+{
+  "recordedAtUtc": "2026-10-30T21:56:05.028285+00:00",
+  "scope": "Physical S22 Ultra Android 14 over Wi-Fi to Windows PC on Ethernet; production camera UI and WebRTC backend",
+  "emulatorUsed": false,
+  "mediaSaved": false,
+  "credentialsRetained": false,
+  "globalWindowsAudioSettingsChanged": false,
+  "otherAudioSessionsModified": false,
+  "obsSceneOrSettingsChanged": false,
+  "automatedChecks": {
+    "flutterPassed": 544,
+    "flutterPlatformSkipped": 4,
+    "analyze": "No issues",
+    "nativeCameraJavaPassed": 31,
+    "nativeTorchJavaPassed": 12,
+    "hiddenScreenRendererJava": "passed",
+    "windowsMediaRoutingProductionCpp": "passed"
+  },
+  "normalEntrypoint": {
+    "entrypoint": "lib/main.dart",
+    "windowCreated": true,
+    "normalExitCode": 0,
+    "passed": true
+  },
+  "liveZoom": {
+    "actualMouseDrag": true,
+    "emulatorUsed": false,
+    "mediaSaved": false,
+    "samples": [
+      {
+        "held": true,
+        "zoom": 1.0,
+        "halZoom": 1.0,
+        "halFrame": 14039
+      },
+      {
+        "held": true,
+        "zoom": 1.0230000019073486,
+        "halZoom": 1.0230000019073486,
+        "halFrame": 16655
+      },
+      {
+        "held": true,
+        "zoom": 1.0230000019073486,
+        "halZoom": 1.0230000019073486,
+        "halFrame": 16655
+      },
+      {
+        "held": true,
+        "zoom": 1.4930000305175781,
+        "halZoom": 1.4930000305175781,
+        "halFrame": 16664
+      },
+      {
+        "held": true,
+        "zoom": 1.4930000305175781,
+        "halZoom": 1.4930000305175781,
+        "halFrame": 16664
+      },
+      {
+        "held": true,
+        "zoom": 1.4930000305175781,
+        "halZoom": 1.4930000305175781,
+        "halFrame": 16664
+      },
+      {
+        "held": true,
+        "zoom": 2.4800000190734863,
+        "halZoom": 2.4800000190734863,
+        "halFrame": 16675
+      },
+      {
+        "held": true,
+        "zoom": 2.4800000190734863,
+        "halZoom": 2.4800000190734863,
+        "halFrame": 16675
+      },
+      {
+        "held": true,
+        "zoom": 2.4800000190734863,
+        "halZoom": 2.4800000190734863,
+        "halFrame": 16675
+      },
+      {
+        "held": true,
+        "zoom": 2.4800000190734863,
+        "halZoom": 2.4800000190734863,
+        "halFrame": 16675
+      },
+      {
+        "held": true,
+        "zoom": 3.5139999389648438,
+        "halZoom": 3.5139999389648438,
+        "halFrame": 16694
+      },
+      {
+        "held": true,
+        "zoom": 3.5139999389648438,
+        "halZoom": 3.5139999389648438,
+        "halFrame": 16694
+      },
+      {
+        "held": true,
+        "zoom": 3.5139999389648438,
+        "halZoom": 3.5139999389648438,
+        "halFrame": 16694
+      },
+      {
+        "held": true,
+        "zoom": 3.5139999389648438,
+        "halZoom": 3.5139999389648438,
+        "halFrame": 16694
+      },
+      {
+        "held": true,
+        "zoom": 4.500999927520752,
+        "halZoom": 4.500999927520752,
+        "halFrame": 16714
+      },
+      {
+        "held": true,
+        "zoom": 4.500999927520752,
+        "halZoom": 4.500999927520752,
+        "halFrame": 16714
+      },
+      {
+        "held": false,
+        "zoom": 4.500999927520752,
+        "halZoom": 4.500999927520752,
+        "halFrame": 16714
+      }
+    ],
+    "passed": true,
+    "distinctHalZoomsWhileHeld": [
+      1.0,
+      1.02,
+      1.49,
+      2.48,
+      3.51,
+      4.5
+    ],
+    "finalExpectedFromPointer": 4.501000013947486,
+    "finalReported": 4.500999927520752,
+    "zoomRestored": true,
+    "receiverExitCode": 0,
+    "uiPanelImageRemoved": true,
+    "limitations": [
+      "Thumb stability on native ACKs is covered separately by widget tests."
+    ],
+    "recordedAtUtc": "2026-10-30T21:49:13.941922+00:00",
+    "scope": "Actual Win32 mouse drag in production FocusedCameraViewer inside the owned Windows diagnostic receiver, receiving the physical S22",
+    "inputGuard": "WindowFromPoint plus GetAncestor(GA_ROOT) matched the exact owned receiver HWND before track input.",
+    "hardwareChangeObservedBeforeMouseUp": true,
+    "nativeSetterEndpointUsedDuringDrag": false,
+    "phoneLeftBroadcastingForSubsequentTests": true,
+    "zoomRestoredTo": 1,
+    "testedBundle": {
+      "BShare.exe": "fd9358ef41d32bbc28961d5cd412c0b834c71afd1323d3547f66a94ed012e01d",
+      "data/app.so": "5ee3d6893609e38c1f95ac96d445fe35c61ef28e1384cb84ea8b792b44663e34",
+      "flutter_webrtc_plugin.dll": "3bdc0621f1c66a0e337d735233feced1a2661c75cf7308cfc3437a4320173d7f"
+    },
+    "earlierSetupAttempts": [
+      "Noninteractive stdin ended before coordinates were supplied; no mouse drag occurred.",
+      "Foreground activation was denied on an initial attempt; it was aborted before drag. The corrected harness temporarily raised only its own window and verified point ownership before capture/input."
+    ]
+  },
+  "whiteBalanceEvidence": "s22-realtime-camera-controls-review.json",
+  "windowsAudioDuckingEvidence": "windows-audio-ducking-review.json",
+  "initialAudioRoutingAttempt": {
+    "appliedBeforeFirstPeer": true,
+    "duckNotifications": 1,
+    "resolved": false,
+    "reason": "First peer media-engine initialization overwrote the initial output selection."
+  },
+  "receiverMeasurements": {
+    "camera-before": {
+      "source": "camera",
+      "summary": {
+        "video": {
+          "codec": "video/H264",
+          "width": 960,
+          "height": 540,
+          "receivedPackets": 7360.0,
+          "lostPackets": 0.0,
+          "framesDecoded": 284.0,
+          "framesDropped": 0.0,
+          "lastFramesPerSecond": 29.0,
+          "jitterMs": 7.0,
+          "jitterBufferDelayMs": 113.12,
+          "jitterBufferTargetDelayMs": 44.474,
+          "jitterBufferMinimumDelayMs": 44.474,
+          "totalDecodeTimeMsPerFrame": 1.43,
+          "totalProcessingDelayMsPerFrame": 114.556,
+          "totalAssemblyTimeMsPerFrame": 19.715
+        }
+      },
+      "passed": true,
+      "exitCode": 0
+    },
+    "screen-silent-before": {
+      "source": "screen",
+      "summary": {
+        "video": {
+          "codec": "video/H264",
+          "width": 1080,
+          "height": 2316,
+          "receivedPackets": 1824.0,
+          "lostPackets": 0.0,
+          "framesDecoded": 420.0,
+          "framesDropped": 0.0,
+          "lastFramesPerSecond": 30.0,
+          "jitterMs": 13.0,
+          "jitterBufferDelayMs": 63.286,
+          "jitterBufferTargetDelayMs": 59.127,
+          "jitterBufferMinimumDelayMs": 59.127,
+          "totalDecodeTimeMsPerFrame": 1.25,
+          "totalProcessingDelayMsPerFrame": 64.55,
+          "totalAssemblyTimeMsPerFrame": 0.664
+        }
+      },
+      "passed": true,
+      "exitCode": 0
+    },
+    "screen-audio-before": {
+      "source": "screen",
+      "summary": {
+        "video": {
+          "codec": "video/H264",
+          "width": 1080,
+          "height": 2316,
+          "receivedPackets": 2127.0,
+          "lostPackets": 0.0,
+          "framesDecoded": 417.0,
+          "framesDropped": 0.0,
+          "lastFramesPerSecond": 29.0,
+          "jitterMs": 8.0,
+          "jitterBufferDelayMs": 54.887,
+          "jitterBufferTargetDelayMs": 53.452,
+          "jitterBufferMinimumDelayMs": 25.317,
+          "totalDecodeTimeMsPerFrame": 0.703,
+          "totalProcessingDelayMsPerFrame": 55.597,
+          "totalAssemblyTimeMsPerFrame": 1.185
+        },
+        "audio": {
+          "codec": "audio/opus",
+          "width": null,
+          "height": null,
+          "receivedPackets": 700.0,
+          "lostPackets": 0.0,
+          "framesDecoded": 0.0,
+          "framesDropped": 0.0,
+          "lastFramesPerSecond": null,
+          "jitterMs": 6.0,
+          "jitterBufferDelayMs": 146.381,
+          "jitterBufferTargetDelayMs": 130.93,
+          "jitterBufferMinimumDelayMs": 130.93
+        }
+      },
+      "passed": true,
+      "exitCode": 0
+    },
+    "screen-silent-after": {
+      "source": "screen",
+      "summary": {
+        "video": {
+          "codec": "video/H264",
+          "width": 1080,
+          "height": 2316,
+          "receivedPackets": 2033.0,
+          "lostPackets": 0.0,
+          "framesDecoded": 420.0,
+          "framesDropped": 0.0,
+          "lastFramesPerSecond": 30.0,
+          "jitterMs": 5.0,
+          "jitterBufferDelayMs": 19.921,
+          "jitterBufferTargetDelayMs": 11.878,
+          "jitterBufferMinimumDelayMs": 11.878,
+          "totalDecodeTimeMsPerFrame": 1.224,
+          "totalProcessingDelayMsPerFrame": 21.164,
+          "totalAssemblyTimeMsPerFrame": 1.06
+        }
+      },
+      "passed": true,
+      "exitCode": 0
+    },
+    "screen-audio-after": {
+      "source": "screen",
+      "summary": {
+        "video": {
+          "codec": "video/H264",
+          "width": 1080,
+          "height": 2316,
+          "receivedPackets": 2026.0,
+          "lostPackets": 0.0,
+          "framesDecoded": 419.0,
+          "framesDropped": 0.0,
+          "lastFramesPerSecond": 30.0,
+          "jitterMs": 4.0,
+          "jitterBufferDelayMs": 27.568,
+          "jitterBufferTargetDelayMs": 26.865,
+          "jitterBufferMinimumDelayMs": 12.855,
+          "totalDecodeTimeMsPerFrame": 0.828,
+          "totalProcessingDelayMsPerFrame": 28.403,
+          "totalAssemblyTimeMsPerFrame": 0.826
+        },
+        "audio": {
+          "codec": "audio/opus",
+          "width": null,
+          "height": null,
+          "receivedPackets": 700.0,
+          "lostPackets": 0.0,
+          "framesDecoded": 0.0,
+          "framesDropped": 0.0,
+          "lastFramesPerSecond": null,
+          "jitterMs": 6.0,
+          "jitterBufferDelayMs": 63.805,
+          "jitterBufferTargetDelayMs": 66.638,
+          "jitterBufferMinimumDelayMs": 66.638
+        }
+      },
+      "passed": true,
+      "exitCode": 0,
+      "duckObserver": {
+        "completed": true,
+        "duckNotifications": 0,
+        "unduckNotifications": 0,
+        "maxCommunicationSessions": 0,
+        "selfTest": false,
+        "communicationSessionOptOut": false,
+        "calibration": "",
+        "mediaSaved": false,
+        "globalSettingsChanged": false,
+        "exitCode": 0
+      }
+    }
+  },
+  "latencyLimits": [
+    "Counter deltas cover receiver jitter buffering, processing and decoding only; they are not capture-to-display or mouth-to-ear latency.",
+    "Camera adapted to 960x540 while screen remained 1080x2316; this is not an equal-resolution latency comparison.",
+    "Synthetic screen source is animated via display vsync and plays alternating synthetic tones/silence; no microphone or other app content was used for the screen samples.",
+    "Removing the hidden Android screen EGL paint is verified by production renderer tests and physical screen reception; no quantified end-to-end speedup is claimed.",
+    "Hardware validation covers this S22 and Windows PC; capability checks and platform fallback implement other-device behavior, not universal hardware certification."
+  ],
+  "artifacts": {
+    "build/windows/x64/runner/Release/BShare.exe": {
+      "sha256": "fd9358ef41d32bbc28961d5cd412c0b834c71afd1323d3547f66a94ed012e01d",
+      "bytes": 209920
+    },
+    "build/windows/x64/runner/Release/data/app.so": {
+      "sha256": "cc3a30ac8edcfe10067ef79ae780c8877cd2d85ff826bc76c525abb0c0173e7d",
+      "bytes": 9012104
+    },
+    "build/windows/x64/runner/Release/flutter_webrtc_plugin.dll": {
+      "sha256": "41bbb7e386df691424ce229dc9032158546b2000ff90aee0498df2833045e5a1",
+      "bytes": 542208
+    },
+    "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk": {
+      "sha256": "77ce6748c77186aa4648047d96e181d1813cc83171165de82d0cb22f1e4cb3b3",
+      "bytes": 41020675
+    },
+    "dist/windows/BShare-1.0.4+16-windows-x64-setup.exe": {
+      "sha256": "ab76f45fe02b15f749ada7bc3f281370d92af7898f74c36a37977a906c5916fb",
+      "bytes": 20092955
+    }
+  },
+  "screenAudioSignal": {
+    "samplesReceived": 672000.0,
+    "energyIncrease": 0.8071759989756125,
+    "received": true
+  },
+  "cleanup": {
+    "physicalSerial": "adb-<physical-adb-serial-redacted>-UyJurA._adb-tls-connect._tcp",
+    "emulatorUntouched": true,
+    "mediaProjectionInactive": true,
+    "cameraServiceInactive": true,
+    "screenServiceInactive": true,
+    "metadataRoutes": {
+      "camera": "listener-closed",
+      "screen": "listener-closed"
+    },
+    "syntheticPlayerRemoved": true,
+    "phoneVersionCode": 2016,
+    "phoneVersionName": "1.0.4",
+    "phoneUpdateMethod": "adb install -r; no BShare data clear or uninstall",
+    "obsOriginalPid": 5900,
+    "obsScenesAndSettingsChanged": false,
+    "ownedReceiverExitCodes": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "captureStopped": true,
+    "normalPcAppReopenedPid": 29384
+  },
+  "passed": true,
+  "privacyRedactions": {
+    "fields": [
+      "physicalAdbSerial"
+    ],
+    "method": "Unnecessary physical device and local network identifiers were replaced by descriptive placeholders before publication. Measurements, ports, hardware models, dates, artifact hashes and protocol loopback addresses are unchanged."
+  }
+}

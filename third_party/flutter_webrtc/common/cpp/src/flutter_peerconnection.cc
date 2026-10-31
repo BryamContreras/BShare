@@ -360,6 +360,9 @@ void FlutterPeerConnection::CreateRTCPeerConnection(
     std::unique_ptr<MethodResultProxy> result) {
   // std::cout << " configuration = " << configurationMap.StringValue() <<
   // std::endl;
+  // A new LAN peer must not inherit relay policy or TURN credentials from an
+  // earlier USB peer. ParseRTCConfiguration fills only keys present in the map.
+  base_->configuration_ = RTCConfiguration{};
   base_->ParseRTCConfiguration(configurationMap, base_->configuration_);
   // std::cout << " constraints = " << constraintsMap.StringValue() <<
   // std::endl;
@@ -369,6 +372,14 @@ void FlutterPeerConnection::CreateRTCPeerConnection(
   std::string uuid = base_->GenerateUUID();
   scoped_refptr<RTCPeerConnection> pc =
       base_->factory_->Create(base_->configuration_, constraints);
+#if defined(_WINDOWS)
+  // WebRTC starts (and resets the device choices of) its media engine on the
+  // first live peer, after factory construction. Reapply media routing now,
+  // before SDP/transceivers can start a communications render stream.
+  if (pc && base_->windows_active_media_peers_.empty())
+    base_->PrepareWindowsMediaAudioAfterFirstPeer();
+  if (pc) base_->windows_active_media_peers_.insert(uuid);
+#endif
   base_->peerconnections_[uuid] = pc;
 
   std::string event_channel = "FlutterWebRTC/peerConnectionEvent" + uuid;
@@ -393,6 +404,9 @@ void FlutterPeerConnection::RTCPeerConnectionClose(
   if (it2 != base_->peerconnections_.end()) {
     it2->second->Close();
   }
+#if defined(_WINDOWS)
+  base_->windows_active_media_peers_.erase(uuid);
+#endif
   // Dart cancels the peer's EventChannel subscription in dispose(), after
   // close(). Keep the observer and its channel alive until that cancellation;
   // destroying them here leaves the messenger calling a freed stream handler.
@@ -407,6 +421,9 @@ void FlutterPeerConnection::RTCPeerConnectionDispose(
   // releases libwebrtc's internal peer, and state getters dereference it.
   // dispose() must also close peers whose caller did not close them first.
   pc->Close();
+#if defined(_WINDOWS)
+  base_->windows_active_media_peers_.erase(uuid);
+#endif
   pc->DeRegisterRTCPeerConnectionObserver();
   // The Dart subscription is already cancelled. Destroying its observer now
   // unregisters the native channel handler before releasing the peer itself.

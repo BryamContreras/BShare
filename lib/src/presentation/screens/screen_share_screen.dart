@@ -2,17 +2,23 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:bshare/src/application/providers.dart';
+import 'package:bshare/src/domain/entities/camera_connection_mode.dart';
 import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
+import 'package:bshare/src/infrastructure/services/usb_adb_transport_service.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
 import 'package:bshare/src/presentation/localization/video_connection_localizations.dart';
 import 'package:bshare/src/presentation/localization/camera_localizations.dart';
 import 'package:bshare/src/presentation/localization/camera_ui_localizations.dart';
+import 'package:bshare/src/presentation/localization/screen_audio_localizations.dart';
+import 'package:bshare/src/presentation/localization/usb_connection_localizations.dart';
 import 'package:bshare/src/presentation/screens/screen_viewer_screen.dart';
 import 'package:bshare/src/presentation/widgets/app_shell.dart';
+import 'package:bshare/src/presentation/widgets/broadcast_address_card.dart';
 import 'package:bshare/src/presentation/widgets/discovery_status_card.dart';
 import 'package:bshare/src/presentation/widgets/gradient_action_button.dart';
 import 'package:bshare/src/presentation/widgets/orientation_aware_video_view.dart';
+import 'package:bshare/src/presentation/widgets/usb_device_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -27,19 +33,27 @@ class ScreenShareScreen extends ConsumerStatefulWidget {
 
 class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
   final _scrollController = ScrollController();
+  final _usbPortController = TextEditingController(text: '53317');
+  CameraConnectionMode _connection = CameraConnectionMode.wifi;
   String? _selectedDeviceId;
+  String? _selectedUsbSerial;
   DeviceInfo? _viewerDevice;
   bool _startingShare = false;
+  bool _watchBusy = false;
+  bool _includeSystemAudio = true;
   late final ScreenShareService _service;
 
   @override
   void initState() {
     super.initState();
     _service = ref.read(screenShareServiceProvider);
+    if (_service.usbOnly) _connection = CameraConnectionMode.usb;
     _service.state.addListener(_resumeDiscoveryWhenIdle);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(ref.read(discoveryProvider.notifier).start());
+      if (_connection == CameraConnectionMode.wifi) {
+        unawaited(ref.read(discoveryProvider.notifier).start());
+      }
     });
   }
 
@@ -47,12 +61,14 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
   void dispose() {
     _service.state.removeListener(_resumeDiscoveryWhenIdle);
     _scrollController.dispose();
+    _usbPortController.dispose();
     super.dispose();
   }
 
   void _resumeDiscoveryWhenIdle() {
     if (!mounted ||
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.detached ||
+        _connection == CameraConnectionMode.usb ||
         _service.state.value.mode != ScreenShareMode.idle ||
         ref.read(discoveryStatusProvider).phase != DiscoveryPhase.idle) {
       return;
@@ -70,6 +86,22 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
         .firstOrNull;
     final l10n = context.l10n;
     final configuredCapture = ref.watch(settingsProvider).value?.screenCapture;
+    final android = ref.watch(androidPlatformInfoProvider).isAndroid;
+    final platform = Theme.of(context).platform;
+    final mobile =
+        platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+    final usb = _connection == CameraConnectionMode.usb;
+    final usbDevices = !mobile && usb
+        ? ref.watch(usbAdbDevicesProvider).asData?.value
+        : null;
+    final selectedUsb = usbDevices
+        ?.where(
+          (device) =>
+              device.serial == _selectedUsbSerial &&
+              device.state == UsbAdbDeviceState.authorized,
+        )
+        .firstOrNull;
+    final busy = _startingShare || _watchBusy;
 
     return ValueListenableBuilder<bool>(
       valueListenable: service.focusedViewerActive,
@@ -102,6 +134,62 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
                           : 16,
                     ),
                     children: [
+                      SegmentedButton<CameraConnectionMode>(
+                        key: const ValueKey('screen-connection'),
+                        segments: [
+                          ButtonSegment(
+                            value: CameraConnectionMode.wifi,
+                            icon: const Icon(Icons.wifi_rounded),
+                            label: Text(l10n.cameraUiText('wifi')),
+                          ),
+                          ButtonSegment(
+                            value: CameraConnectionMode.usb,
+                            enabled: platform != TargetPlatform.iOS,
+                            icon: const Icon(Icons.usb_rounded),
+                            label: Text(l10n.cameraUiText('usb')),
+                          ),
+                        ],
+                        selected: {_connection},
+                        onSelectionChanged:
+                            state.mode != ScreenShareMode.idle || busy
+                            ? null
+                            : (selection) {
+                                setState(() => _connection = selection.single);
+                                if (_connection == CameraConnectionMode.usb) {
+                                  if (!mobile) {
+                                    ref.invalidate(usbAdbDevicesProvider);
+                                  }
+                                } else {
+                                  unawaited(
+                                    ref
+                                        .read(discoveryProvider.notifier)
+                                        .start(),
+                                  );
+                                }
+                              },
+                      ),
+                      if (platform == TargetPlatform.iOS)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(l10n.usbConnectionText('androidOnly')),
+                        ),
+                      if (usb) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          l10n.usbConnectionText(
+                            mobile ? 'phoneHelp' : 'computerHelp',
+                          ),
+                        ),
+                        if (mobile)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              '${l10n.cameraUiText('port')}: ${ref.watch(receiveControllerProvider).value?.port ?? ref.watch(settingsProvider).value?.preferredPort ?? 53317}',
+                              key: const ValueKey('screen-usb-listening-port'),
+                            ),
+                          ),
+                        const SizedBox(height: 14),
+                      ],
                       if (configuredCapture != null && !cameraActive)
                         Align(
                           alignment: Alignment.centerLeft,
@@ -121,6 +209,25 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
                           ),
                         ),
                       const SizedBox(height: 14),
+                      if (!cameraActive &&
+                          state.mode == ScreenShareMode.idle &&
+                          android) ...[
+                        Card(
+                          child: SwitchListTile.adaptive(
+                            key: const ValueKey('screen-system-audio-toggle'),
+                            value: _includeSystemAudio,
+                            onChanged: busy
+                                ? null
+                                : (value) => setState(
+                                    () => _includeSystemAudio = value,
+                                  ),
+                            title: Text(l10n.screenAudioText('include')),
+                            subtitle: Text(l10n.screenAudioText('help')),
+                            secondary: const Icon(Icons.volume_up_rounded),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
                       Card(
                         child: ListTile(
                           leading: Icon(
@@ -139,6 +246,17 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
                         ),
                       ),
                       const SizedBox(height: 14),
+                      if (!cameraActive &&
+                          state.mode == ScreenShareMode.sharing) ...[
+                        if (!usb) const BroadcastAddressCard(),
+                        const SizedBox(height: 14),
+                        if (android) ...[
+                          _ScreenAudioStatusCard(
+                            status: service.screenSystemAudioStatus,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+                      ],
                       if (cameraActive)
                         Card(
                           child: ListTile(
@@ -195,7 +313,26 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
                             );
                           },
                         )
-                      else ...[
+                      else if (usb && !mobile) ...[
+                        UsbDevicePicker(
+                          selectedSerial: _selectedUsbSerial,
+                          enabled: !busy,
+                          onSelected: (device) => setState(
+                            () => _selectedUsbSerial = device.serial,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          key: const ValueKey('screen-usb-port'),
+                          controller: _usbPortController,
+                          enabled: !busy,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: l10n.usbConnectionText('port'),
+                            helperText: l10n.usbConnectionText('portHelp'),
+                          ),
+                        ),
+                      ] else if (!usb) ...[
                         Row(
                           children: [
                             Expanded(
@@ -236,18 +373,26 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
                                     ? Theme.of(context).colorScheme.primary
                                     : null,
                               ),
-                              onTap: () =>
-                                  setState(() => _selectedDeviceId = device.id),
+                              onTap: busy
+                                  ? null
+                                  : () => setState(
+                                      () => _selectedDeviceId = device.id,
+                                    ),
                             ),
                           ),
                       ],
                       const SizedBox(height: 20),
+                      if (_watchBusy && usb) ...[
+                        const LinearProgressIndicator(),
+                        const SizedBox(height: 8),
+                        Text(l10n.usbConnectionText('connecting')),
+                        const SizedBox(height: 12),
+                      ],
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final shareButton = FilledButton.icon(
                             onPressed:
-                                !_startingShare &&
-                                    state.mode == ScreenShareMode.idle
+                                !busy && state.mode == ScreenShareMode.idle
                                 ? () => _startSharing(service)
                                 : null,
                             icon: const Icon(Icons.screen_share_rounded),
@@ -259,11 +404,13 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
                           );
                           final watchButton = OutlinedButton.icon(
                             onPressed:
-                                selected == null ||
-                                    _startingShare ||
+                                (usb
+                                        ? selectedUsb == null
+                                        : selected == null) ||
+                                    busy ||
                                     state.mode != ScreenShareMode.idle
                                 ? null
-                                : () => _watch(service, selected),
+                                : () => _watch(service, selected, selectedUsb),
                             icon: const Icon(Icons.visibility_rounded),
                             label: Text(l10n.t('watch')),
                             style: OutlinedButton.styleFrom(
@@ -271,6 +418,7 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
                               shape: const StadiumBorder(),
                             ),
                           );
+                          if (usb) return mobile ? shareButton : watchButton;
                           if (constraints.maxWidth < 420) {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -302,13 +450,22 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
   }
 
   Future<void> _startSharing(ScreenShareService service) async {
-    if (_startingShare) return;
+    if (_startingShare || _watchBusy) return;
+    final usb = _connection == CameraConnectionMode.usb;
     setState(() => _startingShare = true);
     final receiver = ref.read(receiveControllerProvider.notifier);
+    final server = ref.read(fileServerProvider);
     try {
       final settings = await ref.read(settingsProvider.future);
       if (!mounted) return;
-      await receiver.startForScreenShare();
+      if (usb) {
+        await receiver.startForVideoShare(
+          ipOverride: '127.0.0.1',
+          advertise: false,
+        );
+      } else {
+        await receiver.startForScreenShare();
+      }
       if (!mounted) {
         await receiver.stopIfScreenShareOnly();
         return;
@@ -318,9 +475,17 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
         throw StateError(receive?.error ?? 'Receiver unavailable');
       }
       await service.startSharing(
-        ref.read(fileServerProvider),
+        server,
         settings: settings.screenCapture,
+        includeSystemAudio:
+            _includeSystemAudio &&
+            ref.read(androidPlatformInfoProvider).isAndroid,
+        usbOnly: usb,
       );
+      if (!mounted) {
+        await service.stop(server);
+        await receiver.stopIfScreenShareOnly();
+      }
     } catch (error) {
       await receiver.stopIfScreenShareOnly();
       if (mounted) {
@@ -337,9 +502,52 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
     }
   }
 
-  Future<void> _watch(ScreenShareService service, DeviceInfo device) async {
-    setState(() => _viewerDevice = device);
-    service.setFocusedViewerActive(true);
+  Future<void> _watch(
+    ScreenShareService service,
+    DeviceInfo? device,
+    UsbAdbDevice? usbDevice,
+  ) async {
+    if (_watchBusy || _startingShare) return;
+    final usb = _connection == CameraConnectionMode.usb;
+    final port = int.tryParse(_usbPortController.text.trim());
+    if (usb &&
+        (usbDevice == null || port == null || port < 1 || port > 65535)) {
+      _showUsbMessage('invalidPort');
+      return;
+    }
+    setState(() => _watchBusy = true);
+    try {
+      if (usb) {
+        await service.watchUsb(
+          usbDevice!,
+          source: VideoShareSource.screen,
+          remotePort: port!,
+        );
+        if (!mounted) {
+          await service.stopWatching();
+          return;
+        }
+      }
+      if (!mounted) return;
+      setState(() => _viewerDevice = usb ? null : device);
+      service.setFocusedViewerActive(true);
+    } catch (error) {
+      if (mounted) {
+        ref.read(loggerProvider).warn('USB screen connection failed: $error');
+        _showUsbMessage('watchFailed');
+      }
+    } finally {
+      if (mounted) setState(() => _watchBusy = false);
+    }
+  }
+
+  void _showUsbMessage(String key) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(context.l10n.usbConnectionText(key))),
+      );
   }
 
   Future<void> _closeFocusedViewer(ScreenShareService service) async {
@@ -354,6 +562,32 @@ class _ScreenShareScreenState extends ConsumerState<ScreenShareScreen> {
 
   void _openViewer(ScreenShareService service) {
     service.setFocusedViewerActive(true);
+  }
+}
+
+class _ScreenAudioStatusCard extends StatelessWidget {
+  const _ScreenAudioStatusCard({required this.status});
+
+  final ScreenSystemAudioStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final active = status == ScreenSystemAudioStatus.active;
+    final failed = status != ScreenSystemAudioStatus.off && !active;
+    return Card(
+      child: ListTile(
+        leading: Icon(
+          active ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+        ),
+        title: Text(l10n.screenAudioText(status.name)),
+        subtitle: active
+            ? Text(l10n.screenAudioText('restricted'))
+            : failed
+            ? Text(l10n.screenAudioText('videoOnly'))
+            : null,
+      ),
+    );
   }
 }
 

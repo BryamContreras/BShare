@@ -3,12 +3,15 @@ import 'dart:math' as math;
 
 import 'package:bshare/src/application/camera_session_controller.dart';
 import 'package:bshare/src/application/providers.dart';
+import 'package:bshare/src/application/receive_controller.dart';
 import 'package:bshare/src/domain/entities/camera_connection_mode.dart';
 import 'package:bshare/src/domain/entities/camera_device.dart';
 import 'package:bshare/src/infrastructure/services/android_screen_share_execution_service.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/camera_display_service.dart';
+import 'package:bshare/src/infrastructure/services/network_service.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
+import 'package:bshare/src/infrastructure/services/usb_camera_network_service.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
 import 'package:bshare/src/presentation/screens/camera_broadcast_screen.dart';
 import 'package:bshare/src/presentation/widgets/app_shell.dart';
@@ -38,9 +41,14 @@ class _Video extends ScreenShareService {
 }
 
 class _Session extends CameraSessionController {
-  _Session(this.video, {this.torchAvailable = true});
+  _Session(
+    this.video, {
+    this.torchAvailable = true,
+    this.connection = CameraConnectionMode.wifi,
+  });
   final _Video video;
   final bool torchAvailable;
+  final CameraConnectionMode connection;
   bool microphoneEnabled = false;
   bool torchEnabled = false;
   final microphoneChanges = <bool>[];
@@ -60,7 +68,7 @@ class _Session extends CameraSessionController {
   CameraSessionState _state({bool busy = false, String? error}) =>
       CameraSessionState(
         busy: busy,
-        connection: CameraConnectionMode.wifi,
+        connection: connection,
         error: error,
         microphoneEnabled: microphoneEnabled,
         torchEnabled: torchEnabled,
@@ -121,6 +129,12 @@ class _Session extends CameraSessionController {
   }
 }
 
+class _Receiver extends ReceiveController {
+  @override
+  Future<ReceiveState> build() async =>
+      const ReceiveState(visible: true, port: 53319);
+}
+
 void main() {
   late _Video video;
   late _Session session;
@@ -135,18 +149,38 @@ void main() {
     double textScale = 1,
     Locale locale = const Locale('en'),
     EdgeInsets safeInsets = EdgeInsets.zero,
+    CameraConnectionMode connection = CameraConnectionMode.wifi,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     video = _Video();
-    session = _Session(video, torchAvailable: torchAvailable);
+    session = _Session(
+      video,
+      torchAvailable: torchAvailable,
+      connection: connection,
+    );
     final container = ProviderContainer(
       overrides: [
         screenShareServiceProvider.overrideWithValue(video),
         cameraSessionProvider.overrideWith(() => session),
         cameraDevicesProvider.overrideWith((_) async => cameras),
+        receiveControllerProvider.overrideWith(_Receiver.new),
+        networkProvider.overrideWith(
+          (_) async => const NetworkSnapshot(ip: '192.168.1.20'),
+        ),
+        usbCameraNetworkProvider.overrideWith(
+          (_) async => const UsbCameraNetworkSnapshot(
+            addresses: [
+              UsbCameraAddress(
+                ip: '192.168.42.129',
+                prefixLength: 24,
+                interfaceName: 'usb0',
+              ),
+            ],
+          ),
+        ),
         if (display != null)
           cameraDisplayServiceProvider.overrideWithValue(display),
       ],
@@ -204,22 +238,82 @@ void main() {
     });
   }
 
-  testWidgets('broadcast fills the route with one shared local renderer', (
+  testWidgets(
+    'broadcast starts hidden and shows the shared renderer on demand',
+    (tester) async {
+      await mount(tester);
+      expect(find.byType(AppShell), findsNothing);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.byType(OrientationAwareVideoView), findsNothing);
+      expect(find.text('Preview hidden'), findsOneWidget);
+      expect(find.text('Your camera is still being shared.'), findsOneWidget);
+      expect(find.byTooltip('Show preview'), findsOneWidget);
+      await tester.tap(find.byTooltip('Show preview'));
+      await tester.pumpAndSettle();
+      expect(find.byType(OrientationAwareVideoView), findsOneWidget);
+      final preview = tester.widget<OrientationAwareVideoView>(
+        find.byType(OrientationAwareVideoView),
+      );
+      expect(preview.renderer, same(video.localRenderer));
+      expect(find.text('Rear camera'), findsOneWidget);
+      expect(find.byTooltip('Switch camera'), findsOneWidget);
+      expect(find.byTooltip('Hide preview'), findsOneWidget);
+      expect(session.stops, 0);
+      expect(session.switches, isEmpty);
+    },
+  );
+
+  testWidgets('hidden preview puts a plain address below the sharing message', (
     tester,
   ) async {
     await mount(tester);
-    expect(find.byType(AppShell), findsNothing);
-    expect(find.byType(NavigationBar), findsNothing);
-    expect(find.byType(OrientationAwareVideoView), findsOneWidget);
-    final preview = tester.widget<OrientationAwareVideoView>(
-      find.byType(OrientationAwareVideoView),
+    expect(find.textContaining('192.168.1.20:53319'), findsOneWidget);
+    expect(find.textContaining('192.168.42.129'), findsNothing);
+    final address = find.byKey(const ValueKey('camera-broadcast-address'));
+    final message = find.text('Your camera is still being shared.');
+    expect(tester.widget(address), isA<Text>());
+    expect(
+      tester.getTopLeft(address).dy,
+      greaterThan(tester.getBottomLeft(message).dy),
     );
-    expect(preview.renderer, same(video.localRenderer));
-    expect(find.text('Rear camera'), findsOneWidget);
-    expect(find.byTooltip('Switch camera'), findsOneWidget);
-    expect(find.byTooltip('Hide preview'), findsOneWidget);
+    expect(
+      tester.getCenter(address).dx,
+      closeTo(tester.getCenter(message).dx, .1),
+    );
+    expect(find.byType(Card), findsNothing);
+    expect(find.byType(SelectableText), findsNothing);
+    expect(find.byIcon(Icons.copy_rounded), findsNothing);
+    expect(find.byType(OrientationAwareVideoView), findsNothing);
+    expect(video.state.value.mode, ScreenShareMode.sharing);
     expect(session.stops, 0);
-    expect(session.switches, isEmpty);
+    await tester.tap(find.byTooltip('Show preview'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('camera-broadcast-address')),
+      findsNothing,
+    );
+    expect(find.textContaining('192.168.1.20:53319'), findsNothing);
+    expect(video.state.value.mode, ScreenShareMode.sharing);
+  });
+
+  testWidgets('USB broadcast shows its port without a LAN or tether address', (
+    tester,
+  ) async {
+    await mount(tester, connection: CameraConnectionMode.usb);
+    expect(find.textContaining('USB · Port: 53319'), findsOneWidget);
+    expect(find.textContaining('192.168.42.129'), findsNothing);
+    expect(find.textContaining('192.168.1.20'), findsNothing);
+    expect(find.byType(OrientationAwareVideoView), findsNothing);
+    expect(video.state.value.mode, ScreenShareMode.sharing);
+    expect(session.stops, 0);
+    await tester.tap(find.byTooltip('Show preview'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('camera-broadcast-address')),
+      findsNothing,
+    );
+    expect(find.textContaining('192.168.42.129'), findsNothing);
+    expect(video.state.value.mode, ScreenShareMode.sharing);
   });
 
   testWidgets('camera controls stay vertical, transparent and at top right', (
@@ -347,6 +441,10 @@ void main() {
         final eye = find.byKey(const ValueKey('camera-live-preview-toggle'));
         await tester.ensureVisible(eye);
         await tester.pumpAndSettle();
+        expect(find.text('Vista previa oculta'), findsOneWidget);
+        await tester.tap(eye);
+        await tester.pumpAndSettle();
+        expect(find.byType(OrientationAwareVideoView), findsOneWidget);
         await tester.tap(eye);
         await tester.pumpAndSettle();
         expect(find.text('Vista previa oculta'), findsOneWidget);
@@ -381,7 +479,7 @@ void main() {
     await tester.pumpAndSettle();
     final header = find.byKey(const ValueKey('camera-live-header-scroll'));
     final scroll = tester.state<ScrollableState>(
-      find.descendant(of: header, matching: find.byType(Scrollable)),
+      find.descendant(of: header, matching: find.byType(Scrollable)).first,
     );
     expect(scroll.position.maxScrollExtent, greaterThan(0));
     await tester.drag(header, const Offset(0, -70));
@@ -410,7 +508,7 @@ void main() {
     expect(session.microphoneChanges, [true, false]);
     expect(find.byTooltip('Turn microphone on'), findsOneWidget);
     expect(video.state.value.mode, ScreenShareMode.sharing);
-    expect(find.byType(OrientationAwareVideoView), findsOneWidget);
+    expect(find.byType(OrientationAwareVideoView), findsNothing);
     expect(session.switches, isEmpty);
     expect(session.stops, 0);
   });
@@ -525,11 +623,13 @@ void main() {
     tester,
   ) async {
     await mount(tester);
-    await tester.tap(find.byKey(const ValueKey('camera-live-preview-toggle')));
-    await tester.pumpAndSettle();
     expect(find.byType(OrientationAwareVideoView), findsNothing);
     expect(find.text('Preview hidden'), findsOneWidget);
     expect(find.text('Your camera is still being shared.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('camera-broadcast-address')),
+      findsOneWidget,
+    );
     expect(video.state.value.mode, ScreenShareMode.sharing);
     expect(session.stops, 0);
     expect(session.switches, isEmpty);
@@ -537,15 +637,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(OrientationAwareVideoView), findsOneWidget);
     expect(find.text('Preview hidden'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('camera-broadcast-address')),
+      findsNothing,
+    );
     expect(video.state.value.mode, ScreenShareMode.sharing);
+    await tester.tap(find.byTooltip('Hide preview'));
+    await tester.pumpAndSettle();
+    expect(find.byType(OrientationAwareVideoView), findsNothing);
+    expect(
+      find.byKey(const ValueKey('camera-broadcast-address')),
+      findsOneWidget,
+    );
+    expect(video.state.value.mode, ScreenShareMode.sharing);
+    expect(session.stops, 0);
   });
 
   testWidgets('flip selects opposite side while local preview remains hidden', (
     tester,
   ) async {
     await mount(tester);
-    await tester.tap(find.byTooltip('Hide preview'));
-    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Switch camera'));
     await tester.pumpAndSettle();
     expect(session.switches, [_front]);
@@ -563,7 +674,7 @@ void main() {
       find.byKey(const ValueKey('camera-live-switch')),
     );
     expect(button.onPressed, isNull);
-    expect(find.byType(OrientationAwareVideoView), findsOneWidget);
+    expect(find.byType(OrientationAwareVideoView), findsNothing);
   });
 
   testWidgets('Back and Stop wait for a single complete shutdown', (
@@ -597,6 +708,8 @@ void main() {
     tester,
   ) async {
     await mount(tester);
+    await tester.tap(find.byTooltip('Show preview'));
+    await tester.pumpAndSettle();
     router.go('/settings');
     await tester.pumpAndSettle();
     expect(find.text('settings'), findsOneWidget);
@@ -605,7 +718,8 @@ void main() {
     expect(video.state.value.mode, ScreenShareMode.sharing);
     router.go('/camera/live');
     await tester.pumpAndSettle();
-    expect(find.byType(OrientationAwareVideoView), findsOneWidget);
+    expect(find.byType(OrientationAwareVideoView), findsNothing);
+    expect(find.byTooltip('Show preview'), findsOneWidget);
     expect(session.stops, 0);
   });
 
@@ -621,7 +735,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('Native error'), findsNothing);
-      expect(find.byType(OrientationAwareVideoView), findsOneWidget);
+      expect(find.byType(OrientationAwareVideoView), findsNothing);
       expect(video.currentCamera, _rear);
       expect(session.stops, 0);
     },
@@ -661,7 +775,7 @@ void main() {
     await tester.tap(find.text('Tap to show camera controls'));
     await tester.pump();
     expect(display.dimmed.value, isFalse);
-    expect(find.byTooltip('Hide preview'), findsOneWidget);
+    expect(find.byTooltip('Show preview'), findsOneWidget);
     expect(session.switches, isEmpty);
     expect(session.stops, 0);
     expect(video.state.value.mode, ScreenShareMode.sharing);

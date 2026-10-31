@@ -1,6 +1,7 @@
 package com.cloudwebrtc.webrtc.video.camera;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.hardware.camera2.CameraCaptureSession;
@@ -31,6 +32,7 @@ import org.webrtc.CameraEnumerationAndroid;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.flutter.embedding.engine.systemchannels.PlatformChannel;
@@ -42,10 +44,12 @@ public class CameraUtils {
   Activity activity;
   private GetUserMediaImpl getUserMediaImpl;
   private boolean isTorchOn = false;
+  private final CameraCaptureControls captureControls;
   private DeviceOrientationManager deviceOrientationManager;
-  public CameraUtils(GetUserMediaImpl getUserMediaImpl, Activity activity) {
+  public CameraUtils(GetUserMediaImpl getUserMediaImpl, Activity activity, Context applicationContext) {
     this.getUserMediaImpl = getUserMediaImpl;
     this.activity = activity;
+    this.captureControls = new CameraCaptureControls(getUserMediaImpl, applicationContext, () -> isTorchOn);
     this.deviceOrientationManager = new DeviceOrientationManager(activity, 0);
     // commented out because you cannot register a reciever when the app is terminated
     // because the activity is null?
@@ -55,6 +59,14 @@ public class CameraUtils {
 
     // TODO: get a proper fix at some point
     // this.deviceOrientationManager.start();
+  }
+
+  public void getCameraCaptureControls(String trackId, MethodChannel.Result result) {
+    captureControls.get(trackId, result);
+  }
+
+  public void setCameraCaptureControls(String trackId, Map<String, Object> settings, MethodChannel.Result result) {
+    captureControls.set(trackId, settings, result);
   }
 
   public void setFocusMode(MethodCall call, AnyThreadResult result) {
@@ -596,7 +608,7 @@ public class CameraUtils {
     if (!cameraHandler.post(() -> {
       if (completed.get()) return;
       try {
-        setTorchOnCameraThread(info, torch, once);
+        setTorchOnCameraThread(trackId, info, torch, once);
       } catch (RuntimeException e) {
         resultError("setTorch", "[TORCH] Camera session unavailable: " + e.getMessage(), once);
       }
@@ -607,7 +619,17 @@ public class CameraUtils {
 
   @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
   private void setTorchOnCameraThread(
-          VideoCapturerInfo info, boolean torch, MethodChannel.Result result) {
+          String trackId, VideoCapturerInfo info, boolean torch, MethodChannel.Result result) {
+    if (captureControls.hasState(info)) {
+      // The same repeating request owns zoom, white balance and manual sensor
+      // settings. A flash change must not reset any of them.
+      captureControls.setTorchOnCameraThread(trackId, info, torch, new MethodChannel.Result() {
+        @Override public void success(Object value) { isTorchOn = torch; result.success(null); }
+        @Override public void error(String code, String message, Object details) { result.error(code, message, details); }
+        @Override public void notImplemented() { result.notImplemented(); }
+      });
+      return;
+    }
     if (info.capturer instanceof Camera2Capturer) {
       CameraCaptureSession captureSession;
       CameraDevice cameraDevice;

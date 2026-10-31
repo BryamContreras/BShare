@@ -1,19 +1,32 @@
 # Instalador de Windows
 
 El workflow reutilizable `.github/workflows/build-windows.yml` compila con Flutter
-3.44.8 y Visual Studio 2022 sobre `windows-2022`. Genera un instalador Inno Setup
+3.44.8 y herramientas C++ de MSVC detectadas automáticamente mediante `vswhere`
+sobre `windows-2022`; no fija una edición de Visual Studio. Genera un instalador Inno Setup
 para Windows 10/11 x64, con versión tomada de `pubspec.yaml`.
 
 El instalador incluye el ejecutable, los plugins y sus DLL, los recursos Flutter
 y las DLL redistribuibles de Microsoft C++ desde `VC/Redist/MSVC` de Visual Studio.
 La instalación es por usuario en `%LOCALAPPDATA%\Programs\BShare`, sin solicitar
-permisos de administrador. Crea un acceso en Inicio y ofrece un acceso opcional
+permisos de administrador para la app. Crea un acceso en Inicio y ofrece un acceso opcional
 en el escritorio. El desinstalador conserva los datos de usuario de la app.
 
 La release publica el `.exe` directamente junto a `SHA256SUMS.txt`, sin un ZIP
 intermedio. Actualmente no se aplica firma Authenticode porque el repositorio no
-dispone de certificado de firma. No se descarga ni se ejecuta otro instalador de
-dependencias al instalar.
+dispone de certificado de firma. El runtime de C++ se distribuye junto a la app;
+no se descarga un instalador externo de ese runtime.
+
+En Windows 11 x64 también instala automáticamente el componente de cámara
+virtual incluido en el paquete. Su registro a nivel de sistema solicita UAC;
+el dispositivo persistente queda disponible para el usuario y muestra una imagen
+de espera aunque BShare esté cerrado. Windows 10 conserva el visor, pero esta
+cámara virtual requiere Windows 11.
+
+Desde v1.0.5, el paquete también incluye ADB para ver cámara/pantalla de Android
+por un cable USB autorizado, sin anclaje de red ni IP manual. Las fotos JPEG y
+los videos MP4 H.264/AAC se guardan en la computadora mediante WIC/Media Foundation;
+no requieren un plugin de OBS. La cámara virtual transmite solo video; el audio
+recibido se reproduce por la salida de la computadora.
 
 La casilla «Permitir conexiones en redes privadas» está desmarcada inicialmente.
 Al seleccionarla, Windows pide autorización de administrador para crear reglas
@@ -22,6 +35,9 @@ en redes privadas. La app sigue ejecutándose con el usuario normal. Se conserva
 las reglas de bloqueo existentes; si impiden configurar el acceso, el instalador
 informa del fallo y lo registra en `network-setup.log`. La desinstalación solicita
 autorización para retirar las reglas creadas por esa instalación.
+
+El proceso de PowerShell que configura esas reglas se abre oculto, sin ventana
+de consola. El cuadro de autorización UAC sigue siendo el normal de Windows.
 
 El job instala el EXE en un directorio temporal, compara todo el contenido con
 la compilación, abre BShare, comprueba que crea su ventana, la cierra y
@@ -52,8 +68,8 @@ después en el runner de Windows.
 
 ## Compilación local
 
-Desde PowerShell 7, con Flutter 3.44.8, Visual Studio 2022 con las herramientas
-de C++ e Inno Setup 6 instalados:
+Desde PowerShell 7, con Flutter 3.44.8, una instalación de Visual Studio con C++
+y Windows SDK compatibles, e Inno Setup 6 instalados:
 
 ```powershell
 flutter pub get --enforce-lockfile

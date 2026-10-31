@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 
 #include "libwebrtc.h"
 
@@ -28,7 +29,11 @@ namespace flutter_webrtc_plugin {
 using namespace libwebrtc;
 
 class FlutterVideoRenderer;
+class DesktopMediaManager;
 class FlutterRTCDataChannelObserver;
+#if defined(_WINDOWS)
+class WindowsMediaAudioRouter;
+#endif
 class FlutterPeerConnectionObserver;
 
 class FlutterWebRTCBase {
@@ -88,6 +93,8 @@ class FlutterWebRTCBase {
   void RemoveTracksForId(const std::string& id);
 
   EventChannelProxy* event_channel();
+  void RespectExplicitAudioOutputSelection(const std::string& device_id);
+  void PrepareWindowsMediaAudioAfterFirstPeer();
 
   libwebrtc::scoped_refptr<libwebrtc::RTCRtpSender> GetRtpSenderById(
       RTCPeerConnection* pc,
@@ -136,6 +143,11 @@ class FlutterWebRTCBase {
   TaskRunner* task_runner_;
   TextureRegistrar* textures_;
   std::unique_ptr<EventChannelProxy> event_channel_;
+  std::unique_ptr<DesktopMediaManager> desktop_media_;
+#if defined(_WINDOWS)
+  std::unique_ptr<WindowsMediaAudioRouter> windows_media_audio_router_;
+  std::set<std::string> windows_active_media_peers_;
+#endif
 };
 
 }  // namespace flutter_webrtc_plugin

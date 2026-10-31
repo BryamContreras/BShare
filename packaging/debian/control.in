@@ -6,6 +6,7 @@ Architecture: amd64
 Maintainer: BShare maintainers <maintainers@bshare.invalid>
 Installed-Size: @INSTALLED_SIZE@
 Depends: @DEPENDS@
+Recommends: linux-headers-generic | linux-headers-amd64
 Description: Share files, screens and device cameras over a local network
  BShare discovers nearby devices on the same LAN or Wi-Fi network and transfers
  files directly between them. It also supports local screen sharing.

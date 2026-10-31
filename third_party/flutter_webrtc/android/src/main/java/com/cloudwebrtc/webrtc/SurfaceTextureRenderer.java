@@ -31,6 +31,8 @@ public class SurfaceTextureRenderer extends EglRenderer {
   private int rotatedFrameWidth;
   private int rotatedFrameHeight;
   private int frameRotation;
+  private volatile boolean frameOutputEnabled = true;
+  private volatile boolean released = true;
 
   /**
    * In order to render something, you must first call init().
@@ -62,6 +64,7 @@ public class SurfaceTextureRenderer extends EglRenderer {
       frameRotation = -1;
     }
     super.init(sharedContext, configAttributes, drawer);
+    released = false;
   }
   @Override
   public void init(final EglBase.Context sharedContext, final int[] configAttributes,
@@ -96,13 +99,37 @@ public class SurfaceTextureRenderer extends EglRenderer {
     super.pauseVideo();
   }
   // VideoSink interface.
+  /** Keep capture metadata while avoiding an unseen local EGL draw. */
+  public void setFrameOutputEnabled(boolean enabled) {
+    if (released) throw new IllegalStateException("Video renderer has been released");
+    frameOutputEnabled = enabled;
+  }
+
+  @Override
+  public void release() {
+    released = true;
+    super.release();
+    synchronized (surfaceLock) {
+      surface = null;
+      surfaceWidth = surfaceHeight = 0;
+    }
+  }
+
   @Override
   public void onFrame(VideoFrame frame) {
+    if (released) return;
+    if (!frameOutputEnabled) {
+      updateFrameDimensionsAndReportEvents(frame);
+      return;
+    }
     synchronized (surfaceLock) {
+      if (released) return;
       if(surface == null) {
         producer.setSize(frame.getRotatedWidth(),frame.getRotatedHeight());
         surface = producer.getSurface();
         createEglSurface(surface);
+        surfaceWidth = frame.getRotatedWidth();
+        surfaceHeight = frame.getRotatedHeight();
       } else if (frameSizeChanged(frame)) {
         // The producer's backing buffers are fixed-size: setSize() only takes
         // effect for a Surface obtained afterwards. Without recreating the EGL
@@ -116,17 +143,19 @@ public class SurfaceTextureRenderer extends EglRenderer {
         producer.setSize(frame.getRotatedWidth(), frame.getRotatedHeight());
         surface = producer.getSurface();
         createEglSurface(surface);
+        surfaceWidth = frame.getRotatedWidth();
+        surfaceHeight = frame.getRotatedHeight();
       }
     }
     updateFrameDimensionsAndReportEvents(frame);
-    super.onFrame(frame);
+    if (!released && frameOutputEnabled) super.onFrame(frame);
   }
 
   private boolean frameSizeChanged(VideoFrame frame) {
     synchronized (layoutLock) {
       return !isRenderingPaused
-          && (rotatedFrameWidth != frame.getRotatedWidth()
-              || rotatedFrameHeight != frame.getRotatedHeight());
+          && (surfaceWidth != frame.getRotatedWidth()
+              || surfaceHeight != frame.getRotatedHeight());
     }
   }
 
@@ -139,6 +168,9 @@ public class SurfaceTextureRenderer extends EglRenderer {
   // thread, which never acquires it, so the wait cannot deadlock.
   private final Object surfaceLock = new Object();
   private Surface surface = null;
+  // Reported dimensions can advance while output is hidden. Track actual
+  // backing dimensions independently so re-enabling recreates the correct size.
+  private int surfaceWidth = 0, surfaceHeight = 0;
 
   private TextureRegistry.SurfaceProducer producer;
 
@@ -167,6 +199,7 @@ public class SurfaceTextureRenderer extends EglRenderer {
       releaseEglSurface(completionLatch::countDown);
       ThreadUtils.awaitUninterruptibly(completionLatch);
       surface = null;
+      surfaceWidth = surfaceHeight = 0;
     }
   }
 

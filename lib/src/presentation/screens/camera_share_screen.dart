@@ -1,15 +1,17 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:bshare/src/application/providers.dart';
 import 'package:bshare/src/domain/entities/camera_connection_mode.dart';
 import 'package:bshare/src/domain/entities/camera_device.dart';
 import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
+import 'package:bshare/src/infrastructure/services/usb_adb_transport_service.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
 import 'package:bshare/src/presentation/localization/camera_localizations.dart';
 import 'package:bshare/src/presentation/localization/camera_ui_localizations.dart';
+import 'package:bshare/src/presentation/localization/usb_connection_localizations.dart';
 import 'package:bshare/src/presentation/widgets/app_shell.dart';
+import 'package:bshare/src/presentation/widgets/usb_device_picker.dart';
 import 'package:bshare/src/presentation/screens/camera_viewer_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,17 +27,16 @@ class CameraShareScreen extends ConsumerStatefulWidget {
 class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
     with WidgetsBindingObserver {
   final _scrollController = ScrollController();
-  final _hostController = TextEditingController();
   final _portController = TextEditingController(text: '53317');
   CameraConnectionMode _connection = CameraConnectionMode.wifi;
   List<CameraDevice> _cameras = const [];
   String? _cameraId;
   String? _selectedDeviceId;
+  String? _selectedUsbSerial;
   bool _loadingCameras = false;
   bool _watchBusy = false;
   bool _viewerOpen = false;
   DeviceInfo? _viewerDevice;
-  List<String>? _viewerLocalIps;
   String? _cameraError;
   late final ScreenShareService _service;
 
@@ -65,7 +66,6 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
-    _hostController.dispose();
     _portController.dispose();
     super.dispose();
   }
@@ -75,7 +75,7 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
     if (state == AppLifecycleState.resumed &&
         mounted &&
         _connection == CameraConnectionMode.usb) {
-      ref.invalidate(usbCameraNetworkProvider);
+      if (!_mobile) ref.invalidate(usbAdbDevicesProvider);
     }
   }
 
@@ -121,10 +121,16 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
     final selectedCamera = _cameras
         .where((camera) => camera.id == _cameraId)
         .firstOrNull;
-    final usb = _connection == CameraConnectionMode.usb
-        ? ref.watch(usbCameraNetworkProvider)
+    final usb = !_mobile && _connection == CameraConnectionMode.usb
+        ? ref.watch(usbAdbDevicesProvider).asData?.value
         : null;
-    final receiver = ref.watch(receiveControllerProvider).value;
+    final selectedUsb = usb
+        ?.where(
+          (device) =>
+              device.serial == _selectedUsbSerial &&
+              device.state == UsbAdbDeviceState.authorized,
+        )
+        .firstOrNull;
     final busy = session.busy || _watchBusy;
 
     return ValueListenableBuilder<ScreenShareState>(
@@ -133,13 +139,11 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
         if (_viewerOpen) {
           return FocusedCameraViewer(
             device: _viewerDevice,
-            allowedLocalIps: _viewerLocalIps,
             onClose: () async {
               if (!mounted) return;
               setState(() {
                 _viewerOpen = false;
                 _viewerDevice = null;
-                _viewerLocalIps = null;
               });
             },
           );
@@ -174,6 +178,7 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
                   ),
                   ButtonSegment(
                     value: CameraConnectionMode.usb,
+                    enabled: Theme.of(context).platform != TargetPlatform.iOS,
                     icon: const Icon(Icons.usb_rounded),
                     label: Text(l10n.cameraUiText('usb')),
                   ),
@@ -184,7 +189,7 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
                     : (selection) {
                         setState(() => _connection = selection.single);
                         if (_connection == CameraConnectionMode.usb) {
-                          ref.invalidate(usbCameraNetworkProvider);
+                          if (!_mobile) ref.invalidate(usbAdbDevicesProvider);
                         } else if (!_mobile) {
                           unawaited(
                             ref.read(discoveryProvider.notifier).start(),
@@ -193,12 +198,16 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
                       },
               ),
               const SizedBox(height: 12),
+              if (Theme.of(context).platform == TargetPlatform.iOS) ...[
+                Text(l10n.usbConnectionText('androidOnly')),
+                const SizedBox(height: 8),
+              ],
               Text(
-                l10n.cameraUiText(
-                  _connection == CameraConnectionMode.wifi
-                      ? 'wifiHelp'
-                      : 'usbHelp',
-                ),
+                _connection == CameraConnectionMode.wifi
+                    ? l10n.cameraUiText('wifiHelp')
+                    : l10n.usbConnectionText(
+                        _mobile ? 'phoneHelp' : 'computerHelp',
+                      ),
               ),
               const SizedBox(height: 16),
               if (!idle && !cameraSession)
@@ -295,42 +304,9 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
               if (_connection == CameraConnectionMode.usb) ...[
                 const SizedBox(height: 12),
                 if (_mobile)
-                  Row(
-                    children: [
-                      if (Platform.isAndroid)
-                        Expanded(
-                          child: TextButton.icon(
-                            onPressed: busy ? null : _openUsbSettings,
-                            icon: const Icon(Icons.settings_ethernet_rounded),
-                            label: Text(l10n.cameraUiText('openUsbSettings')),
-                          ),
-                        )
-                      else
-                        const Spacer(),
-                      IconButton(
-                        tooltip: l10n.t('refreshDevices'),
-                        onPressed: busy
-                            ? null
-                            : () => ref.invalidate(usbCameraNetworkProvider),
-                        icon: const Icon(Icons.refresh_rounded),
-                      ),
-                    ],
-                  ),
-                if (_mobile)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: usb!.when(
-                        loading: () => const LinearProgressIndicator(),
-                        error: (_, _) =>
-                            Text(l10n.cameraUiText('usbUnavailable')),
-                        data: (snapshot) => Text(
-                          snapshot.addresses.isEmpty
-                              ? l10n.cameraUiText('usbUnavailable')
-                              : '${l10n.cameraUiText('usbAddress')}:\n${snapshot.addresses.map((address) => address.ip).join('\n')}\n${l10n.cameraUiText('port')}: ${receiver?.port ?? settings?.preferredPort ?? 53317}',
-                        ),
-                      ),
-                    ),
+                  Text(
+                    '${l10n.cameraUiText('port')}: ${ref.watch(receiveControllerProvider).value?.port ?? settings?.preferredPort ?? 53317}',
+                    key: const ValueKey('camera-usb-listening-port'),
                   )
                 else
                   Card(
@@ -338,15 +314,11 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
                       padding: const EdgeInsets.all(14),
                       child: Column(
                         children: [
-                          TextField(
-                            key: const ValueKey('camera-usb-host'),
-                            controller: _hostController,
+                          UsbDevicePicker(
+                            selectedSerial: _selectedUsbSerial,
                             enabled: idle && !busy,
-                            keyboardType: TextInputType.url,
-                            autocorrect: false,
-                            decoration: InputDecoration(
-                              labelText: l10n.cameraUiText('host'),
-                              hintText: '192.168.42.129',
+                            onSelected: (device) => setState(
+                              () => _selectedUsbSerial = device.serial,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -356,7 +328,8 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
                             enabled: idle && !busy,
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
-                              labelText: l10n.cameraUiText('port'),
+                              labelText: l10n.usbConnectionText('port'),
+                              helperText: l10n.usbConnectionText('portHelp'),
                             ),
                           ),
                         ],
@@ -429,6 +402,12 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
                   ),
                 ),
               const SizedBox(height: 20),
+              if (_watchBusy && _connection == CameraConnectionMode.usb) ...[
+                const LinearProgressIndicator(),
+                const SizedBox(height: 8),
+                Text(l10n.usbConnectionText('connecting')),
+                const SizedBox(height: 12),
+              ],
               if (sharing || watching)
                 FilledButton.icon(
                   key: const ValueKey('camera-stop'),
@@ -454,9 +433,11 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
                       !idle ||
                           busy ||
                           (_connection == CameraConnectionMode.wifi &&
-                              selectedDevice == null)
+                              selectedDevice == null) ||
+                          (_connection == CameraConnectionMode.usb &&
+                              selectedUsb == null)
                       ? null
-                      : () => _watch(selectedDevice),
+                      : () => _watch(selectedDevice, selectedUsb),
                   icon: const Icon(Icons.visibility_rounded),
                   label: Text(l10n.cameraUiText('watchCamera')),
                   style: _actionStyle(),
@@ -508,58 +489,44 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
     }
   }
 
-  Future<void> _openUsbSettings() async {
-    try {
-      await ref.read(usbCameraNetworkServiceProvider).openUsbSettings();
-      if (mounted) ref.invalidate(usbCameraNetworkProvider);
-    } catch (error) {
-      _showFailure('usbUnavailable', error);
-    }
-  }
-
-  Future<void> _watch(DeviceInfo? selected) async {
+  Future<void> _watch(DeviceInfo? selected, UsbAdbDevice? selectedUsb) async {
     if (_watchBusy) return;
-    final host = _hostController.text.trim();
     final port = int.tryParse(_portController.text.trim());
     final connection = _connection;
     if (connection == CameraConnectionMode.usb &&
-        (InternetAddress.tryParse(host) == null ||
-            port == null ||
-            port < 1 ||
-            port > 65535)) {
-      _showMessage('invalidAddress');
+        (selectedUsb == null || port == null || port < 1 || port > 65535)) {
+      _showUsbMessage('invalidPort');
       return;
     }
     setState(() => _watchBusy = true);
     try {
-      List<String>? allowedLocalIps;
-      final device = connection == CameraConnectionMode.wifi
-          ? selected!
-          : DeviceInfo(
-              id: 'usb-camera-$host:$port',
-              name: host,
-              platform: 'mobile',
-              ip: host,
-              port: port!,
-              lastSeen: DateTime.now(),
-            );
       if (connection == CameraConnectionMode.usb) {
-        final usb = await ref.read(usbCameraNetworkProvider.future);
-        if (!mounted) return;
-        if (!usb.containsRemote(host)) {
-          _showMessage('usbUnavailable');
+        await _service.watchUsb(
+          selectedUsb!,
+          source: VideoShareSource.camera,
+          remotePort: port!,
+        );
+        if (!mounted) {
+          await _service.stopWatching();
           return;
         }
-        allowedLocalIps = usb.localIps;
       }
       if (!mounted) return;
       setState(() {
-        _viewerDevice = device;
-        _viewerLocalIps = allowedLocalIps;
+        _viewerDevice = connection == CameraConnectionMode.wifi
+            ? selected
+            : null;
         _viewerOpen = true;
       });
     } catch (error) {
-      _showFailure('watchFailed', error);
+      if (connection == CameraConnectionMode.usb) {
+        if (mounted) {
+          ref.read(loggerProvider).warn('USB camera connection failed: $error');
+          _showUsbMessage('watchFailed');
+        }
+      } else {
+        _showFailure('watchFailed', error);
+      }
     } finally {
       if (mounted) setState(() => _watchBusy = false);
     }
@@ -589,5 +556,14 @@ class _CameraShareScreenState extends ConsumerState<CameraShareScreen>
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(context.l10n.cameraUiText(key))));
+  }
+
+  void _showUsbMessage(String key) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(context.l10n.usbConnectionText(key))),
+      );
   }
 }

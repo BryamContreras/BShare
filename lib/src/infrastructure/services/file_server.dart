@@ -42,6 +42,24 @@ typedef ScreenOfferHandler =
     Future<Map<String, dynamic>> Function(Map<String, dynamic> offer);
 typedef ScreenMetadataHandler = Map<String, dynamic> Function();
 
+/// A stop is acknowledged before releasing the listener that served it.
+class CameraControlReply {
+  const CameraControlReply(this.controls, {this.afterResponse});
+
+  final Map<String, dynamic> controls;
+  final Future<void> Function()? afterResponse;
+}
+
+class CameraControlException implements Exception {
+  const CameraControlException(this.code, {this.status = HttpStatus.conflict});
+
+  final String code;
+  final int status;
+}
+
+typedef CameraControlHandler =
+    Future<CameraControlReply> Function(Map<String, dynamic> command);
+
 class FileServer {
   FileServer(this._logger);
 
@@ -88,7 +106,12 @@ class FileServer {
   ScreenOfferHandler? cameraOfferHandler;
   ScreenMetadataHandler? cameraMetadataHandler;
   Future<void> Function(String viewerId)? cameraViewerStopHandler;
+  CameraControlHandler? cameraControlHandler;
   List<String>? cameraAllowedRemoteSubnets;
+
+  /// Direct USB video is reachable only through the phone's loopback bridge.
+  /// File-receiving routes retain their independent permissions and listeners.
+  bool usbVideoOnly = false;
   TransferCommandHandler? transferCommandHandler;
   void Function()? onIdle;
 
@@ -217,6 +240,19 @@ class FileServer {
         });
         return;
       }
+      final videoRoute =
+          request.uri.path.startsWith('/api/camera/') ||
+          request.uri.path.startsWith('/api/screen/');
+      if (videoRoute &&
+          usbVideoOnly &&
+          request.connectionInfo?.remoteAddress.isLoopback != true) {
+        request.response.statusCode = HttpStatus.forbidden;
+        await _json(request.response, {
+          'ok': false,
+          'error': 'usb-cable-required',
+        });
+        return;
+      }
       if (request.method == 'GET' && request.uri.path == '/api/ping') {
         await _json(request.response, {'ok': true});
       } else if (request.method == 'POST' &&
@@ -233,6 +269,11 @@ class FileServer {
       } else if (request.method == 'GET' &&
           request.uri.path == '/api/screen/metadata') {
         await _handleVideoMetadata(request, screenMetadataHandler, 'screen');
+      } else if (request.method == 'POST' &&
+          request.uri.path == '/api/camera/control') {
+        if (await _allowCameraInterface(request)) {
+          await _handleCameraControl(request);
+        }
       } else if (request.method == 'POST' &&
           request.uri.path == '/api/camera/offer') {
         if (await _allowCameraInterface(request)) {
@@ -354,6 +395,67 @@ class FileServer {
     await _json(request.response, {'ok': true});
   }
 
+  Future<void> _handleCameraControl(HttpRequest request) async {
+    final handler = cameraControlHandler;
+    if (handler == null) {
+      request.response.statusCode = HttpStatus.serviceUnavailable;
+      await _json(request.response, {
+        'ok': false,
+        'error': 'camera-share-not-active',
+      });
+      return;
+    }
+    try {
+      final bytes = <int>[];
+      await for (final chunk in request) {
+        if (bytes.length + chunk.length > 4096) {
+          request.response.statusCode = HttpStatus.requestEntityTooLarge;
+          await _json(request.response, {
+            'ok': false,
+            'error': 'control-too-large',
+          });
+          return;
+        }
+        bytes.addAll(chunk);
+      }
+      final command = jsonDecode(utf8.decode(bytes));
+      if (command is! Map<String, dynamic>) {
+        throw const FormatException('Invalid camera command');
+      }
+      final reply = await handler(command);
+      try {
+        await _json(request.response, {'ok': true, 'controls': reply.controls});
+      } finally {
+        final afterResponse = reply.afterResponse;
+        if (afterResponse != null) {
+          // Use the next event turn so this request leaves _requests first.
+          // Stopping a share can stop this server and drain its requests.
+          unawaited(
+            Future<void>(afterResponse).catchError((Object error) {
+              _logger.warn('Camera control cleanup failed: $error');
+            }),
+          );
+        }
+      }
+    } on CameraControlException catch (error) {
+      request.response.statusCode = error.status;
+      await _json(request.response, {'ok': false, 'error': error.code});
+    } on FormatException {
+      request.response.statusCode = HttpStatus.badRequest;
+      await _json(request.response, {
+        'ok': false,
+        'error': 'invalid-camera-control',
+      });
+    } catch (error) {
+      _logger.warn('Camera control failed: $error');
+      request.response.statusCode = HttpStatus.conflict;
+      await _json(request.response, {
+        'ok': false,
+        'error': 'camera-control-failed',
+      });
+    }
+  }
+
   Future<void> _handleVideoOffer(
     HttpRequest request,
     ScreenOfferHandler? handler,
@@ -368,8 +470,37 @@ class FileServer {
       return;
     }
     try {
-      final body = await utf8.decoder.bind(request).join();
-      final answer = await handler(jsonDecode(body) as Map<String, dynamic>);
+      final bytes = <int>[];
+      await for (final chunk in request.timeout(const Duration(seconds: 15))) {
+        if (bytes.length + chunk.length > 256 * 1024) {
+          request.response.statusCode = HttpStatus.requestEntityTooLarge;
+          await _json(request.response, {
+            'ok': false,
+            'error': 'offer-too-large',
+          });
+          return;
+        }
+        bytes.addAll(chunk);
+      }
+      final offer = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+      if (offer.containsKey('usbRelay') &&
+          request.connectionInfo?.remoteAddress.isLoopback != true) {
+        request.response.statusCode = HttpStatus.forbidden;
+        await _json(request.response, {
+          'ok': false,
+          'error': 'usb-cable-required',
+        });
+        return;
+      }
+      if (usbVideoOnly && !offer.containsKey('usbRelay')) {
+        request.response.statusCode = HttpStatus.forbidden;
+        await _json(request.response, {
+          'ok': false,
+          'error': 'usb-relay-required',
+        });
+        return;
+      }
+      final answer = await handler(offer);
       await _json(request.response, {'ok': true, 'answer': answer});
     } catch (error) {
       _logger.error('$source signaling failed', error);
@@ -807,6 +938,7 @@ class FileServer {
       cameraOfferHandler = null;
       cameraMetadataHandler = null;
       cameraViewerStopHandler = null;
+      cameraControlHandler = null;
       cameraAllowedRemoteSubnets = null;
       transferCommandHandler = null;
       onIdle = null;

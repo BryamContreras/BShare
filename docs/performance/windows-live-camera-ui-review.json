@@ -1,0 +1,142 @@
+{
+  "actualMouseDrag": true,
+  "emulatorUsed": false,
+  "mediaSaved": false,
+  "samples": [
+    {
+      "held": true,
+      "zoom": 1.0,
+      "halZoom": 1.0,
+      "halFrame": 14039
+    },
+    {
+      "held": true,
+      "zoom": 1.0230000019073486,
+      "halZoom": 1.0230000019073486,
+      "halFrame": 16655
+    },
+    {
+      "held": true,
+      "zoom": 1.0230000019073486,
+      "halZoom": 1.0230000019073486,
+      "halFrame": 16655
+    },
+    {
+      "held": true,
+      "zoom": 1.4930000305175781,
+      "halZoom": 1.4930000305175781,
+      "halFrame": 16664
+    },
+    {
+      "held": true,
+      "zoom": 1.4930000305175781,
+      "halZoom": 1.4930000305175781,
+      "halFrame": 16664
+    },
+    {
+      "held": true,
+      "zoom": 1.4930000305175781,
+      "halZoom": 1.4930000305175781,
+      "halFrame": 16664
+    },
+    {
+      "held": true,
+      "zoom": 2.4800000190734863,
+      "halZoom": 2.4800000190734863,
+      "halFrame": 16675
+    },
+    {
+      "held": true,
+      "zoom": 2.4800000190734863,
+      "halZoom": 2.4800000190734863,
+      "halFrame": 16675
+    },
+    {
+      "held": true,
+      "zoom": 2.4800000190734863,
+      "halZoom": 2.4800000190734863,
+      "halFrame": 16675
+    },
+    {
+      "held": true,
+      "zoom": 2.4800000190734863,
+      "halZoom": 2.4800000190734863,
+      "halFrame": 16675
+    },
+    {
+      "held": true,
+      "zoom": 3.5139999389648438,
+      "halZoom": 3.5139999389648438,
+      "halFrame": 16694
+    },
+    {
+      "held": true,
+      "zoom": 3.5139999389648438,
+      "halZoom": 3.5139999389648438,
+      "halFrame": 16694
+    },
+    {
+      "held": true,
+      "zoom": 3.5139999389648438,
+      "halZoom": 3.5139999389648438,
+      "halFrame": 16694
+    },
+    {
+      "held": true,
+      "zoom": 3.5139999389648438,
+      "halZoom": 3.5139999389648438,
+      "halFrame": 16694
+    },
+    {
+      "held": true,
+      "zoom": 4.500999927520752,
+      "halZoom": 4.500999927520752,
+      "halFrame": 16714
+    },
+    {
+      "held": true,
+      "zoom": 4.500999927520752,
+      "halZoom": 4.500999927520752,
+      "halFrame": 16714
+    },
+    {
+      "held": false,
+      "zoom": 4.500999927520752,
+      "halZoom": 4.500999927520752,
+      "halFrame": 16714
+    }
+  ],
+  "passed": true,
+  "distinctHalZoomsWhileHeld": [
+    1.0,
+    1.02,
+    1.49,
+    2.48,
+    3.51,
+    4.5
+  ],
+  "finalExpectedFromPointer": 4.501000013947486,
+  "finalReported": 4.500999927520752,
+  "zoomRestored": true,
+  "receiverExitCode": 0,
+  "uiPanelImageRemoved": true,
+  "limitations": [
+    "Thumb stability on native ACKs is covered separately by widget tests."
+  ],
+  "recordedAtUtc": "2026-10-30T21:49:13.941922+00:00",
+  "scope": "Actual Win32 mouse drag in production FocusedCameraViewer inside the owned Windows diagnostic receiver, receiving the physical S22",
+  "inputGuard": "WindowFromPoint plus GetAncestor(GA_ROOT) matched the exact owned receiver HWND before track input.",
+  "hardwareChangeObservedBeforeMouseUp": true,
+  "nativeSetterEndpointUsedDuringDrag": false,
+  "phoneLeftBroadcastingForSubsequentTests": true,
+  "zoomRestoredTo": 1,
+  "testedBundle": {
+    "BShare.exe": "fd9358ef41d32bbc28961d5cd412c0b834c71afd1323d3547f66a94ed012e01d",
+    "data/app.so": "5ee3d6893609e38c1f95ac96d445fe35c61ef28e1384cb84ea8b792b44663e34",
+    "flutter_webrtc_plugin.dll": "3bdc0621f1c66a0e337d735233feced1a2661c75cf7308cfc3437a4320173d7f"
+  },
+  "earlierSetupAttempts": [
+    "Noninteractive stdin ended before coordinates were supplied; no mouse drag occurred.",
+    "Foreground activation was denied on an initial attempt; it was aborted before drag. The corrected harness temporarily raised only its own window and verified point ownership before capture/input."
+  ]
+}

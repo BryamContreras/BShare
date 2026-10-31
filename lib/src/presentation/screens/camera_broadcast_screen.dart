@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:bshare/src/application/camera_session_controller.dart';
 import 'package:bshare/src/application/providers.dart';
+import 'package:bshare/src/domain/entities/camera_connection_mode.dart';
 import 'package:bshare/src/domain/entities/camera_device.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
@@ -11,6 +12,7 @@ import 'package:bshare/src/presentation/localization/camera_broadcast_localizati
 import 'package:bshare/src/presentation/localization/camera_localizations.dart';
 import 'package:bshare/src/presentation/localization/camera_ui_localizations.dart';
 import 'package:bshare/src/presentation/navigation/app_navigation.dart';
+import 'package:bshare/src/presentation/widgets/camera_broadcast_address.dart';
 import 'package:bshare/src/presentation/widgets/orientation_aware_video_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,7 +35,7 @@ class _CameraBroadcastScreenState extends ConsumerState<CameraBroadcastScreen> {
   late final Future<void> _enteringFullscreen;
   Future<void>? _restoringSystemUi;
   Future<void>? _closing;
-  bool _previewVisible = true;
+  bool _previewVisible = false;
   String? _closeError;
 
   @override
@@ -173,6 +175,7 @@ class _CameraBroadcastScreenState extends ConsumerState<CameraBroadcastScreen> {
                     _PreviewPlaceholder(
                       sharing: sharing,
                       previewVisible: _previewVisible,
+                      usb: session.connection == CameraConnectionMode.usb,
                     ),
                   SafeArea(
                     minimum: const EdgeInsets.all(12),
@@ -462,10 +465,12 @@ class _PreviewPlaceholder extends StatelessWidget {
   const _PreviewPlaceholder({
     required this.sharing,
     required this.previewVisible,
+    required this.usb,
   });
 
   final bool sharing;
   final bool previewVisible;
+  final bool usb;
 
   @override
   Widget build(BuildContext context) {
@@ -524,6 +529,8 @@ class _PreviewPlaceholder extends StatelessWidget {
                           color: Colors.white60,
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      BroadcastAddressText(usb: usb),
                     ],
                   ],
                 ),

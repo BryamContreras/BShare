@@ -124,6 +124,30 @@ void main() {
     },
   );
 
+  test('playback audio failure ends only its audio track once', () async {
+    final video = track();
+    final audio = MediaStreamTrackNative(
+      'playback-1',
+      'Device playback',
+      'audio',
+      true,
+      'local',
+    );
+    tracks.add(audio);
+    var videoEnded = 0;
+    var audioEnded = 0;
+    video.onEnded = () => videoEnded++;
+    audio.onEnded = () => audioEnded++;
+    await emit({'event': 'onAudioCaptureStopped', 'trackId': audio.id});
+    await emit({'event': 'onAudioCaptureStopped', 'trackId': audio.id});
+    expect(audioEnded, 1);
+    expect(audio.onEnded, isNull);
+    expect(videoEnded, 0);
+    expect(video.onEnded, isNotNull);
+    await ended(video.id);
+    expect(videoEnded, 1);
+  });
+
   test('replacing an active callback uses only its latest value', () async {
     final value = track();
     var first = 0;

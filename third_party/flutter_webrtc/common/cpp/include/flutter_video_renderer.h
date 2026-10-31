@@ -8,6 +8,12 @@
 #include "rtc_video_renderer.h"
 
 #include <mutex>
+#include <vector>
+#if defined(_WINDOWS)
+#include "bshare_frame_publisher.h"
+#elif defined(BSHARE_LINUX_VIRTUAL_CAMERA)
+#include "bshare_frame_publisher_linux.h"
+#endif
 
 namespace flutter_webrtc_plugin {
 
@@ -33,6 +39,9 @@ class FlutterVideoRenderer
 
   void SetVideoTrack(scoped_refptr<RTCVideoTrack> track);
 
+  void SetVirtualCameraOutput(bool enabled);
+  void SetFrameOutputEnabled(bool enabled);
+
   int64_t texture_id() { return texture_id_; }
 
   bool CheckMediaStream(std::string mediaId);
@@ -57,7 +66,14 @@ class FlutterVideoRenderer
   std::shared_ptr<FlutterDesktopPixelBuffer> pixel_buffer_;
   mutable std::shared_ptr<uint8_t[]> rgb_buffer_;
   mutable bool frame_dirty_ = false;
+  bool frame_output_enabled_ = true;
   mutable std::mutex mutex_;
+#if defined(_WINDOWS) || defined(BSHARE_LINUX_VIRTUAL_CAMERA)
+  bool virtual_camera_enabled_ = false;
+  uint64_t virtual_camera_retry_at_ = 0;
+  std::unique_ptr<bshare::virtual_camera::FramePublisher> virtual_camera_;
+  std::vector<uint8_t> virtual_camera_pixels_;
+#endif
   RTCVideoFrame::VideoRotation rotation_ = RTCVideoFrame::kVideoRotation_0;
 };
 
@@ -74,6 +90,11 @@ class FlutterVideoRendererManager {
 
   void VideoRendererDispose(int64_t texture_id,
                             std::unique_ptr<MethodResultProxy> result);
+
+  void VideoRendererSetVirtualCamera(int64_t texture_id, bool enabled,
+                                     std::unique_ptr<MethodResultProxy> result);
+  void VideoRendererSetFrameOutputEnabled(int64_t texture_id, bool enabled,
+                                          std::unique_ptr<MethodResultProxy> result);
 
  private:
   FlutterWebRTCBase* base_;

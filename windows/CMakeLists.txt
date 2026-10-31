@@ -61,6 +61,14 @@ add_subdirectory("runner")
 set(CMAKE_DISABLE_FIND_PACKAGE_JNI TRUE)
 include(flutter/generated_plugins.cmake)
 
+# The companion device is registered once by its installer. The app only
+# publishes clean received frames; the camera host owns the disconnected slate.
+option(BSHARE_BUILD_VIRTUAL_CAMERA "Build the Windows 11 camera component" ON)
+if(BSHARE_BUILD_VIRTUAL_CAMERA)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../plugins/virtual-camera"
+    "${CMAKE_CURRENT_BINARY_DIR}/bshare-virtual-camera")
+endif()
+
 # The permissions plugin enables C++20 but also adds the legacy /await flag.
 # Standard coroutines avoid the removed experimental headers in newer MSVC.
 if(TARGET permission_handler_windows_plugin)

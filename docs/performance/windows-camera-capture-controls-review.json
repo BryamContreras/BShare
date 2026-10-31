@@ -1,0 +1,1285 @@
+{
+  "recordedAtUtc": "2026-10-30T20:47:08.767528+00:00",
+  "scope": "Native Android camera controls from Windows PC to physical S22 over LAN",
+  "checks": {
+    "flutterPassed": 538,
+    "platformSpecificSkipped": 4,
+    "nativeCameraControlScenariosPassed": 18,
+    "existingTorchScenariosPassed": 12,
+    "dartAnalyze": "No issues found",
+    "androidSdkCompile": "passed",
+    "androidReleaseBuild": "passed",
+    "windowsReleaseBuild": "passed",
+    "windowsInstallerCompiled": true
+  },
+  "pcIntegration": {
+    "entrypoint": "tool/virtual_camera_receiver_probe.dart",
+    "mediaSaved": false,
+    "emulatorUsed": false,
+    "steps": [
+      {
+        "control": "/zoom",
+        "requested": 0.6000000238418579,
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 0.6000000238418579,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "auto"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 25.018002,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 376
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 6931,
+            "zoom": 0.6000000238418579,
+            "zoomRatio": 0.6000000238418579,
+            "exposure": 0.0,
+            "exposureTimeMs": 25.018002,
+            "iso": 376,
+            "whiteBalance": "auto",
+            "activePhysicalId": "2",
+            "focalLengthMm": 2.200000047683716,
+            "aeMode": 1,
+            "awbMode": 1
+          }
+        }
+      },
+      {
+        "control": "/zoom",
+        "requested": 3.0,
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 3.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "auto"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 33.333333,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 334
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 6940,
+            "zoom": 3.0,
+            "zoomRatio": 3.0,
+            "exposure": 0.0,
+            "exposureTimeMs": 33.333333,
+            "iso": 334,
+            "whiteBalance": "auto",
+            "activePhysicalId": "2",
+            "focalLengthMm": 2.200000047683716,
+            "aeMode": 1,
+            "awbMode": 1
+          }
+        }
+      },
+      {
+        "control": "/zoom",
+        "requested": 10.0,
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 10.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "auto"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 33.333333,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 467
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 6949,
+            "zoom": 10.0,
+            "zoomRatio": 10.0,
+            "exposure": 0.0,
+            "exposureTimeMs": 33.333333,
+            "iso": 467,
+            "whiteBalance": "auto",
+            "activePhysicalId": "6",
+            "focalLengthMm": 7.900000095367432,
+            "aeMode": 1,
+            "awbMode": 1
+          }
+        }
+      },
+      {
+        "control": "/zoom",
+        "requested": 1.0,
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "auto"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 33.333333,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 1434
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 6958,
+            "zoom": 1.0,
+            "zoomRatio": 1.0,
+            "exposure": 0.0,
+            "exposureTimeMs": 33.333333,
+            "iso": 1434,
+            "whiteBalance": "auto",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 1
+          }
+        }
+      },
+      {
+        "control": "/white-balance",
+        "requested": "daylight",
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "daylight"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 16.6674,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 1340
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 6967,
+            "zoom": 1.0,
+            "zoomRatio": 1.0,
+            "exposure": 0.0,
+            "exposureTimeMs": 16.6674,
+            "iso": 1340,
+            "whiteBalance": "daylight",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 5
+          }
+        }
+      },
+      {
+        "control": "/exposure",
+        "requested": -0.5,
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "daylight"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": -0.5,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 16.6674,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 1206
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 6976,
+            "zoom": 1.0,
+            "zoomRatio": 1.0,
+            "exposure": -0.5,
+            "exposureTimeMs": 16.6674,
+            "iso": 1206,
+            "whiteBalance": "daylight",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 5
+          }
+        }
+      },
+      {
+        "control": "/exposure-mode",
+        "requested": "manual",
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "daylight"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": -0.5,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "manual",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 16.6674,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 1037
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 6986,
+            "zoom": 1.0,
+            "zoomRatio": 1.0,
+            "exposure": -0.5,
+            "exposureTimeMs": 16.6674,
+            "iso": 1037,
+            "whiteBalance": "daylight",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 0,
+            "awbMode": 5
+          }
+        }
+      },
+      {
+        "control": "/exposure-time",
+        "requested": 5,
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "daylight"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": -0.5,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "manual",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 5.0,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 1035
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 6995,
+            "zoom": 1.0,
+            "zoomRatio": 1.0,
+            "exposure": -0.5,
+            "exposureTimeMs": 5.0,
+            "iso": 1035,
+            "whiteBalance": "daylight",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 0,
+            "awbMode": 5
+          }
+        }
+      },
+      {
+        "control": "/iso",
+        "requested": 200,
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "daylight"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": -0.5,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "manual",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 5.0,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 200
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 7004,
+            "zoom": 1.0,
+            "zoomRatio": 1.0,
+            "exposure": -0.5,
+            "exposureTimeMs": 5.0,
+            "iso": 200,
+            "whiteBalance": "daylight",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 0,
+            "awbMode": 5
+          }
+        }
+      },
+      {
+        "control": "/exposure-mode",
+        "requested": "auto",
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "daylight"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": -0.5,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 16.6674,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 457
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 7031,
+            "zoom": 1.0,
+            "zoomRatio": 1.0,
+            "exposure": -0.5,
+            "exposureTimeMs": 16.6674,
+            "iso": 457,
+            "whiteBalance": "daylight",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 5
+          }
+        }
+      },
+      {
+        "control": "/white-balance",
+        "requested": "auto",
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "auto"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": -0.5,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 16.6674,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 1003
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 7040,
+            "zoom": 1.0,
+            "zoomRatio": 1.0,
+            "exposure": -0.5,
+            "exposureTimeMs": 16.6674,
+            "iso": 1003,
+            "whiteBalance": "auto",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 1
+          }
+        }
+      },
+      {
+        "control": "/exposure",
+        "requested": 0,
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "auto"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 16.6674,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 1062
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 7049,
+            "zoom": 1.0,
+            "zoomRatio": 1.0,
+            "exposure": 0.0,
+            "exposureTimeMs": 16.6674,
+            "iso": 1062,
+            "whiteBalance": "auto",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 1
+          }
+        }
+      }
+    ],
+    "passed": true,
+    "initial": {
+      "ready": true,
+      "mode": "watching",
+      "awaitingVideo": false,
+      "frameWidth": 640.0,
+      "frameHeight": 360.0,
+      "rotation": 90,
+      "firstFrameRendered": true,
+      "decodedFrames": 0,
+      "negotiatedCodec": "H264",
+      "viewerClosed": false,
+      "controls": {
+        "available": true,
+        "busy": false,
+        "microphoneEnabled": false,
+        "torchEnabled": false,
+        "torchAvailable": true,
+        "canSwitchCamera": true,
+        "capture": {
+          "available": true,
+          "cameraId": "0",
+          "zoom": {
+            "supported": true,
+            "min": 0.6000000238418579,
+            "max": 10.0,
+            "step": 0.0,
+            "value": 1.0,
+            "native": true
+          },
+          "whiteBalance": {
+            "supported": true,
+            "modes": [
+              "auto",
+              "incandescent",
+              "fluorescent",
+              "warm-fluorescent",
+              "daylight",
+              "cloudy-daylight",
+              "twilight",
+              "shade"
+            ],
+            "value": "auto"
+          },
+          "exposure": {
+            "supported": true,
+            "min": -2.0,
+            "max": 2.0,
+            "step": 0.1,
+            "value": 0.0,
+            "native": true
+          },
+          "brightness": {
+            "supported": false
+          },
+          "manualExposure": {
+            "supported": true,
+            "mode": "auto",
+            "timeMinMs": 0.08168,
+            "timeMaxMs": 103.38888,
+            "timeMs": 25.018002,
+            "isoMin": 50,
+            "isoMax": 3200,
+            "iso": 964
+          },
+          "cameras": [
+            {
+              "id": "0",
+              "label": "Rear camera 0 (6.4 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 6.400000095367432
+            },
+            {
+              "id": "1",
+              "label": "Front camera 1 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            },
+            {
+              "id": "2",
+              "label": "Rear camera 2 (2.2 mm)",
+              "frontFacing": false,
+              "focalLengthMm": 2.200000047683716
+            },
+            {
+              "id": "3",
+              "label": "Front camera 3 (3.8 mm)",
+              "frontFacing": true,
+              "focalLengthMm": 3.799999952316284
+            }
+          ],
+          "observed": {
+            "frameNumber": 48,
+            "zoom": 1.0,
+            "zoomRatio": 1.0,
+            "exposure": 0.0,
+            "exposureTimeMs": 25.018002,
+            "iso": 964,
+            "whiteBalance": "auto",
+            "activePhysicalId": "5",
+            "focalLengthMm": 6.400000095367432,
+            "aeMode": 1,
+            "awbMode": 1
+          }
+        }
+      },
+      "stopping": false,
+      "cleanupComplete": false
+    },
+    "pcTorchPreservesManual": true,
+    "systemCameraDuringAdjustments": {
+      "frames": 89,
+      "sampleMean": 73.5529,
+      "firstFrameMean": 74.1713,
+      "lastFrameMean": 61.4175,
+      "changedFramePairs": 58,
+      "firstFrameHash": "53ab6388c15e4f98",
+      "lastFrameHash": "dd455518061303cc",
+      "sampleHash": "fc211aa9ec013436"
+    },
+    "phoneStoppedFromPc": true,
+    "exitCode": 0,
+    "nativeReceiverSha256": "5660bd491a5816b47718e83726835f8de24baa17a7bdda2bde41e5b1f1ce460b",
+    "probeAotSha256": "eeb3fe09a5e9419cddbea72f209b843d77f7ab6e53bf0a2b524ae604c4713b42"
+  },
+  "phoneHardwareReport": "docs/performance/s22-camera-capture-controls-review.json",
+  "normalMainEntrypointSmoke": {
+    "entrypoint": "lib/main.dart",
+    "windowCreated": true,
+    "normalExitCode": 0,
+    "passed": true
+  },
+  "phoneCleanup": {
+    "checkedAtUtc": "2026-10-30T20:42:28.362306+00:00",
+    "afterDesktopRemoteStop": true,
+    "bshareForegroundServices": 0,
+    "bshareRecordingConfigurations": 0,
+    "activeCameraClientsEmpty": true,
+    "mediaProjectionNull": true,
+    "installedVersionName": "1.0.4",
+    "installedVersionCode": 2016,
+    "installedAppAndExistingDataRetained": true,
+    "independentFileReceptionNotStoppedByThisCheck": true,
+    "captureRestartedByThisCheck": false,
+    "tcpListenerClosed": true,
+    "cameraSignalingInactive": true,
+    "ownedUiDumpRemoved": true,
+    "passed": true
+  },
+  "artifacts": [
+    {
+      "path": "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk",
+      "sha256": "488626c124fb0f14cfe01168796785cb86249897386b00fd73c97eddb700e692",
+      "bytes": 40955139
+    },
+    {
+      "path": "dist/windows/BShare-1.0.4+16-windows-x64-setup.exe",
+      "sha256": "cae4f6c129feb7ee833a9b4ff759725df038ec705f5f6182cc90e3df8ce24e0d",
+      "bytes": 20082528
+    },
+    {
+      "path": "build/windows/x64/runner/Release/data/app.so",
+      "sha256": "5873d60180e029ed2c9615e9b9d988bc75c70411c7c522252f0df70007fd2063",
+      "bytes": 8995720
+    }
+  ],
+  "limitations": [
+    "Physical coverage is S22 Android14 and Windows11 x64. Camera1 fallback is covered by production-class Java tests, not a physical older device.",
+    "Native zoom can combine optics and digital sensor crop; no claim that every ratio is optical. Android decides automatic physical-lens routing.",
+    "Only advertised camera IDs were explicitly selected. Active physical IDs are readback metadata, not private IDs probed by the test.",
+    "Brightness uses real automatic-exposure EV compensation, disabled in manual mode. The backend does not invent an independent Android brightness control.",
+    "Manual shutter and ISO and white-balance presets are shown only when reported by the camera. No subjective color calibration or every-device guarantee is claimed.",
+    "The actual Windows receiver and production viewer were mounted in a diagnostic entrypoint. Widget tests verify control order and slider/dropdown gestures; real network actions were invoked through its private local diagnostic API."
+  ],
+  "initialRegressionRun": {
+    "failedTests": 9,
+    "area": "Existing UDP discovery fixture on port53318",
+    "cause": "A pre-existing BShare debug instance owned the shared discovery port.",
+    "resolvedBy": "Closed only that identified app through its normal window close to update it; the repeated full suite passed.",
+    "productionDiscoveryCodeChanged": false
+  },
+  "mediaSaved": false,
+  "emulatorUsed": false,
+  "passed": true
+}

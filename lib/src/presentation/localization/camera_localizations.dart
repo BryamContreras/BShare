@@ -11,6 +11,8 @@ const _cameraValues = {
   'en': {
     'deviceCamera': 'Device camera',
     'deviceCameraHelp': 'Share your device camera with a computer.',
+    'viewDeviceCamera': 'View device camera',
+    'viewDeviceCameraHelp': 'View another device’s camera on this computer.',
     'frontCamera': 'Front camera',
     'backCamera': 'Rear camera',
     'cameraSettings': 'Device camera',
@@ -25,6 +27,9 @@ const _cameraValues = {
     'deviceCamera': 'Cámara del dispositivo',
     'deviceCameraHelp':
         'Comparte la cámara del dispositivo con una computadora.',
+    'viewDeviceCamera': 'Ver cámara del dispositivo',
+    'viewDeviceCameraHelp':
+        'Ve la cámara de otro dispositivo en esta computadora.',
     'frontCamera': 'Cámara frontal',
     'backCamera': 'Cámara trasera',
     'cameraSettings': 'Cámara del dispositivo',

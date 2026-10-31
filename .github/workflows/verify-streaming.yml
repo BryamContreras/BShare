@@ -122,7 +122,9 @@ jobs:
           sudo apt-get install --no-install-recommends -y clang cmake ninja-build pkg-config \
             libgtk-3-dev liblzma-dev libstdc++-12-dev libasound2-dev libpulse-dev \
             libgbm-dev libdrm-dev libgl1-mesa-dev libegl1-mesa-dev \
-            libgl1-mesa-dri libglx-mesa0 xvfb xauth pulseaudio pulseaudio-utils
+            libgl1-mesa-dri libglx-mesa0 xvfb xauth pulseaudio pulseaudio-utils \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgdk-pixbuf-2.0-dev \
+            gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav
       - name: Start isolated audio device for WebRTC
         run: |
           pulseaudio --start --exit-idle-time=-1 --load='module-null-sink sink_name=bshare_ci'

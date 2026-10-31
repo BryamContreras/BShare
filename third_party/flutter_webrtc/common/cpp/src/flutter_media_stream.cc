@@ -493,6 +493,7 @@ void FlutterMediaStream::SelectAudioOutput(
     std::string cur_device_id =
         SanitizeDeviceIdFromAudioBuffers(deviceName, deviceGuid);
     if (device_id != "" && device_id == cur_device_id) {
+      base_->RespectExplicitAudioOutputSelection(deviceGuid[0] ? deviceGuid : device_id);
       base_->audio_device_->SetPlayoutDevice(i);
       found = true;
       break;

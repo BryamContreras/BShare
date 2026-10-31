@@ -16,6 +16,9 @@ set(PLUGIN_NAME "flutter_webrtc_plugin")
 add_definitions(-DLIB_WEBRTC_API_DLL)
 add_definitions(-DRTC_DESKTOP_DEVICE)
 
+# Resolve Flutter's plugin symlink before locating the companion camera bridge.
+get_filename_component(BSHARE_WEBRTC_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." REALPATH)
+
 add_library(${PLUGIN_NAME} SHARED
   "../common/cpp/src/flutter_common.cc"
   "../common/cpp/src/flutter_data_channel.cc"
@@ -25,6 +28,7 @@ add_library(${PLUGIN_NAME} SHARED
   "../common/cpp/src/flutter_utf8_sanitize.cc"
   "../common/cpp/src/flutter_peerconnection.cc"
   "../common/cpp/src/flutter_frame_capturer.cc"
+  "../common/cpp/src/desktop_media_manager.cc"
   "../common/cpp/src/flutter_video_renderer.cc"
   "../common/cpp/src/flutter_screen_capture.cc"
   "../common/cpp/src/flutter_webrtc.cc"
@@ -33,6 +37,8 @@ add_library(${PLUGIN_NAME} SHARED
   "loopback_capturer_factory.cc"
   "flutter_webrtc_plugin.cc"
   "task_runner_windows.cc"
+  "windows_media_audio_router.cc"
+  "desktop_media_writer_mf.cc"
 )
 
 include_directories(
@@ -40,12 +46,13 @@ include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}/../common/cpp/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/svpng"
   "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/libwebrtc/include"
+  "${BSHARE_WEBRTC_ROOT}/../../plugins/virtual-camera/include"
 )
 
 apply_standard_settings(${PLUGIN_NAME})
 set_target_properties(${PLUGIN_NAME} PROPERTIES
   CXX_VISIBILITY_PRESET hidden)
-target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
+target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL NOMINMAX)
 target_include_directories(${PLUGIN_NAME} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/../common/cpp/include"
@@ -56,8 +63,15 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE
   flutter_wrapper_plugin
   "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/libwebrtc/lib/libwebrtc.dll.lib"
   avrt.lib
+  advapi32.lib
   ksuser.lib
   mmdevapi.lib
+  mfplat.lib
+  mfreadwrite.lib
+  mfuuid.lib
+  windowscodecs.lib
+  shell32.lib
+  oleaut32.lib
   ole32.lib
   runtimeobject.lib
   uuid.lib

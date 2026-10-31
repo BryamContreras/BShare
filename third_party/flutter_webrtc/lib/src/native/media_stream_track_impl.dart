@@ -52,7 +52,8 @@ class MediaStreamTrackNative extends MediaStreamTrack {
   }
 
   void _handleEndedEvent(Map<String, dynamic> event) {
-    final stoppedTrack = event['onScreenCaptureStopped'];
+    final stoppedTrack =
+        event['onScreenCaptureStopped'] ?? event['onAudioCaptureStopped'];
     if (_ended ||
         _stopped ||
         stoppedTrack is! Map ||

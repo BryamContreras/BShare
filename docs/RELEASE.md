@@ -3,7 +3,7 @@
 ## Automated builds
 
 The **Build installers** workflow runs the quality gate on pushes and pull
-requests to `main`. A version tag such as `v1.0.4` runs the same gate, builds all
+requests to `main`. A version tag such as `v1.0.5` runs the same gate, builds all
 installers, verifies them, and publishes the files as individual GitHub Release
 assets. To rebuild a release manually, select `main` in
 **Actions → Build installers → Run workflow** and enter the version tag in
@@ -13,15 +13,17 @@ Verification runs for the same branch cancel older verification runs. Release
 builds finish in sequence so a newer request cannot interrupt publication.
 
 The quality job runs analysis, the Flutter regression suite, verification-tool
-unit tests, and native Linux window-decoration tests. It must pass before Windows,
+unit tests, native media/virtual-camera ownership checks and Linux window-decoration
+tests. It must pass before Windows,
 Linux, Android, and two native macOS architecture builds start in parallel. Linux
 compiles once and packages the same bundle into both formats.
 
 All builds use Flutter **3.44.8**, locked Dart dependencies and one shared version.
 The version comes from `pubspec.yaml`; its build number is increased by the parent
 workflow run number. A `v*` tag must match the semantic version in `pubspec.yaml`.
-The 1.0.4 base build is 16, above the locally validated build 15; tagged CI builds
-add their run number. Android ABI-specific version codes retain the existing
+The 1.0.5 base build is 17; tagged CI builds add their run number. Historical
+hardware reports retain the exact earlier 1.0.4 build and hashes they exercised.
+Android ABI-specific version codes retain the existing
 Flutter offsets and the permanent signing key, so previous installations can
 update in place.
 
@@ -42,6 +44,11 @@ Each native build uploads its installer directly to a draft GitHub Release. A
 final job checks that all seven files are present, creates `SHA256SUMS.txt`, and
 publishes the Release only after every build and installer check passes. The
 workflow does not create ZIP-wrapped Actions artifacts.
+
+For v1.0.5, the canonical tag and release title are both **`v1.0.5`**. Release
+notes come from the `1.0.5` changelog section. The seven installers and their
+generated checksums remain a single publication: a successful local Windows
+build or hardware test is not a substitute for the other platform jobs.
 
 ## License
 
@@ -85,11 +92,27 @@ compatibility is recorded separately in [PERFORMANCE.md](PERFORMANCE.md).
 
 Windows 2022 builds the x64 application and uses Inno Setup to create a per-user
 installer. The required Microsoft C++ runtime DLLs are bundled next to the app;
-installation does not require administrator rights. The installer creates a
+the compatible MSVC installation is discovered automatically rather than fixed
+to a Visual Studio edition. Installing the core app does not require administrator
+rights. The installer creates a
 Start Menu shortcut by default and shows an unchecked option for a desktop
 shortcut. CI verifies both defaults, then installs, opens, closes and uninstalls
 the app in an isolated directory. The installer retains BShare's existing AppId
 and is not Authenticode-signed.
+
+On supported Windows 11 x64 systems, the app installer also runs its bundled
+virtual-camera component installer. Machine-level source registration requires
+UAC approval; the persistent device belongs to the original desktop user and
+shows a waiting image without a broadcast. Windows 10 retains the receiver and
+camera controls but does not gain the Windows 11 virtual-camera API. Native
+in-process media/probe checks on the Windows 2022 runner do not establish
+Windows 11 system-device registration. Physical checks are linked from
+[VIRTUAL_CAMERA.md](VIRTUAL_CAMERA.md#verified-behavior).
+
+Package the complete Flutter bundle, including all generated plugin/runtime DLLs,
+the virtual-camera component and the pinned ADB tools with their notices. Local
+JPEG/MP4 capture uses WIC/Media Foundation and requires no OBS plugin. See
+[the Windows packaging guide](../packaging/windows/README.md).
 
 An additional unchecked option allows BShare on **private local networks**. It
 asks Windows for administrator approval only to configure the firewall; BShare
@@ -101,6 +124,8 @@ existing Block rules. A denied elevation or an explicit Block rule covering
 Private networks is reported instead of being treated as successful setup.
 Public-only Block rules are preserved and allow Private LAN setup to proceed.
 `network-setup.log` records the result in the installation folder.
+The PowerShell helper console is hidden; the normal UAC authorization remains
+visible when elevated firewall setup is requested.
 
 The elevated operation executes a payload embedded in the installer/uninstaller,
 not the editable `configure-firewall.ps1` in the user's installation directory.
@@ -149,8 +174,23 @@ The source build bundle is unchanged. The generated dependency manifest defines
 the actual library minimums; binaries built on newer local systems may require
 newer distributions.
 
+The packages include BShare's native virtual-camera producer, setup/user service
+files, and ADB tools. DEB resolves v4l2loopback driver/tools through its package
+manager; Fedora requires an available loopback driver without enabling extra
+driver repositories automatically. Kernel headers, module signing and an active
+graphical user session remain prerequisites. These packaging checks do not
+substitute for a real V4L2 capture test on the destination Linux host.
+
+Local JPEG and H.264/AAC MP4 saving uses GStreamer. Packages declare the runtime
+plugins, including a real OpenH264 encoder and an available AAC encoder; release
+verification exercises the encoders in the package-test containers. A missing
+encoder is an error, not a successful empty recording. See [Linux setup](LINUX.md)
+for runtime requirements and the distinction between native writer checks and
+full desktop/kernel validation.
+
 For both package formats, install Python 3, `dpkg-dev`, `rpm`, `patchelf`,
-`desktop-file-utils` and Flutter's normal Linux build dependencies, then run:
+`desktop-file-utils`, Flutter's Linux build dependencies and the GStreamer/GdkPixbuf
+development headers listed in [LINUX.md](LINUX.md#install-linux-prerequisites), then run:
 
 ```bash
 flutter pub get --enforce-lockfile
@@ -185,15 +225,18 @@ are unsigned, and the apps are ad-hoc signed rather than notarized. Users may
 need to approve the installer in macOS Privacy & Security. Changing the container
 to PKG does not itself supply Developer ID signing or notarization. iOS signing
 and store publication remain manual.
+The macOS installers do not add a BShare Camera Extension or local JPEG/MP4
+capture backend. Android USB transport code is shared with desktop, but physical
+USB coverage recorded for this release is Windows/Android.
 
 ## Regenerate an existing version
 
-Release titles match their tags exactly, for example `v1.0.4`. To intentionally
+Release titles match their tags exactly, for example `v1.0.5`. To intentionally
 replace that version with the current `main` source and freshly verified
 installers:
 
 ```bash
-gh workflow run build-installers.yml --ref main -f release_tag=v1.0.4
+gh workflow run build-installers.yml --ref main -f release_tag=v1.0.5
 ```
 
 The version must match `pubspec.yaml`. Existing downloads remain published while

@@ -37,6 +37,7 @@ import androidx.annotation.RequiresApi;
 import com.cloudwebrtc.webrtc.audio.AudioSwitchManager;
 import com.cloudwebrtc.webrtc.audio.AudioUtils;
 import com.cloudwebrtc.webrtc.audio.LocalAudioTrack;
+import com.cloudwebrtc.webrtc.audio.PlaybackAudioCapture;
 import com.cloudwebrtc.webrtc.record.AudioChannel;
 import com.cloudwebrtc.webrtc.record.AudioSamplesInterceptor;
 import com.cloudwebrtc.webrtc.record.MediaRecorderImpl;
@@ -120,6 +121,22 @@ public class GetUserMediaImpl {
     private AudioDeviceInfo preferredInput = null;
     private boolean isTorchOn;
     private Intent mediaProjectionData = null;
+    private String screenAudioTrackId;
+    final PlaybackAudioCapture playbackAudioCapture = new PlaybackAudioCapture(() -> {
+        String id = screenAudioTrackId;
+        screenAudioTrackId = null;
+        if (id != null && FlutterWebRTCPlugin.sharedSingleton != null) {
+            ConstraintsMap event = new ConstraintsMap();
+            event.putString("event", "onAudioCaptureStopped");
+            event.putString("trackId", id);
+            FlutterWebRTCPlugin.sharedSingleton.sendEvent(event.toMap());
+        }
+    });
+
+    void stopScreenAudioCapture() {
+        screenAudioTrackId = null;
+        playbackAudioCapture.stop();
+    }
 
 
     public void screenRequestPermissions(ResultReceiver resultReceiver) {
@@ -578,6 +595,7 @@ public class GetUserMediaImpl {
                         new MediaProjection.Callback() {
                             @Override
                             public void onStop() {
+                                stopScreenAudioCapture();
                                 ConstraintsMap event = new ConstraintsMap();
                                 event.putString("event", "onScreenCaptureStopped");
                                 event.putString("trackId", trackId);
@@ -626,6 +644,34 @@ public class GetUserMediaImpl {
         ConstraintsArray audioTracks = new ConstraintsArray();
         ConstraintsArray videoTracks = new ConstraintsArray();
         ConstraintsMap successResult = new ConstraintsMap();
+
+        if (constraints.getType("audio") == ObjectType.Boolean && constraints.getBoolean("audio") &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                applicationContext.checkSelfPermission(PERMISSION_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            try {
+                playbackAudioCapture.start(((OrientationAwareScreenCapturer) videoCapturer).getMediaProjection());
+                MediaConstraints audioConstraints = new MediaConstraints();
+                audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair("googEchoCancellation", "false"));
+                audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair("googAutoGainControl", "false"));
+                audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair("googNoiseSuppression", "false"));
+                String audioId = stateProvider.getNextTrackUUID();
+                AudioTrack playbackTrack = createUserAudioTrack(pcFactory, audioConstraints, mediaStream, audioId);
+                if (playbackTrack == null) throw new IllegalStateException("Cannot create playback audio track");
+                stateProvider.putLocalTrack(audioId, new LocalAudioTrack(playbackTrack));
+                screenAudioTrackId = audioId;
+                ConstraintsMap track = new ConstraintsMap();
+                track.putBoolean("enabled", playbackTrack.enabled());
+                track.putString("id", audioId);
+                track.putString("kind", "audio");
+                track.putString("label", "Device playback");
+                track.putString("readyState", playbackTrack.state().toString());
+                track.putBoolean("remote", false);
+                audioTracks.pushMap(track);
+            } catch (RuntimeException error) {
+                stopScreenAudioCapture();
+                Log.w(TAG, "Screen video continues without playback audio", error);
+            }
+        }
 
         if (displayTrack  != null) {
             String id = displayTrack.id();
@@ -1074,6 +1120,7 @@ public class GetUserMediaImpl {
                     + " to primary capturer (was " + id + ")");
         } else {
             // No shared tracks - stop and dispose the capturer normally.
+            if (info.isScreenCapture) stopScreenAudioCapture();
             try {
                 info.capturer.stopCapture();
                 if (info.cameraEventsHandler != null) {

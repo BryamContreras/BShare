@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:bshare/src/application/camera_session_controller.dart';
 import 'package:bshare/src/application/providers.dart';
+import 'package:bshare/src/application/camera_media_provider.dart';
 import 'package:bshare/src/domain/entities/app_settings.dart';
 import 'package:bshare/src/domain/entities/camera_connection_mode.dart';
 import 'package:bshare/src/domain/entities/camera_device.dart';
@@ -7,7 +10,7 @@ import 'package:bshare/src/domain/entities/device_info.dart';
 import 'package:bshare/src/infrastructure/services/android_screen_share_execution_service.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/screen_share_service.dart';
-import 'package:bshare/src/infrastructure/services/usb_camera_network_service.dart';
+import 'package:bshare/src/infrastructure/services/usb_adb_transport_service.dart';
 import 'package:bshare/src/presentation/localization/app_localizations.dart';
 import 'package:bshare/src/presentation/screens/camera_share_screen.dart';
 import 'package:bshare/src/presentation/screens/camera_viewer_screen.dart';
@@ -19,8 +22,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'support/fake_camera_media_service.dart';
+
 const _rear = CameraDevice(id: '0', label: 'Lens 0', frontFacing: false);
 const _front = CameraDevice(id: '1', label: 'Lens 1', frontFacing: true);
+const _usb = UsbAdbDevice(
+  serial: 'physical-phone',
+  label: 'USB phone',
+  state: UsbAdbDeviceState.authorized,
+  transportId: 3,
+);
 
 class _Settings extends SettingsController {
   @override
@@ -40,6 +51,10 @@ class _Video extends ScreenShareService {
   int enumerations = 0;
   int watches = 0;
   int viewerStops = 0;
+  int usbWatches = 0;
+  int? usbPort;
+  Completer<void>? usbWait;
+  bool usbFails = false;
   CameraDevice? camera;
   @override
   VideoShareSource get source => VideoShareSource.camera;
@@ -57,6 +72,21 @@ class _Video extends ScreenShareService {
     List<String>? allowedLocalIps,
   }) async {
     watches++;
+    state.value = const ScreenShareState(mode: ScreenShareMode.watching);
+  }
+
+  @override
+  Future<void> watchUsb(
+    UsbAdbDevice device, {
+    VideoShareSource source = VideoShareSource.screen,
+    int remotePort = 53317,
+  }) async {
+    expect(device.serial, _usb.serial);
+    expect(source, VideoShareSource.camera);
+    usbWatches++;
+    usbPort = remotePort;
+    if (usbWait != null) await usbWait!.future;
+    if (usbFails) throw const UsbAdbTransportException('adb-command-failed');
     state.value = const ScreenShareState(mode: ScreenShareMode.watching);
   }
 
@@ -136,17 +166,22 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     video = _Video();
+    final media = FakeCameraMediaService(source: video);
+    addTearDown(() async {
+      final closing = media.dispose();
+      await tester.pump();
+      await closing;
+    });
     session = _Session(video);
     discovery = _Discovery();
     container = ProviderContainer(
       overrides: [
         settingsProvider.overrideWith(_Settings.new),
         screenShareServiceProvider.overrideWithValue(video),
+        cameraMediaServiceProvider.overrideWithValue(media),
         cameraSessionProvider.overrideWith(() => session),
         discoveryProvider.overrideWith(() => discovery),
-        usbCameraNetworkProvider.overrideWith(
-          (_) async => const UsbCameraNetworkSnapshot(),
-        ),
+        usbAdbDevicesProvider.overrideWith((_) async => [_usb]),
       ],
     );
     await container.read(settingsProvider.future);
@@ -256,7 +291,7 @@ void main() {
     expect(find.byType(FocusedCameraViewer), findsOneWidget);
     expect(find.byType(AppShell), findsNothing);
     expect(session.starts, 0);
-    await tester.tap(find.byKey(const ValueKey('camera-viewer-stop')));
+    await tester.tap(find.byKey(const ValueKey('camera-viewer-close')));
     await tester.pumpAndSettle();
     expect(find.byType(FocusedCameraViewer), findsNothing);
     expect(find.byType(AppShell), findsOneWidget);
@@ -266,28 +301,124 @@ void main() {
     expect(session.stops, 0);
   });
 
-  testWidgets('USB rejects invalid address and never falls back to Wi-Fi', (
+  testWidgets('USB needs an authorized selection and a valid BShare port', (
     tester,
   ) async {
     await mount(tester, TargetPlatform.linux);
     await tester.tap(find.text('USB'));
     await tester.pumpAndSettle();
     expect(find.text('My phone'), findsNothing);
-    await tester.tap(find.byKey(const ValueKey('camera-watch')));
-    await tester.pump();
-    expect(find.textContaining('valid IP address'), findsOneWidget);
-    expect(video.watches, 0);
+    final watch = find.byKey(const ValueKey('camera-watch'));
+    expect(tester.widget<FilledButton>(watch).onPressed, isNull);
+    expect(find.byKey(const ValueKey('camera-usb-host')), findsNothing);
+    await tester.tap(find.text('USB phone'));
     await tester.enterText(
-      find.byKey(const ValueKey('camera-usb-host')),
-      '192.168.42.129',
+      find.byKey(const ValueKey('camera-usb-port')),
+      '65536',
     );
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('camera-watch')));
     await tester.pumpAndSettle();
-    expect(find.textContaining('No USB network detected'), findsOneWidget);
+    expect(find.textContaining('valid BShare port'), findsOneWidget);
     expect(video.watches, 0);
+    expect(video.usbWatches, 0);
     expect(session.starts, 0);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('USB reuses its connected viewer without reconnecting over LAN', (
+    tester,
+  ) async {
+    await mount(tester, TargetPlatform.windows);
+    await tester.tap(find.text('USB'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('USB phone'));
+    await tester.enterText(
+      find.byKey(const ValueKey('camera-usb-port')),
+      '53319',
+    );
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('camera-watch')));
+    await tester.pumpAndSettle();
+    expect(video.usbWatches, 1);
+    expect(video.usbPort, 53319);
+    expect(video.watches, 0);
+    expect(
+      tester
+          .widget<FocusedCameraViewer>(find.byType(FocusedCameraViewer))
+          .device,
+      isNull,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    expect(video.viewerStops, 1);
+  });
+
+  testWidgets('USB failure stays on setup and can be retried', (tester) async {
+    await mount(tester, TargetPlatform.linux);
+    video.usbFails = true;
+    await tester.tap(find.text('USB'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('USB phone'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('camera-watch')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Could not connect over USB'), findsOneWidget);
+    expect(find.byType(FocusedCameraViewer), findsNothing);
+    expect(video.watches, 0);
+    video.usbFails = false;
+    await tester.tap(find.byKey(const ValueKey('camera-watch')));
+    await tester.pumpAndSettle();
+    expect(video.usbWatches, 2);
+    expect(find.byType(FocusedCameraViewer), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('leaving while USB connects releases the new connection', (
+    tester,
+  ) async {
+    await mount(tester, TargetPlatform.linux);
+    video.usbWait = Completer<void>();
+    await tester.tap(find.text('USB'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('USB phone'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('camera-watch')));
+    await tester.pump();
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const ValueKey('camera-watch')))
+          .onPressed,
+      isNull,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    video.usbWait!.complete();
+    await tester.pumpAndSettle();
+    expect(video.viewerStops, 1);
+    expect(video.state.value.mode, ScreenShareMode.idle);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'Android USB starts capture without tether settings or an IP field',
+    (tester) async {
+      await mount(tester, TargetPlatform.android);
+      await tester.tap(find.text('USB'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('USB debugging'), findsOneWidget);
+      expect(find.textContaining('tethering'), findsNothing);
+      expect(find.byKey(const ValueKey('camera-usb-host')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('camera-usb-listening-port')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('camera-share')));
+      await tester.pumpAndSettle();
+      expect(session.lastConnection, CameraConnectionMode.usb);
+      expect(find.text('broadcast-page'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 }

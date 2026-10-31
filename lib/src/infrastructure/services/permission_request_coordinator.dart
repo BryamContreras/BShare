@@ -18,6 +18,10 @@ class PermissionRequestCoordinator {
   final Map<Permission, Future<PermissionStatus>> _pending = {};
   Future<void> _operation = Future<void>.value();
 
+  /// Read-only access for remote actions that must never open an OS dialog.
+  Future<PermissionStatus> status(Permission permission) =>
+      _readStatus(permission);
+
   Future<PermissionStatus> request(Permission permission) {
     final existing = _pending[permission];
     if (existing != null) return existing;

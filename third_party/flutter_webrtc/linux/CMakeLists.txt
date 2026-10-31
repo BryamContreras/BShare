@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 set(PROJECT_NAME "flutter_webrtc")
 project(${PROJECT_NAME} LANGUAGES CXX)
+get_filename_component(BSHARE_WEBRTC_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." REALPATH)
 
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
   cmake_policy(SET CMP0135 NEW)
@@ -12,6 +13,8 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/../third_party/CMakeLists.txt")
 set(PLUGIN_NAME "${PROJECT_NAME}_plugin")
 set (CMAKE_EXPORT_COMPILE_COMMANDS ON )
 set(CMAKE_CXX_STANDARD 17)
+find_package(Threads REQUIRED)
+pkg_check_modules(GSTREAMER REQUIRED IMPORTED_TARGET gstreamer-1.0 gstreamer-app-1.0 gdk-pixbuf-2.0)
 
 add_definitions(-DRTC_DESKTOP_DEVICE)
 
@@ -34,6 +37,8 @@ add_library(${PLUGIN_NAME} SHARED
   "flutter/standard_codec.cc"
   "flutter/plugin_registrar.cc"
   "task_runner_linux.cc"
+  "../common/cpp/src/desktop_media_manager.cc"
+  "desktop_media_writer_gstreamer.cc"
 )
 
 include_directories(
@@ -42,12 +47,13 @@ include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}/../common/cpp/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/libwebrtc/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/svpng"
+  "${BSHARE_WEBRTC_ROOT}/../../plugins/virtual-camera/linux"
 )
 
 apply_standard_settings(${PLUGIN_NAME})
 set_target_properties(${PLUGIN_NAME} PROPERTIES
   CXX_VISIBILITY_PRESET hidden)
-target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
+target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL BSHARE_LINUX_VIRTUAL_CAMERA)
 target_include_directories(${PLUGIN_NAME} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/../common/cpp/include"
@@ -55,6 +61,10 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
 )
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter)
 target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GTK)
+target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GSTREAMER Threads::Threads)
+
+add_subdirectory("${BSHARE_WEBRTC_ROOT}/../../plugins/virtual-camera/linux"
+                 "${CMAKE_CURRENT_BINARY_DIR}/bshare-linux-virtual-camera")
 
 
 target_link_libraries(${PLUGIN_NAME} PRIVATE 

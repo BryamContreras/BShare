@@ -5,6 +5,31 @@ import 'dart:io';
 import 'package:bshare/src/infrastructure/services/direct_network_service.dart';
 import 'package:bshare/src/infrastructure/services/process_runner.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+
+String _dartExecutable() {
+  if (!Platform.isWindows) return 'dart';
+  // Process.start does not execute the dart.bat shim on Windows. Use the
+  // actual SDK VM; Platform.resolvedExecutable is flutter_tester in this suite.
+  final flutterRoots = <String>[
+    ?Platform.environment['FLUTTER_ROOT'],
+    for (final entry in (Platform.environment['PATH'] ?? '').split(';'))
+      if (entry.isNotEmpty && File(p.join(entry, 'flutter.bat')).existsSync())
+        Directory(entry).parent.path,
+  ];
+  for (final root in flutterRoots) {
+    final executable = p.join(
+      root,
+      'bin',
+      'cache',
+      'dart-sdk',
+      'bin',
+      'dart.exe',
+    );
+    if (File(executable).existsSync()) return executable;
+  }
+  throw StateError('Set FLUTTER_ROOT or put the Flutter bin directory on PATH');
+}
 
 class _PendingProcessRunner extends ProcessRunner {
   final entered = Completer<void>();
@@ -25,8 +50,10 @@ class _PendingProcessRunner extends ProcessRunner {
 }
 
 void main() {
+  late String dartExecutable;
   late Directory directory;
   late File child;
+  setUpAll(() => dartExecutable = _dartExecutable());
   setUp(() async {
     directory = await Directory.systemTemp.createTemp('bshare-process-test-');
     child = File('${directory.path}/child.dart');
@@ -63,7 +90,7 @@ Future<void> main(List<String> arguments) async {
   });
 
   test('returns only after stdout, stderr and exit are collected', () async {
-    final result = await const ProcessRunner().run('dart', [
+    final result = await const ProcessRunner().run(dartExecutable, [
       child.path,
       'output',
     ], timeout: const Duration(seconds: 10));
@@ -85,7 +112,7 @@ Future<void> main(List<String> arguments) async {
     () async {
       final pidFile = File('${directory.path}/pid');
       await expectLater(
-        const ProcessRunner().run('dart', [
+        const ProcessRunner().run(dartExecutable, [
           child.path,
           'wait',
           pidFile.path,
@@ -102,7 +129,10 @@ Future<void> main(List<String> arguments) async {
   test(
     'termination escalates and awaits exit when child ignores SIGTERM',
     () async {
-      final process = await Process.start('dart', [child.path, 'ignore-term']);
+      final process = await Process.start(dartExecutable, [
+        child.path,
+        'ignore-term',
+      ]);
       final ready = Completer<void>();
       final stdoutDone = process.stdout
           .transform(utf8.decoder)

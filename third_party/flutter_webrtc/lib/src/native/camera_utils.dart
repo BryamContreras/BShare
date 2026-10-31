@@ -9,6 +9,30 @@ enum CameraFocusMode { auto, locked }
 enum CameraExposureMode { auto, locked }
 
 class CameraUtils {
+  static Future<Map<String, dynamic>> getCameraCaptureControls(
+      MediaStreamTrack videoTrack) async {
+    if (!WebRTC.platformIsAndroid) return {'available': true};
+    final result = await WebRTC.invokeMethod<dynamic, dynamic>(
+        'getCameraCaptureControls', {'trackId': videoTrack.id});
+    if (result is! Map)
+      throw StateError('Camera controls returned no capabilities');
+    return Map<String, dynamic>.from(result);
+  }
+
+  static Future<Map<String, dynamic>> setCameraCaptureControls(
+      MediaStreamTrack videoTrack, Map<String, dynamic> settings) async {
+    if (!WebRTC.platformIsAndroid) {
+      throw UnsupportedError(
+          'Native capture controls are not available on this platform');
+    }
+    final result = await WebRTC.invokeMethod<dynamic, dynamic>(
+        'setCameraCaptureControls',
+        {'trackId': videoTrack.id, 'settings': settings});
+    if (result is! Map)
+      throw StateError('Camera controls returned no confirmed state');
+    return Map<String, dynamic>.from(result);
+  }
+
   static Future<void> setZoom(
       MediaStreamTrack videoTrack, double zoomLevel) async {
     if (WebRTC.platformIsAndroid || WebRTC.platformIsIOS) {

@@ -1,0 +1,56 @@
+{
+  "scope": "Physical S22 Ultra Android 14 camera to Windows Ethernet browser receiver; state and counters only",
+  "emulatorUsed": false,
+  "mediaRecorded": false,
+  "tokensRetained": false,
+  "passed": true,
+  "initialVideoFramesDecoded": 6,
+  "invalidTokenRejected": true,
+  "remoteMicrophoneEnabledWithReceivedAudio": true,
+  "audioSamplesReceived": 22560,
+  "remoteMicrophoneDisabled": true,
+  "remoteCameraSwitchedWithAdvancingVideo": true,
+  "localPhoneControlsReflectedInMetadata": true,
+  "DisconnectedViewerTokenRejected": true,
+  "viewerClosePreservesPhoneBroadcast": true,
+  "oldViewerCannotControlNewViewer": true,
+  "remoteStopAcknowledged": true,
+  "remoteStopEndsPhoneBroadcast": true,
+  "ownedBrowserReceiversClosed": true,
+  "artifact": {
+    "path": "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk",
+    "sha256": "3e8e6e29cbc393fd154bb7cc069b3cd2485fbe05b3baeb13de90412a0fe50c67",
+    "installedVersionName": "1.0.4",
+    "installedVersionCode": 2016,
+    "installMode": "adb install -r, same signing identity and existing app data"
+  },
+  "cleanup": {
+    "bshareForegroundServices": 0,
+    "bshareRecordingConfigurations": 0,
+    "mediaProjectionNull": true,
+    "cameraBroadcastInactive": true,
+    "ownedUiDumpsRemoved": true,
+    "bshareInstalledAndDataPreserved": true,
+    "passed": true
+  },
+  "limitations": [
+    "Physical control actions used the production signaling endpoint with a real H264 WebRTC viewer; desktop panel layout/actions were covered separately by widget tests.",
+    "This report does not validate the system virtual-camera output, other phone models, USB, Linux or macOS.",
+    "Two earlier probe attempts stopped at an incorrect expectation that camera switching increments capture generation. The corrected probe verified a changed camera and track with advancing decoded video."
+  ],
+  "finalCleanup": {
+    "bshareForegroundServices": 0,
+    "bshareRecordingConfigurations": 0,
+    "mediaProjectionNull": true,
+    "cameraBroadcastInactive": true,
+    "ownedUiDumpsRemoved": true,
+    "bshareInstalledAndDataPreserved": true,
+    "passed": true,
+    "checkedAtUtc": "2026-10-30T19:41:16.491229+00:00",
+    "afterFinalSystemVirtualCameraTest": true,
+    "activeCameraClients": 0,
+    "cameraSignalingListenerClosed": true,
+    "listenerConnectionRefused": true,
+    "cameraStoppedFromDesktop": true
+  }
+}

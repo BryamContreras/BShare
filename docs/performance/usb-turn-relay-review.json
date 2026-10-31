@@ -1,0 +1,97 @@
+{
+  "scope": "USB transport core; mocked ADB and actual local TURN/TCP sockets",
+  "date": "2026-10-30",
+  "physicalUsbMediaTest": false,
+  "coreTestsExecuteDeviceCommands": false,
+  "emulatorUsed": false,
+  "mediaSaved": false,
+  "credentialsRetained": false,
+  "coreTests": {
+    "passed": 13,
+    "analyzerIssues": 0,
+    "files": [
+      "test/services/usb_adb_transport_service_test.dart",
+      "test/services/usb_turn_relay_test.dart"
+    ],
+    "coverage": [
+      "AOSP USB type without Windows bus path",
+      "wireless/emulator/invalid device exclusion",
+      "old ADB fallback requires actual USB bus path",
+      "fixed transport ID and loopback listener specifications",
+      "actual smart-socket framing, fragmented acknowledgments and occupied-port retries",
+      "session-owned mappings and idempotent relay cleanup",
+      "partial setup failure and independent cleanup failures",
+      "disconnect/replacement transport rejection",
+      "authenticated allocation and response integrity",
+      "invalid password and tampered request rejection",
+      "allocation quota",
+      "only another live allocated loopback peer is permitted",
+      "Send/Data indications and ChannelData forwarding",
+      "TCP fragmentation and padding",
+      "refresh/deallocation and stale peer rejection",
+      "malformed framing and listener shutdown",
+      "NIC-bound desktop self connection, actual mapped address and loopback relayed address",
+      "bounded eight-entry desktop ICE configuration and nonsecret diagnostics"
+    ]
+  },
+  "independentInterop": {
+    "client": "aioice 0.10.2",
+    "authenticatedTcpAllocations": 2,
+    "bidirectionalChannelData": true,
+    "invalidPasswordRejectedWith401": true,
+    "duplicateRoleRejectedWith486": true,
+    "loopbackOnly": true,
+    "deviceInvolved": false
+  },
+  "independentDesktopSelfSocket": {
+    "client": "aioice 0.10.2",
+    "socketBoundToOwnEthernetAddress": true,
+    "sameOwnAddressTurnEndpoint": true,
+    "authenticatedAllocation": true,
+    "relayedAddress": "127.0.0.1",
+    "credentialsRetained": false,
+    "deviceInvolved": false
+  },
+  "serviceIntegration": {
+    "usbSpecificTestsPassed": 6,
+    "fullServiceAndCoreTestsPassed": 99,
+    "coverage": [
+      "camera and screen relay factories and per-offer Android configuration",
+      "SDP host/LAN candidate removal",
+      "metadata reconnect preserves relay credentials and viewer ID",
+      "idempotent stop and dispose",
+      "pending-open cancellation by stop/dispose",
+      "immediate stop prevents starting ADB"
+    ]
+  },
+  "nativePeerConfigurationIsolation": {
+    "passed": true,
+    "test": "third_party/flutter_webrtc/test/native/test_peer_configuration_isolation.py",
+    "productionCreateAndParseMethods": true,
+    "actualBundledRtcConfigurationType": true,
+    "sequence": "USB eight servers -> USB one server -> LAN",
+    "staleCredentialsOrRelayPolicy": false,
+    "peerOrMediaSessionStarted": false
+  },
+  "physicalCableMappingSmoke": {
+    "device": "Samsung S22 Ultra",
+    "transport": "USB verified by AOSP connection type",
+    "forwardCreated": true,
+    "reverseCreated": true,
+    "explicitLoopbackListeners": true,
+    "sessionClosed": true,
+    "ownedMappingsRemoved": true,
+    "otherDeviceMappingsModified": false,
+    "videoReceived": false
+  },
+  "separatePhysicalMediaEvidence": {
+    "report": "windows-android-usb-review.json",
+    "scope": "Samsung S22 Ultra camera and screen to native Windows receiver with phone Wi-Fi disabled",
+    "coreAndInteropDetailsAboveRemainIndependent": true
+  },
+  "limitations": [
+    "Core tests establish protocol and ownership behavior, not physical USB video reception.",
+    "Physical USB media behavior and selected relay candidate pairs are recorded in windows-android-usb-review.json rather than inferred from these core tests.",
+    "TCP transport latency depends on cable quality, congestion and device load."
+  ]
+}

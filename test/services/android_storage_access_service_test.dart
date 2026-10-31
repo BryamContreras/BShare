@@ -5,6 +5,7 @@ import 'package:bshare/src/infrastructure/services/android_platform_info_service
 import 'package:bshare/src/infrastructure/services/android_storage_access_service.dart';
 import 'package:bshare/src/infrastructure/services/permission_request_coordinator.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 
 void main() {
@@ -46,9 +47,19 @@ void main() {
       );
 
   setUp(() async {
-    temporary = await Directory.systemTemp.createTemp('bshare-storage-access-');
-    private = await Directory('${temporary.path}/private').create();
-    shared = await Directory('${temporary.path}/shared').create();
+    // The service intentionally accepts Android's POSIX absolute paths only.
+    // A Windows drive path would be rejected before permission checks. Keep
+    // real fixtures on the current drive, then use its rooted /path spelling
+    // so both Android path rules and host filesystem/symlink I/O are exercised.
+    final temporaryRoot = Platform.isWindows
+        ? Directory('.dart_tool').absolute
+        : Directory.systemTemp;
+    temporary = await temporaryRoot.createTemp('bshare-storage-access-');
+    final fixturePath = Platform.isWindows
+        ? p.posix.joinAll(['/', ...temporary.uri.pathSegments.skip(1)])
+        : temporary.path;
+    private = await Directory(p.posix.join(fixturePath, 'private')).create();
+    shared = await Directory(p.posix.join(fixturePath, 'shared')).create();
     status = PermissionStatus.denied;
     response = PermissionStatus.granted;
     requests = [];
@@ -56,7 +67,20 @@ void main() {
     sdkReads = 0;
     privateReads = 0;
   });
-  tearDown(() async => temporary.delete(recursive: true));
+  tearDown(() async {
+    if (Platform.isWindows) {
+      final allowedRoot = p.join(
+        await Directory.current.resolveSymbolicLinks(),
+        '.dart_tool',
+      );
+      final resolved = await temporary.resolveSymbolicLinks();
+      if (!p.isWithin(allowedRoot, resolved)) {
+        throw StateError('Refusing cleanup outside the storage test workspace');
+      }
+    }
+    // Directory.delete removes symbolic links without following their targets.
+    await temporary.delete(recursive: true);
+  });
 
   for (final sdk in [24, 28, 29, 30, 31, 32, 33, 34, 35, 36]) {
     test(
@@ -130,7 +154,12 @@ void main() {
   test(
     'symlinks from app storage to shared storage do not bypass permission',
     () async {
-      await Link('${private.path}/outside').create(shared.path);
+      final sharedTarget = await shared.resolveSymbolicLinks();
+      await Link('${private.path}/outside').create(sharedTarget);
+      expect(
+        await Directory('${private.path}/outside').resolveSymbolicLinks(),
+        sharedTarget,
+      );
       final storage = service(36);
       expect(
         await storage.hasAccess('${private.path}/outside/new/file'),

@@ -7,6 +7,7 @@ import 'package:bshare/src/domain/entities/transfer_control.dart';
 import 'package:bshare/src/domain/entities/transfer_progress_status.dart';
 import 'package:bshare/src/infrastructure/services/app_logger.dart';
 import 'package:bshare/src/infrastructure/services/file_server.dart';
+import 'package:bshare/src/infrastructure/services/usb_ice_configuration.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -134,6 +135,92 @@ void main() {
       expect(controls, isEmpty);
       expect(progress, isEmpty);
       expect(await directory.list().toList(), isEmpty);
+    },
+  );
+
+  test(
+    'camera control enforces interface, bounded JSON and capability errors',
+    () async {
+      var commands = 0;
+      server.cameraControlHandler = (command) async {
+        commands++;
+        if (command['token'] != 'valid-token') {
+          throw const CameraControlException(
+            'camera-control-forbidden',
+            status: HttpStatus.forbidden,
+          );
+        }
+        return const CameraControlReply({
+          'version': 1,
+          'microphoneEnabled': false,
+        });
+      };
+      final port = await start();
+      Future<({int status, Map<String, dynamic> body})> control(
+        Object body,
+      ) async {
+        final request = await client.postUrl(
+          Uri.parse('http://127.0.0.1:$port/api/camera/control'),
+        );
+        request.write(jsonEncode(body));
+        final response = await request.close();
+        return (
+          status: response.statusCode,
+          body:
+              jsonDecode(await utf8.decoder.bind(response).join())
+                  as Map<String, dynamic>,
+        );
+      }
+
+      server.cameraAllowedRemoteSubnets = ['192.0.2.0/24'];
+      expect(
+        (await control({'token': 'valid-token'})).status,
+        HttpStatus.forbidden,
+      );
+      expect(commands, 0);
+      server.cameraAllowedRemoteSubnets = null;
+      expect((await control([])).status, HttpStatus.badRequest);
+      expect(
+        (await control({'token': 'x' * 4096})).status,
+        HttpStatus.requestEntityTooLarge,
+      );
+      expect(commands, 0);
+      final rejected = await control({'token': 'wrong'});
+      expect(rejected.status, HttpStatus.forbidden);
+      expect(rejected.body['error'], 'camera-control-forbidden');
+      final accepted = await control({'token': 'valid-token'});
+      expect(accepted.status, HttpStatus.ok);
+      expect((accepted.body['controls'] as Map)['microphoneEnabled'], isFalse);
+      server.cameraControlHandler = null;
+      final inactive = await control({'token': 'valid-token'});
+      expect(inactive.status, HttpStatus.serviceUnavailable);
+      expect(inactive.body['error'], 'camera-share-not-active');
+    },
+  );
+
+  test(
+    'camera stop reply is delivered before its listener drains this request',
+    () async {
+      final stopped = Completer<void>();
+      server.cameraControlHandler = (_) async => CameraControlReply(
+        {'stopping': true},
+        afterResponse: () async {
+          await server.stop();
+          stopped.complete();
+        },
+      );
+      final port = await start();
+      final request = await client.postUrl(
+        Uri.parse('http://127.0.0.1:$port/api/camera/control'),
+      );
+      request.write('{}');
+      final response = await request.close();
+      expect(response.statusCode, HttpStatus.ok);
+      final body = jsonDecode(await utf8.decoder.bind(response).join()) as Map;
+      expect((body['controls'] as Map)['stopping'], isTrue);
+      await stopped.future.timeout(const Duration(seconds: 2));
+      expect(server.isRunning, isFalse);
+      expect(server.cameraControlHandler, isNull);
     },
   );
 
@@ -551,6 +638,189 @@ void main() {
         await request('/api/camera/offer', post: true),
         HttpStatus.forbidden,
       );
+    },
+  );
+
+  test(
+    'USB-only offers require relay configuration even from loopback',
+    () async {
+      server.usbVideoOnly = true;
+      var offers = 0;
+      Future<Map<String, dynamic>> answer(Map<String, dynamic> offer) async {
+        offers++;
+        return {'type': 'answer', 'sdp': offer['sdp']};
+      }
+
+      server.cameraOfferHandler = answer;
+      server.screenOfferHandler = answer;
+      final port = await start();
+      for (final source in ['camera', 'screen']) {
+        final request = await client.postUrl(
+          Uri.parse('http://127.0.0.1:$port/api/$source/offer'),
+        );
+        request.write(jsonEncode({'type': 'offer', 'sdp': 'no-relay'}));
+        final response = await request.close();
+        final body =
+            jsonDecode(await utf8.decoder.bind(response).join())
+                as Map<String, dynamic>;
+        expect(response.statusCode, HttpStatus.forbidden);
+        expect(body['error'], 'usb-relay-required');
+      }
+      expect(offers, 0);
+    },
+  );
+
+  test(
+    'loopback USB offers reach the owner handler with validated relay-only SDP',
+    () async {
+      server.usbVideoOnly = true;
+      const relay = 'a=candidate:relay 1 udp 1 127.0.0.1 44000 typ relay';
+      final configuration = <String, dynamic>{
+        'iceTransportPolicy': 'relay',
+        'iceServers': [
+          {
+            'urls': ['turn:127.0.0.1:43000?transport=tcp'],
+            'username': 'test_user_12345678',
+            'credential': 'test_password_12345678',
+          },
+        ],
+      };
+      var offers = 0;
+      Future<Map<String, dynamic>> answer(Map<String, dynamic> offer) async {
+        offers++;
+        final validated = UsbIceConfiguration.validate(offer['usbRelay']);
+        expect(validated['iceTransportPolicy'], 'relay');
+        // The video session owns validation and SDP sanitizing; FileServer owns
+        // the HTTP transport boundary and must deliver this offer only locally.
+        return {
+          'type': 'answer',
+          'sdp': UsbIceConfiguration.relaySdp(offer['sdp'] as String),
+        };
+      }
+
+      server.cameraOfferHandler = answer;
+      server.screenOfferHandler = answer;
+      final port = await start();
+      for (final source in ['camera', 'screen']) {
+        final request = await client.postUrl(
+          Uri.parse('http://127.0.0.1:$port/api/$source/offer'),
+        );
+        request.write(
+          jsonEncode({
+            'type': 'offer',
+            'sdp':
+                'v=0\r\nc=IN IP4 192.168.1.20\r\na=candidate:lan 1 udp 1 192.168.1.20 55000 typ host\r\n$relay\r\n',
+            'usbRelay': configuration,
+          }),
+        );
+        final response = await request.close();
+        final body =
+            jsonDecode(await utf8.decoder.bind(response).join())
+                as Map<String, dynamic>;
+        expect(response.statusCode, HttpStatus.ok);
+        final received = body['answer'] as Map<String, dynamic>;
+        expect(received['type'], 'answer');
+        expect(received['sdp'], contains(relay));
+        expect(received['sdp'], contains('c=IN IP4 127.0.0.1'));
+        expect(received['sdp'], isNot(contains('192.168.')));
+      }
+      expect(offers, 2);
+    },
+  );
+
+  test(
+    'a non-loopback HTTP caller cannot supply USB relay configuration',
+    () async {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+      );
+      final address = interfaces
+          .expand((interface) => interface.addresses)
+          .where((address) => !address.isLoopback)
+          .firstOrNull;
+      if (address == null) {
+        markTestSkipped(
+          'No non-loopback IPv4 interface available for the local HTTP boundary check',
+        );
+        return;
+      }
+      var offers = 0;
+      Future<Map<String, dynamic>> answer(Map<String, dynamic> offer) async {
+        offers++;
+        return {'type': 'answer', 'sdp': 'must-not-be-called'};
+      }
+
+      server.cameraOfferHandler = answer;
+      server.screenOfferHandler = answer;
+      server.cameraMetadataHandler = () => {'source': 'camera'};
+      server.screenMetadataHandler = () => {'source': 'screen'};
+      final port = await start();
+      final lanClient = HttpClient()
+        ..findProxy = ((_) => 'DIRECT')
+        ..connectionTimeout = const Duration(seconds: 2)
+        ..connectionFactory = (uri, proxyHost, proxyPort) =>
+            Socket.startConnect(address, port, sourceAddress: address);
+      addTearDown(() => lanClient.close(force: true));
+      // Connect only to this test's listener on this machine, never an external
+      // network peer. Some CI systems prohibit even this local-interface route.
+      try {
+        final ping = await lanClient.getUrl(
+          Uri.parse('http://${address.address}:$port/api/ping'),
+        );
+        final response = await ping.close().timeout(const Duration(seconds: 3));
+        await response.drain<void>();
+        expect(response.statusCode, HttpStatus.ok);
+      } on SocketException {
+        markTestSkipped(
+          'The platform cannot connect to its local non-loopback interface',
+        );
+        return;
+      } on TimeoutException {
+        markTestSkipped(
+          'The platform blocks the local non-loopback test route',
+        );
+        return;
+      }
+      for (final source in ['camera', 'screen']) {
+        final request = await lanClient.postUrl(
+          Uri.parse('http://${address.address}:$port/api/$source/offer'),
+        );
+        request.write(
+          jsonEncode({
+            'type': 'offer',
+            'sdp': 'untrusted-lan-offer',
+            'usbRelay': {
+              'iceTransportPolicy': 'relay',
+              'iceServers': [
+                {
+                  'urls': ['turn:127.0.0.1:43000?transport=tcp'],
+                  'username': 'test_user_12345678',
+                  'credential': 'test_password_12345678',
+                },
+              ],
+            },
+          }),
+        );
+        final response = await request.close();
+        final body =
+            jsonDecode(await utf8.decoder.bind(response).join())
+                as Map<String, dynamic>;
+        expect(response.statusCode, HttpStatus.forbidden);
+        expect(body['error'], 'usb-cable-required');
+      }
+      expect(offers, 0);
+      server.usbVideoOnly = true;
+      for (final source in ['camera', 'screen']) {
+        final request = await lanClient.getUrl(
+          Uri.parse('http://${address.address}:$port/api/$source/metadata'),
+        );
+        final response = await request.close();
+        final body =
+            jsonDecode(await utf8.decoder.bind(response).join())
+                as Map<String, dynamic>;
+        expect(response.statusCode, HttpStatus.forbidden);
+        expect(body['error'], 'usb-cable-required');
+      }
     },
   );
 }

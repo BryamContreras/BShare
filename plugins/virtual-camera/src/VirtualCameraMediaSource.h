@@ -1,0 +1,20 @@
+#pragma once
+#include <initguid.h>
+#include <cstdint>
+// Unique to BShare. Never register or remove Microsoft's sample CLSID.
+DEFINE_GUID(CLSID_VirtualCameraMediaSource,
+  0x49cf4567, 0x7334, 0x49dd, 0x9c, 0xee, 0x77, 0x6e, 0x82, 0x37, 0x4c, 0x91);
+inline constexpr wchar_t VIRTUALCAMERAMEDIASOURCE_CLSID[] = L"{49CF4567-7334-49DD-9CEE-776E82374C91}";
+inline constexpr wchar_t VIRTUALCAMERAMEDIASOURCE_FRIENDLYNAME[] = L"BShare";
+DEFINE_GUID(BSHARE_PRODUCER_SID,
+  0x20f4759a, 0xc675, 0x49bb, 0xb2, 0x12, 0xe9, 0x42, 0x2d, 0xf4, 0xa8, 0x31);
+DEFINE_GUID(BSHARE_PRODUCER_CREDENTIAL,
+  0x53df2d68, 0x6b4d, 0x41c2, 0xa4, 0x9b, 0xa5, 0x83, 0x13, 0xc6, 0x65, 0x12);
+// Kept only for the inherited sample's optional IKsControl surface.
+static const GUID PROPSETID_SIMPLEMEDIASOURCE_CUSTOMCONTROL =
+{0xce2ef73, 0x4800, 0x4f53, {0x9b, 0x8e, 0x8c, 0x6, 0x79, 0xf, 0xc0, 0xc7}};
+enum { KSPROPERTY_SIMPLEMEDIASOURCE_CUSTOMCONTROL_COLORING = 0,
+       KSPROPERTY_SIMPLEMEDIASOURCE_CUSTOMCONTROL_END };
+enum { KSPROPERTY_SIMPLEMEDIASOURCE_CUSTOMCONTROL_COLORMODE_BLUE = 0xff };
+typedef struct { uint32_t ColorMode; } KSPROPERTY_SIMPLEMEDIASOURCE_CUSTOMCONTROL_COLORMODE_S,
+  *PKSPROPERTY_SIMPLEMEDIASOURCE_CUSTOMCONTROL_COLORMODE_S;

@@ -34,13 +34,18 @@ foreach ($part in $fileVersion.Split('.')) {
     }
 }
 
-foreach ($required in @('BShare.exe', 'flutter_windows.dll', 'flutter_webrtc_plugin.dll', 'libwebrtc.dll', 'data/icudtl.dat', 'data/app.so', 'data/flutter_assets')) {
+foreach ($required in @('BShare.exe', 'flutter_windows.dll', 'flutter_webrtc_plugin.dll', 'libwebrtc.dll', 'bshare-camera.exe', 'bshare-virtual-camera.dll', 'data/icudtl.dat', 'data/app.so', 'data/flutter_assets')) {
     if (-not (Test-Path -LiteralPath (Join-Path $buildPath $required))) {
         throw "Windows release payload is incomplete: $required"
     }
 }
 
 if (Test-Path -LiteralPath $stagingPath) {
+    $resolvedStaging = [IO.Path]::GetFullPath($stagingPath)
+    $expectedStaging = [IO.Path]::GetFullPath((Join-Path $repository 'build/installer/windows/payload'))
+    if ($resolvedStaging -ne $expectedStaging -or -not $resolvedStaging.StartsWith($repository + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Windows installer staging directory escaped the workspace.'
+    }
     Remove-Item -LiteralPath $stagingPath -Recurse -Force
 }
 New-Item -Path $stagingPath -ItemType Directory -Force | Out-Null
@@ -50,21 +55,30 @@ Get-ChildItem -LiteralPath $stagingPath -Filter '*.pdb' -File -Recurse | Remove-
 Copy-Item -LiteralPath (Join-Path $repository 'LICENSE') -Destination (Join-Path $stagingPath 'LICENSE.txt')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'configure-firewall.ps1') -Destination $stagingPath
 
+# Ship the checked ADB client beside the app, without requiring Android Studio,
+# changing PATH or installing a USB driver on the destination computer.
+& python (Join-Path $repository 'packaging/prepare_adb.py') `
+    --platform windows --architecture x64 `
+    --destination (Join-Path $stagingPath 'tools/platform-tools') --verify-executable
+if ($LASTEXITCODE -ne 0) {
+    throw "Bundling the pinned ADB client failed with exit code $LASTEXITCODE."
+}
+
 # Use the redistributable files licensed for app-local deployment, not copies
 # from System32. This keeps installation per-user without a second installer.
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
 if (-not (Test-Path -LiteralPath $vswhere)) {
     throw 'Visual Studio vswhere.exe was not found.'
 }
-$visualStudio = & $vswhere -latest -products '*' -version '[17.0,18.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+$visualStudio = & $vswhere -latest -products '*' -version '[17.0,19.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if ($LASTEXITCODE -ne 0 -or -not $visualStudio) {
-    throw 'Visual Studio 2022 with C++ tools was not found.'
+    throw 'Visual Studio 2022 or newer with C++ tools was not found.'
 }
 $redistributableRoot = Join-Path $visualStudio.Trim() 'VC/Redist/MSVC'
 $runtimeDirectory = Get-ChildItem -LiteralPath $redistributableRoot -Directory |
     Where-Object { $_.Name -match '^\d+\.\d+\.\d+$' } |
     Sort-Object { [version]$_.Name } -Descending |
-    ForEach-Object { Join-Path $_.FullName 'x64/Microsoft.VC143.CRT' } |
+    ForEach-Object { Get-ChildItem -Path (Join-Path $_.FullName 'x64/Microsoft.VC*.CRT') -Directory -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName } |
     Where-Object { Test-Path -LiteralPath $_ } |
     Select-Object -First 1
 if (-not $runtimeDirectory) {
@@ -83,10 +97,16 @@ if ($SkipInstaller) {
     return
 }
 
-$compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
-if (-not (Test-Path -LiteralPath $compiler)) {
+$compiler = @(
+    (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'),
+    (Join-Path $env:LOCALAPPDATA 'Programs/Inno Setup 6/ISCC.exe')
+) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+if (-not $compiler) {
     throw 'Inno Setup 6 was not found. Install it before packaging.'
 }
+& (Join-Path $repository 'plugins/virtual-camera/scripts/package-windows.ps1') `
+    -BinaryDirectory $buildPath -PackageDirectory (Join-Path $stagingPath 'data/virtual-camera') `
+    -InnoSetupCompiler $compiler
 $firewallSource = [System.IO.File]::ReadAllBytes((Join-Path $PSScriptRoot 'configure-firewall.ps1'))
 $firewallBase64 = [Convert]::ToBase64String($firewallSource)
 # Installer/uninstaller execute a compiled-in payload, never a mutable script
@@ -112,6 +132,7 @@ if (-not (Test-Path -LiteralPath $installerPath)) {
     throw "Inno Setup did not generate $installerPath."
 }
 $hash = (Get-FileHash -LiteralPath $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
-"$hash  $([System.IO.Path]::GetFileName($installerPath))" |
-    Set-Content -LiteralPath "$installerPath.sha256" -Encoding utf8NoBOM
+[IO.File]::WriteAllText("$installerPath.sha256",
+    "$hash  $([System.IO.Path]::GetFileName($installerPath))`n",
+    (New-Object Text.UTF8Encoding($false)))
 Write-Host "Created $installerPath"

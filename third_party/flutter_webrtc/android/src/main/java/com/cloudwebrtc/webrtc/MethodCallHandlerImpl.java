@@ -42,6 +42,7 @@ import com.cloudwebrtc.webrtc.utils.PermissionUtils;
 import com.cloudwebrtc.webrtc.utils.Utils;
 import com.cloudwebrtc.webrtc.video.VideoCapturerInfo;
 import com.cloudwebrtc.webrtc.video.camera.CameraUtils;
+import com.cloudwebrtc.webrtc.video.camera.CameraCaptureControls;
 import com.cloudwebrtc.webrtc.video.camera.Point;
 import com.cloudwebrtc.webrtc.video.LocalVideoTrack;
 import com.twilio.audioswitch.AudioDevice;
@@ -112,6 +113,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   // WebRTC's AudioState is shared by every peer from this factory. Keep the
   // requested state for peers created after a camera microphone toggle too.
   private boolean audioRecordingEnabled = true;
+  private boolean screenAudioRecordingMode = false;
   private final Object audioRecordingStateLock = new Object();
   private boolean audioRecordingManaged = false;
   private boolean audioRecordingThreadRunning = false;
@@ -221,7 +223,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
     getUserMediaImpl = new GetUserMediaImpl(this, context);
 
-    cameraUtils = new CameraUtils(getUserMediaImpl, activity);
+    cameraUtils = new CameraUtils(getUserMediaImpl, activity, context);
 
     frameCryptor = new FlutterRTCFrameCryptor(this);
 
@@ -300,6 +302,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
     audioDeviceModuleBuilder.setSamplesReadyCallback(recordSamplesReadyCallbackAdapter);
     audioDeviceModuleBuilder.setPlaybackSamplesReadyCallback(playbackSamplesReadyCallbackAdapter);
+    audioDeviceModuleBuilder.setAudioBufferCallback(getUserMediaImpl.playbackAudioCapture);
 
     recordSamplesReadyCallbackAdapter.addCallback(getUserMediaImpl.inputSamplesInterceptor);
 
@@ -480,6 +483,31 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         if (enabled == null) {
           resultError("setAudioRecordingEnabled", "enabled is required", result);
         } else {
+          if (screenAudioRecordingMode) getUserMediaImpl.stopScreenAudioCapture();
+          synchronized (audioRecordingStateLock) {
+            // Update intent and source atomically: the reader START callback
+            // must never observe playback's ON intent with microphone mode.
+            audioRecordingEnabled = enabled;
+            screenAudioRecordingMode = false;
+          }
+          setAudioRecordingEnabled(enabled, result);
+        }
+        break;
+      }
+      case "isScreenAudioCaptureSupported": {
+        result.success(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q);
+        break;
+      }
+      case "setScreenAudioRecordingEnabled": {
+        Boolean enabled = call.argument("enabled");
+        if (enabled == null || (enabled && !getUserMediaImpl.playbackAudioCapture.isConfigured())) {
+          resultError("setScreenAudioRecordingEnabled", "Playback capture is not configured", result);
+        } else {
+          if (!enabled) getUserMediaImpl.stopScreenAudioCapture();
+          synchronized (audioRecordingStateLock) {
+            audioRecordingEnabled = enabled;
+            screenAudioRecordingMode = enabled;
+          }
           setAudioRecordingEnabled(enabled, result);
         }
         break;
@@ -760,6 +788,18 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         result.success(null);
         break;
       }
+      case "videoRendererSetFrameOutputEnabled": {
+        Number textureId = call.argument("textureId");
+        Boolean enabled = call.argument("enabled");
+        FlutterRTCVideoRenderer render = textureId == null ? null : renders.get(textureId.longValue());
+        if (render == null || enabled == null) {
+          resultError("videoRendererSetFrameOutputEnabled", "A live renderer and enabled flag are required", result);
+          return;
+        }
+        render.setFrameOutputEnabled(enabled);
+        result.success(null);
+        break;
+      }
       case "mediaStreamTrackHasTorch": {
         String trackId = call.argument("trackId");
         cameraUtils.hasTorch(trackId, result);
@@ -775,6 +815,14 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         String trackId = call.argument("trackId");
         double zoomLevel = call.argument("zoomLevel");
         cameraUtils.setZoom(trackId, zoomLevel, result);
+        break;
+      }
+      case "getCameraCaptureControls": {
+        cameraUtils.getCameraCaptureControls(call.argument("trackId"), result);
+        break;
+      }
+      case "setCameraCaptureControls": {
+        cameraUtils.setCameraCaptureControls(call.argument("trackId"), call.argument("settings"), result);
         break;
       }
       case "mediaStreamTrackSetFocusMode": {
@@ -1586,7 +1634,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       // An already-running reader must keep its current device on repeated ON.
       // With no peers, leave the virtual mode ready for the first negotiated
       // reader; setting ON must not initialize hardware or replace its buffer.
-      audioDeviceModule.setAudioRecordEnabled(enabled && audioRecordingThreadRunning);
+      audioDeviceModule.setAudioRecordEnabled(enabled && audioRecordingThreadRunning && !screenAudioRecordingMode);
     }
   }
 
@@ -1597,7 +1645,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         // SDK 144 invokes this on its reader before the acquisition loop, even
         // when it started virtually. That loop initializes the real ADC in the
         // existing buffer after this switch; no prewarm allocation is needed.
-        audioDeviceModule.setAudioRecordEnabled(audioRecordingEnabled);
+        audioDeviceModule.setAudioRecordEnabled(audioRecordingEnabled && !screenAudioRecordingMode);
       }
     }
   }
@@ -1787,13 +1835,10 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   public void getSources(Result result) {
     ConstraintsArray array = new ConstraintsArray();
-    String[] names = new String[Camera.getNumberOfCameras()];
-
-    for (int i = 0; i < Camera.getNumberOfCameras(); ++i) {
-      ConstraintsMap info = getCameraInfo(i);
-      if (info != null) {
-        array.pushMap(info);
-      }
+    // Match the actual capturer backend's public IDs. Camera1's integer-only
+    // enumeration loses Camera2 logical/ultrawide/telephoto devices.
+    for (Map<String, Object> source : CameraCaptureControls.cameraSources(context)) {
+      array.pushMap(new ConstraintsMap(source));
     }
 
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {

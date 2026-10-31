@@ -1,8 +1,35 @@
 #include "flutter_video_renderer.h"
+#include <chrono>
 
 namespace flutter_webrtc_plugin {
 
-FlutterVideoRenderer::~FlutterVideoRenderer() {}
+void FlutterVideoRenderer::SetFrameOutputEnabled(bool enabled) {
+  bool notify = false;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    frame_output_enabled_ = enabled;
+    notify = enabled && frame_.get();
+  }
+  if (notify && registrar_) registrar_->MarkTextureFrameAvailable(texture_id_);
+}
+
+FlutterVideoRenderer::~FlutterVideoRenderer() {
+  SetVideoTrack(nullptr);
+  SetVirtualCameraOutput(false);
+}
+
+void FlutterVideoRenderer::SetVirtualCameraOutput(bool enabled) {
+#if defined(_WINDOWS) || defined(BSHARE_LINUX_VIRTUAL_CAMERA)
+  std::lock_guard<std::mutex> lock(mutex_);
+  virtual_camera_enabled_ = enabled;
+  virtual_camera_retry_at_ = 0;
+  if (!enabled && virtual_camera_) {
+    virtual_camera_->Clear();
+    virtual_camera_.reset();
+    virtual_camera_pixels_.clear();
+  }
+#endif
+}
 
 void FlutterVideoRenderer::initialize(
     TextureRegistrar* registrar,
@@ -22,6 +49,7 @@ const FlutterDesktopPixelBuffer* FlutterVideoRenderer::CopyPixelBuffer(
     size_t width,
     size_t height) const {
   std::lock_guard<std::mutex> lock(mutex_);
+  if (!frame_output_enabled_) return nullptr;
   if (pixel_buffer_.get() && frame_.get()) {
     // ConvertToARGB already applies frame rotation. Its destination must have
     // the rotated dimensions, otherwise a quarter turn stretches the image.
@@ -90,8 +118,45 @@ void FlutterVideoRenderer::OnFrame(scoped_refptr<RTCVideoFrame> frame) {
   }
   frame_ = frame;
   frame_dirty_ = true;
+#if defined(_WINDOWS) || defined(BSHARE_LINUX_VIRTUAL_CAMERA)
+  if (virtual_camera_enabled_) {
+    const auto now = static_cast<uint64_t>(std::chrono::duration_cast<
+        std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+    if ((!virtual_camera_ || !virtual_camera_->IsReady()) &&
+        now >= virtual_camera_retry_at_) {
+      virtual_camera_.reset();
+      virtual_camera_ =
+          std::make_unique<bshare::virtual_camera::FramePublisher>();
+      virtual_camera_retry_at_ = now + 1000;
+    }
+  }
+  if (virtual_camera_enabled_ && virtual_camera_ && virtual_camera_->IsReady()) {
+    const bool quarter_turn =
+        frame->rotation() == RTCVideoFrame::kVideoRotation_90 ||
+        frame->rotation() == RTCVideoFrame::kVideoRotation_270;
+    const int output_width = quarter_turn ? frame->height() : frame->width();
+    const int output_height = quarter_turn ? frame->width() : frame->height();
+    if (output_width <= 4096 && output_height <= 4096 &&
+        static_cast<uint64_t>(output_width) * output_height * 4 <= 33554432) {
+      virtual_camera_pixels_.resize(
+          static_cast<size_t>(output_width) * output_height * 4);
+      // kARGB is BGRA in memory on supported little-endian desktop targets.
+      // ConvertToARGB applies rotation;
+      // publish independently of Flutter texture paints (including minimized UI).
+      if (frame->ConvertToARGB(RTCVideoFrame::Type::kARGB,
+                              virtual_camera_pixels_.data(), 0,
+                              output_width, output_height) >= 0) {
+        virtual_camera_->Publish(virtual_camera_pixels_.data(), output_width,
+                                 output_height, output_width * 4);
+      }
+    } else {
+      virtual_camera_->Clear();
+    }
+  }
+#endif
+  const bool notify_texture = frame_output_enabled_;
   lock.unlock();
-  registrar_->MarkTextureFrameAvailable(texture_id_);
+  if (notify_texture) registrar_->MarkTextureFrameAvailable(texture_id_);
 }
 
 void FlutterVideoRenderer::SetVideoTrack(scoped_refptr<RTCVideoTrack> track) {
@@ -106,6 +171,14 @@ void FlutterVideoRenderer::SetVideoTrack(scoped_refptr<RTCVideoTrack> track) {
       first_frame_rendered = false;
       frame_ = nullptr;
       frame_dirty_ = false;
+#if defined(_WINDOWS) || defined(BSHARE_LINUX_VIRTUAL_CAMERA)
+      if (virtual_camera_) {
+        virtual_camera_->Clear();
+        virtual_camera_.reset();
+        virtual_camera_pixels_.clear();
+      }
+      virtual_camera_retry_at_ = 0;
+#endif
     }
     if (track_)
       track_->AddRenderer(this);
@@ -129,6 +202,34 @@ bool FlutterVideoRenderer::CheckVideoTrack(std::string mediaId) {
 FlutterVideoRendererManager::FlutterVideoRendererManager(
     FlutterWebRTCBase* base)
     : base_(base) {}
+
+void FlutterVideoRendererManager::VideoRendererSetFrameOutputEnabled(
+    int64_t texture_id, bool enabled,
+    std::unique_ptr<MethodResultProxy> result) {
+  auto it = renderers_.find(texture_id);
+  if (it == renderers_.end()) {
+    result->Error("VideoRendererNotFound", "Video texture is not available");
+    return;
+  }
+  it->second->SetFrameOutputEnabled(enabled);
+  result->Success();
+}
+
+void FlutterVideoRendererManager::VideoRendererSetVirtualCamera(
+    int64_t texture_id, bool enabled,
+    std::unique_ptr<MethodResultProxy> result) {
+#if defined(_WINDOWS) || defined(BSHARE_LINUX_VIRTUAL_CAMERA)
+  auto it = renderers_.find(texture_id);
+  if (it == renderers_.end()) {
+    result->Error("VideoRendererNotFound", "Video texture is not available");
+    return;
+  }
+  it->second->SetVirtualCameraOutput(enabled);
+  result->Success();
+#else
+  result->Error("UnsupportedPlatform", "Virtual camera is not supported on this platform");
+#endif
+}
 
 void FlutterVideoRendererManager::CreateVideoRendererTexture(
     std::unique_ptr<MethodResultProxy> result) {

@@ -145,24 +145,12 @@ class CameraSessionController extends Notifier<CameraSessionState> {
       }
       final settings = await ref.read(settingsProvider.future);
       _check(generation);
-      List<String>? localIps;
-      List<String>? remoteSubnets;
-      if (connection == CameraConnectionMode.usb) {
-        errorKey = 'usbUnavailable';
-        ref.invalidate(usbCameraNetworkProvider);
-        final network = await ref.read(usbCameraNetworkProvider.future);
-        _check(generation);
-        if (network.addresses.isEmpty) {
-          throw StateError('A wired USB network is required');
-        }
-        localIps = network.localIps;
-        remoteSubnets = network.remoteSubnets;
-      }
+      final usb = connection == CameraConnectionMode.usb;
       errorKey = 'cameraFailed';
       claimedReceiver = true;
       _receiverClaimed = true;
       await receiver.startForVideoShare(
-        ipOverride: localIps?.firstOrNull,
+        ipOverride: usb ? '127.0.0.1' : null,
         advertise: connection == CameraConnectionMode.wifi,
       );
       _check(generation);
@@ -176,8 +164,7 @@ class CameraSessionController extends Notifier<CameraSessionState> {
         settings: settings.cameraCapture.forCamera(
           frontFacing: camera.frontFacing,
         ),
-        allowedLocalIps: localIps,
-        allowedRemoteSubnets: remoteSubnets,
+        usbOnly: usb,
       );
       _captureClaimed =
           service.source == VideoShareSource.camera &&
