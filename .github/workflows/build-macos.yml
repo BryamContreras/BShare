@@ -54,6 +54,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify native ADB layout and code signatures
+        run: python3 -m unittest discover -s tool -p 'test_packaging_macos.py'
+
       - name: Set up Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:

@@ -81,6 +81,9 @@ class UsbAdbTransportService {
       if (_configuredExecutable?.isNotEmpty ?? false) _configuredExecutable!,
       if (_environment['BSHARE_ADB']?.isNotEmpty ?? false)
         _environment['BSHARE_ADB']!,
+      // macOS requires a flat executable in Contents/MacOS; notices and the
+      // upstream manifest live separately in Contents/Resources.
+      if (Platform.isMacOS) '$base${separator}adb',
       '$base${separator}tools${separator}platform-tools${separator}adb$suffix',
       '$base${separator}tools${separator}adb$suffix',
       'adb',

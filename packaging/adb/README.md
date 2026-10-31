@@ -51,11 +51,13 @@ rejected. Extraction uses a fixed allowlist. `--verify-executable` runs only
   grant world-writable access to every USB device. Installation reloads rules;
   reconnect the cable for an already plugged-in device. The rule follows
   [systemd's interface matching and uaccess model](https://github.com/systemd/systemd/blob/main/rules.d/70-uaccess.rules.in).
-- macOS stages the universal client inside
-  `BShare.app/Contents/MacOS/tools/platform-tools`. It reapplies the child's code
+- macOS stages the universal client as `BShare.app/Contents/MacOS/adb`, with
+  notices and metadata in `Contents/Resources/tools/platform-tools`. It reapplies the child's code
   signature with only the sandbox/inherit entitlements, then reseals the outer
   app while preserving its metadata. Both the original and signed executable
   hashes and the signature modification are recorded beside the notices.
+  The helper is verified explicitly and the app is checked with deep/strict
+  validation. Code and data follow [Apple's nested-code layout](https://developer.apple.com/library/archive/technotes/tn2206/_index.html).
   `--app-signing-identity` selects the app/child identity; it is distinct from the
   PKG's `--signing-identity`. Both default development packaging and the main app
   retain App Sandbox. The parent has network client/server and USB capabilities;
