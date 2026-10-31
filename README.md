@@ -30,7 +30,7 @@ Current version: **1.0.5**
 
 ## Requirements
 
-- Flutter stable with Dart 3.12 or newer.
+- Flutter **3.47.2 stable** with Dart **3.13.2**, matching CI and the locked dependencies.
 - Platform toolchains for the targets you want to build.
 - LAN file transfers and wireless streaming require devices on the same LAN/Wi-Fi. Android USB streaming uses a data cable, USB debugging and computer authorization instead.
 - For LAN connections, firewalls must allow BShare's inbound TCP listener (default `53317`), UDP discovery on `53318`, and negotiated UDP ports for screen/camera video. The Windows installer offers optional access limited to private local networks; see [network troubleshooting](docs/STREAMING_COMPATIBILITY.md) and [firewall setup](docs/RELEASE.md#windows).

@@ -9,7 +9,7 @@ on:
       flutter-version:
         description: Pinned Flutter SDK version
         type: string
-        default: '3.44.8'
+        default: '3.47.2'
       version:
         description: Numeric release version; empty uses pubspec.yaml
         type: string
@@ -42,7 +42,9 @@ jobs:
       - name: Install native build and packaging tools
         run: |
           sudo apt-get update
+          # Replace conflicting LLVM 14 headers with GStreamer's distro headers.
           sudo apt-get install --no-install-recommends -y \
+            libunwind-dev libunwind-14-dev- \
             clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
             libstdc++-12-dev libasound2-dev libpulse-dev libgbm-dev libdrm-dev \
             libgl1-mesa-dev libegl1-mesa-dev dpkg-dev rpm patchelf desktop-file-utils \

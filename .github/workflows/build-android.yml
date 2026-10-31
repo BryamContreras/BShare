@@ -9,7 +9,7 @@ on:
       flutter-version:
         description: Flutter SDK version shared by all installers.
         type: string
-        default: '3.44.8'
+        default: '3.47.2'
       version:
         description: Optional semantic version; defaults to pubspec.yaml.
         type: string

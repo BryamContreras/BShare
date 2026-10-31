@@ -18,7 +18,8 @@ tests. It must pass before Windows,
 Linux, Android, and two native macOS architecture builds start in parallel. Linux
 compiles once and packages the same bundle into both formats.
 
-All builds use Flutter **3.44.8**, locked Dart dependencies and one shared version.
+All builds use Flutter **3.47.2 stable** (Dart **3.13.2**), locked Dart dependencies
+and one shared version.
 The version comes from `pubspec.yaml`; its build number is increased by the parent
 workflow run number. A `v*` tag must match the semantic version in `pubspec.yaml`.
 The 1.0.5 base build is 17; tagged CI builds add their run number. Historical

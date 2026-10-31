@@ -1,7 +1,7 @@
 # Instalador de Windows
 
 El workflow reutilizable `.github/workflows/build-windows.yml` compila con Flutter
-3.44.8 y herramientas C++ de MSVC detectadas automáticamente mediante `vswhere`
+3.47.2 stable (Dart 3.13.2) y herramientas C++ de MSVC detectadas automáticamente mediante `vswhere`
 sobre `windows-2022`; no fija una edición de Visual Studio. Genera un instalador Inno Setup
 para Windows 10/11 x64, con versión tomada de `pubspec.yaml`.
 
@@ -68,7 +68,7 @@ después en el runner de Windows.
 
 ## Compilación local
 
-Desde PowerShell 7, con Flutter 3.44.8, una instalación de Visual Studio con C++
+Desde PowerShell 7, con Flutter 3.47.2 stable (Dart 3.13.2), una instalación de Visual Studio con C++
 y Windows SDK compatibles, e Inno Setup 6 instalados:
 
 ```powershell
@@ -91,5 +91,5 @@ archivos ZIP.
 - [Despliegue local del runtime de C++](https://learn.microsoft.com/en-us/cpp/windows/walkthrough-deploying-a-visual-cpp-application-to-an-application-local-folder?view=msvc-170).
 - [Herramientas de la imagen Windows Server 2022](https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md).
 - [Instalación sin elevación en Inno Setup](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm).
-- [Disponibilidad y referencias del messenger nativo de Flutter](https://github.com/flutter/flutter/blob/3.44.8/engine/src/flutter/shell/platform/common/public/flutter_messenger.h).
-- [Orden de destrucción del motor de Windows en Flutter 3.44.8](https://github.com/flutter/flutter/blob/3.44.8/engine/src/flutter/shell/platform/windows/flutter_windows_engine.cc).
+- [Disponibilidad y referencias del messenger nativo de Flutter](https://github.com/flutter/flutter/blob/3.47.2/engine/src/flutter/shell/platform/common/public/flutter_messenger.h).
+- [Orden de destrucción del motor de Windows en Flutter 3.47.2](https://github.com/flutter/flutter/blob/3.47.2/engine/src/flutter/shell/platform/windows/flutter_windows_engine.cc).

@@ -18,7 +18,7 @@ on:
       flutter-version:
         type: string
         required: false
-        default: '3.44.8'
+        default: '3.47.2'
 
 permissions:
   contents: write
