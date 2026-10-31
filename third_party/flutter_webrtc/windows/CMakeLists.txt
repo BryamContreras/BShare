@@ -16,9 +16,16 @@ set(PLUGIN_NAME "flutter_webrtc_plugin")
 add_definitions(-DLIB_WEBRTC_API_DLL)
 add_definitions(-DRTC_DESKTOP_DEVICE)
 
-# The SDK include already resolved its physical third_party directory. Taking
-# its parent avoids normalizing /.. through Flutter's Windows plugin link.
-get_filename_component(BSHARE_WEBRTC_ROOT "${LIBWEBRTC_THIRD_PARTY_DIR}" DIRECTORY)
+# The companion belongs to the BShare host, whose source directory is windows/.
+# Resolve from that root so Windows plugin links cannot redirect a parent path.
+get_filename_component(BSHARE_VIRTUAL_CAMERA_INCLUDE_DIR
+  "${CMAKE_SOURCE_DIR}/../plugins/virtual-camera/include" ABSOLUTE)
+if(NOT EXISTS "${BSHARE_VIRTUAL_CAMERA_INCLUDE_DIR}/bshare_frame_publisher.h")
+  message(FATAL_ERROR
+    "BShare virtual-camera header is missing. "
+    "Expected: ${BSHARE_VIRTUAL_CAMERA_INCLUDE_DIR}/bshare_frame_publisher.h; "
+    "host source: ${CMAKE_SOURCE_DIR}; plugin source: ${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
 
 add_library(${PLUGIN_NAME} SHARED
   "../common/cpp/src/flutter_common.cc"
@@ -47,7 +54,7 @@ include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}/../common/cpp/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/svpng"
   "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/libwebrtc/include"
-  "${BSHARE_WEBRTC_ROOT}/../../plugins/virtual-camera/include"
+  "${BSHARE_VIRTUAL_CAMERA_INCLUDE_DIR}"
 )
 
 apply_standard_settings(${PLUGIN_NAME})
